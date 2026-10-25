@@ -1,0 +1,14 @@
+Flask>=3.0
+Flask-SQLAlchemy>=3.1
+Flask-CORS>=4.0
+PyJWT>=2.8
+python-dotenv>=1.0
+requests>=2.31
+APScheduler>=3.10
+Flask-Migrate>=4.0
+pywebpush>=2.0
+tzdata>=2024.1
+Pillow>=10.0
+pytesseract>=0.3.10
+# Only needed when DATABASE_URL points to PostgreSQL:
+# psycopg2-binary>=2.9

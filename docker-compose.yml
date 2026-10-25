@@ -1,0 +1,41 @@
+# docker compose up -d           -> PostgreSQL only (use with python run.py and npm run dev)
+# docker compose --profile app up -d --build   -> PostgreSQL + the whole app at http://localhost:8000
+#
+# For the PostgreSQL-only setup set in backend/.env:
+#   DATABASE_URL=postgresql://eventure:eventure@localhost:5432/eventure
+# and install the driver:  pip install psycopg2-binary
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: eventure
+      POSTGRES_PASSWORD: eventure
+      POSTGRES_DB: eventure
+    ports:
+      - "5432:5432"
+    volumes:
+      - eventure_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eventure"]
+      interval: 5s
+      retries: 10
+
+  app:
+    profiles: ["app"]
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SECRET_KEY: change-me-before-sharing
+      DATABASE_URL: postgresql://eventure:eventure@db:5432/eventure
+      CORS_ORIGINS: http://localhost:8000
+      FRONTEND_URL: http://localhost:8000
+      GOOGLE_REDIRECT_URI: http://localhost:8000/api/google/callback
+    ports:
+      - "8000:8000"
+    # first run only, to load demo data:
+    #   docker compose --profile app exec app python seed.py
+
+volumes:
+  eventure_pg:
