@@ -10,8 +10,6 @@ Built by Team Quanta (Manav Setia, Mayank Sharma, Milan Sharma). MIT licensed.
 - Calendars store events but do not tell you whether you can actually do them: clashes, travel time and exam weeks go unchecked.
 - Free student events have no trustworthy rating layer. Eventure only accepts reviews from students who attended.
 
-The research behind this is in [`docs/Eventure_Research_Brief.docx`](docs/Eventure_Research_Brief.docx).
-
 ## How it fits together
 
 ```mermaid
@@ -126,18 +124,6 @@ docker compose --profile app exec app python seed.py                       # opt
 
 Without Docker: `cd frontend && npm run build`, then run the backend with `gunicorn -w 1 --threads 4 run:app`. Keep one worker so the reminder scheduler runs once. Behind a proxy (Render, Railway, nginx) set `TRUST_PROXY=1` so rate limits see each student's real address. The Dockerfile already sets it, so if you expose the container directly with no proxy in front, run it with `-e TRUST_PROXY=0`. For Google sign-in on a public URL, set `GOOGLE_REDIRECT_URI` to `https://your-domain/api/google/callback` and add it in the Google console. Push alerts need HTTPS.
 I could not run Docker here, so the Dockerfile is untested.
-
-## Demo script (about 4 minutes)
-
-1. Sign in as the demo student. The timeline shows **Hackathon X** (submission due in 2 days, red dot) and a **clash** with Cloud Workshop Y, with "Keep Hackathon X" and the extra travel time. Click it to skip Workshop Y.
-2. The sessional week flags **Contest Z** and suggests skipping it.
-3. **Inbox**: a forwarded email is waiting, already read. Review and add it.
-4. **Add event**: paste poster text, check the parsed fields, confirm.
-5. **Discover**: map around your college, filters, compare 2 to 3 events.
-6. Open **DevSprint 2026**. The demo student is marked as attended, so the review form appears. Every review there is from a verified attendee.
-7. **Community**: follow clubs, open the **Team Quanta** shared journey.
-8. **Organizer**: counts and ratings for events you listed, share link and button code.
-9. **Alerts**: "Check my deadlines now" creates escalating reminders. **Settings**: connect Google Calendar, turn on push, copy the calendar feed.
 
 ## Project layout
 
