@@ -30,6 +30,7 @@ class ApiTests(unittest.TestCase):
 
         class TestConfig(Config):
             TESTING = True
+            SECRET_KEY = "test-secret-key-that-is-at-least-32-bytes-long!"
             SQLALCHEMY_DATABASE_URI = "sqlite://"
             ENABLE_SCHEDULER = False
             ANTHROPIC_API_KEY = ""
@@ -293,6 +294,61 @@ class ApiTests(unittest.TestCase):
         club = self.client.post("/api/clubs", json={"name": "Code Club"}, headers=h).get_json()["club"]
         self.assertEqual(self.client.get(f"/api/clubs/{club['id']}", headers=h).status_code, 200)
         self.assertTrue(self.client.post(f"/api/clubs/{club['id']}/follow", headers=h).get_json()["following"] is False)
+
+    # ---------- additional edge-case API tests ----------
+    def test_registration_validation_errors(self):
+        # Missing name
+        r1 = self.client.post("/api/auth/register", json={"name": "", "email": "valid@x.com", "password": "password123"})
+        self.assertEqual(r1.status_code, 400)
+        self.assertIn("Enter your name", r1.get_json()["error"])
+
+        # Invalid email
+        r2 = self.client.post("/api/auth/register", json={"name": "Alice", "email": "invalid-email", "password": "password123"})
+        self.assertEqual(r2.status_code, 400)
+        self.assertIn("valid email", r2.get_json()["error"])
+
+        # Short password (< 6 chars)
+        r3 = self.client.post("/api/auth/register", json={"name": "Alice", "email": "valid@x.com", "password": "123"})
+        self.assertEqual(r3.status_code, 400)
+        self.assertIn("at least 6 characters", r3.get_json()["error"])
+
+    def test_unauthenticated_and_invalid_token(self):
+        # No header
+        self.assertEqual(self.client.get("/api/timeline").status_code, 401)
+        # Malformed bearer
+        bad_hdr = {"Authorization": "Bearer malformed.jwt.token"}
+        self.assertEqual(self.client.get("/api/timeline", headers=bad_hdr).status_code, 401)
+
+    def test_event_end_before_start_rejected(self):
+        h = self.user("endstart@x.com")
+        res = self.client.post("/api/events", json={
+            "title": "Invalid Event",
+            "start_at": "2026-10-18T18:00",
+            "end_at": "2026-10-18T10:00",
+        }, headers=h)
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("end time is before the start time", res.get_json()["error"])
+
+    def test_timeline_extract_text_and_validations(self):
+        h = self.user("extract@x.com")
+        # Empty text
+        r_empty = self.client.post("/api/extract", json={"text": ""}, headers=h)
+        self.assertEqual(r_empty.status_code, 400)
+
+        # Valid text
+        text_data = "CodeSprint Hackathon on 20 Oct 2026 at IIIT Delhi. Register on Unstop by 15 Oct."
+        r_ok = self.client.post("/api/extract", json={"text": text_data}, headers=h)
+        self.assertEqual(r_ok.status_code, 200)
+        parsed = r_ok.get_json()["parsed"]
+        self.assertIn("CodeSprint", parsed["title"])
+        self.assertEqual(parsed["category"], "hackathon")
+
+        # Corrupt file upload
+        import io
+        fake_file = (io.BytesIO(b"not-a-real-image"), "test.png")
+        r_file = self.client.post("/api/extract", data={"image": fake_file},
+                                  content_type="multipart/form-data", headers=h)
+        self.assertEqual(r_file.status_code, 422)
 
 
 if __name__ == "__main__":

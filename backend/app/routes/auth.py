@@ -7,18 +7,12 @@ from ..extensions import db
 from ..models import (Club, ClubFollow, Event, ExamPeriod, GoogleAccount, InboxItem, Notification, PushSubscription,
                       Review, SyncedItem, Team, TeamMember, User, UserEvent)
 from ..ratelimit import Limiter, rate_limited
-from ..utils import ApiError, to_float
+from ..utils import ApiError, clean_goals, to_float
 
 bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 LOGIN_LIMIT = Limiter(20, 300)      # 20 FAILED sign-ins per 5 minutes per address (a campus shares one address)
 REGISTER_LIMIT = Limiter(30, 3600)  # 30 sign-ups per hour per address
-
-
-def _goals(value):
-    if isinstance(value, list):
-        value = ",".join(str(v) for v in value)
-    return ",".join(g.strip() for g in (value or "").split(",") if g.strip())
 
 
 @bp.post("/register")
@@ -39,7 +33,7 @@ def register():
     user = User(
         name=name, email=email, college=(d.get("college") or "").strip() or None,
         college_lat=to_float(d.get("college_lat")), college_lng=to_float(d.get("college_lng")),
-        goals=_goals(d.get("goals")),
+        goals=clean_goals(d.get("goals")),
     )
     user.set_password(password)
     db.session.add(user)

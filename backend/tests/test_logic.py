@@ -296,5 +296,108 @@ class TravelEdgeTests(unittest.TestCase):
         self.assertLess(km, 1400)
 
 
+# ─── Common Utils & Input Parsing Edge Cases ────────────────────────────────
+class UtilsEdgeTests(unittest.TestCase):
+    def test_fmt_minutes(self):
+        from app.utils import fmt_minutes
+        self.assertEqual(fmt_minutes(None), "")
+        self.assertEqual(fmt_minutes(""), "")
+        self.assertEqual(fmt_minutes("invalid"), "")
+        self.assertEqual(fmt_minutes(-15), "0 min")
+        self.assertEqual(fmt_minutes(0), "0 min")
+        self.assertEqual(fmt_minutes(45), "45 min")
+        self.assertEqual(fmt_minutes(60), "1 h")
+        self.assertEqual(fmt_minutes(90), "1 h 30 min")
+        self.assertEqual(fmt_minutes(120), "2 h")
+
+    def test_clean_goals(self):
+        from app.utils import clean_goals
+        self.assertEqual(clean_goals(None), "")
+        self.assertEqual(clean_goals(""), "")
+        self.assertEqual(clean_goals(["hackathon ", " ai", ""]), "hackathon,ai")
+        self.assertEqual(clean_goals("hackathons,  competitions , "), "hackathons,competitions")
+
+    def test_parse_dt_edge_cases(self):
+        from app.utils import ApiError, parse_dt
+        self.assertIsNone(parse_dt(None))
+        self.assertIsNone(parse_dt(""))
+        now_dt = datetime(2026, 10, 17, 10, 30)
+        self.assertEqual(parse_dt(now_dt), now_dt)
+        self.assertEqual(parse_dt("2026-10-17T10:30"), now_dt)
+        # UTC 'Z' ISO string
+        self.assertIsNotNone(parse_dt("2026-10-17T10:30:00Z"))
+        with self.assertRaises(ApiError):
+            parse_dt("not-a-datetime")
+
+    def test_parse_date_and_numbers(self):
+        from app.utils import ApiError, parse_date, to_float, to_int
+        self.assertIsNone(parse_date(None))
+        self.assertIsNone(parse_date(""))
+        self.assertEqual(parse_date("2026-10-17"), date(2026, 10, 17))
+        self.assertEqual(parse_date(date(2026, 10, 17)), date(2026, 10, 17))
+        with self.assertRaises(ApiError):
+            parse_date("not-a-date")
+
+        self.assertIsNone(to_float(None))
+        self.assertIsNone(to_float(""))
+        self.assertEqual(to_float("28.5"), 28.5)
+        with self.assertRaises(ApiError):
+            to_float("xyz")
+
+        self.assertIsNone(to_int(None))
+        self.assertIsNone(to_int("bad"))
+        self.assertEqual(to_int("42"), 42)
+
+
+# ─── OCR Pipeline Edge Cases ────────────────────────────────────────────────
+class OcrFailureEdgeTests(unittest.TestCase):
+    def test_ocr_corrupt_data_raises_unavailable(self):
+        from app.services.ocr import OCRUnavailable, image_to_text
+        with self.assertRaises(OCRUnavailable):
+            image_to_text(b"corrupt-data-not-an-image")
+
+    def test_ocr_empty_bytes_raises_unavailable(self):
+        from app.services.ocr import OCRUnavailable, image_to_text
+        with self.assertRaises(OCRUnavailable):
+            image_to_text(b"")
+
+
+# ─── Conflict & Reminder Advanced Edge Cases ────────────────────────────────
+class ConflictAdvancedEdgeTests(unittest.TestCase):
+    def test_event_without_start_ignored(self):
+        a = {"id": 1, "title": "No Start", "start": None, "end": None}
+        b = {"id": 2, "title": "Normal", "start": datetime(2026, 10, 17, 10), "end": None}
+        self.assertEqual(detect_issues([a, b]), [])
+
+    def test_back_to_back_zero_gap_different_venue_causes_travel_gap(self):
+        a = {"id": 1, "title": "Event A", "start": datetime(2026, 10, 17, 10), "end": datetime(2026, 10, 17, 12),
+             "lat": 28.54, "lng": 77.27, "venue": "Campus 1"}
+        b = {"id": 2, "title": "Event B", "start": datetime(2026, 10, 17, 12), "end": datetime(2026, 10, 17, 14),
+             "lat": 28.70, "lng": 77.10, "venue": "Campus 2"}
+        issues = detect_issues([a, b], travel_minutes_fn=lambda x, y: 45)
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0]["type"], "travel_gap")
+        self.assertEqual(issues[0]["meta"]["gap_minutes"], 0)
+
+    def test_travel_fn_returns_none_gracefully_handled(self):
+        a = {"id": 1, "title": "Event A", "start": datetime(2026, 10, 17, 10), "end": datetime(2026, 10, 17, 12),
+             "lat": 28.54, "lng": 77.27, "venue": "Campus 1"}
+        b = {"id": 2, "title": "Event B", "start": datetime(2026, 10, 17, 12, 30), "end": datetime(2026, 10, 17, 14),
+             "lat": 28.70, "lng": 77.10, "venue": "Campus 2"}
+        issues = detect_issues([a, b], travel_minutes_fn=lambda x, y: None)
+        self.assertEqual(issues, [])
+
+
+class ReminderBoundaryTests(unittest.TestCase):
+    def test_exact_boundaries(self):
+        self.assertEqual(level_for(6), "critical")
+        self.assertEqual(level_for(24), "urgent")
+        self.assertEqual(level_for(48), "warning")
+        self.assertIsNone(level_for(48.1))
+        # After 24 hours overdue, reminder is suppressed
+        self.assertEqual(level_for(-23.9), "critical")
+        self.assertIsNone(level_for(-25))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -14,7 +14,7 @@ def _database_url():
 
 
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
+    SECRET_KEY = os.getenv("SECRET_KEY", "eventure-dev-secret-key-32-bytes-minimum-length-phrase!")
     SQLALCHEMY_DATABASE_URI = _database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_EXPIRY_HOURS = int(os.getenv("JWT_EXPIRY_HOURS", "72"))

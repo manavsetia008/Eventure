@@ -64,3 +64,26 @@ def to_int(value):
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def fmt_minutes(m):
+    """Format minutes into human-readable duration (e.g. '45 min', '2 h', '2 h 15 min')."""
+    if m is None:
+        return ""
+    try:
+        m = int(round(float(m)))
+    except (ValueError, TypeError):
+        return ""
+    if m < 0:
+        return "0 min"
+    if m < 60:
+        return f"{m} min"
+    h, r = divmod(m, 60)
+    return f"{h} h {r} min" if r else f"{h} h"
+
+
+def clean_goals(value):
+    """Normalize comma-separated or list-based user goals."""
+    if isinstance(value, list):
+        value = ",".join(str(v) for v in value)
+    return ",".join(g.strip() for g in (value or "").split(",") if g.strip())

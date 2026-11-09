@@ -75,10 +75,12 @@ class GoogleHelperTests(unittest.TestCase):
     TZ = "Asia/Kolkata"
 
     def test_state_roundtrip(self):
-        state = gc.make_state(7, "secret")
-        self.assertEqual(gc.read_state(state, "secret"), 7)
-        self.assertIsNone(gc.read_state(state, "other"))
-        self.assertIsNone(gc.read_state("junk", "secret"))
+        sec = "secret-key-that-is-at-least-32-bytes-long!"
+        other = "other-key-that-is-also-32-bytes-long-now!"
+        state = gc.make_state(7, sec)
+        self.assertEqual(gc.read_state(state, sec), 7)
+        self.assertIsNone(gc.read_state(state, other))
+        self.assertIsNone(gc.read_state("junk", sec))
 
     def test_filter_external(self):
         items = [

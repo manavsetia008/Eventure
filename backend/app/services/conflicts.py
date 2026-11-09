@@ -6,6 +6,11 @@ An event dict looks like:
 """
 from datetime import timedelta
 
+try:
+    from ..utils import fmt_minutes
+except (ImportError, ValueError):
+    from app.utils import fmt_minutes
+
 DEFAULT_DURATION = timedelta(hours=3)
 BUFFER_MIN = 15
 
@@ -18,14 +23,6 @@ def _different_venues(a, b):
     if None in (a.get("lat"), a.get("lng"), b.get("lat"), b.get("lng")):
         return bool(a.get("venue") and b.get("venue") and a["venue"] != b["venue"])
     return abs(a["lat"] - b["lat"]) > 1e-4 or abs(a["lng"] - b["lng"]) > 1e-4
-
-
-def _fmt_minutes(m):
-    m = int(m)
-    if m < 60:
-        return f"{m} min"
-    h, r = divmod(m, 60)
-    return f"{h} h {r} min" if r else f"{h} h"
 
 
 def detect_issues(events, exam_periods=(), travel_minutes_fn=None):
@@ -47,7 +44,7 @@ def detect_issues(events, exam_periods=(), travel_minutes_fn=None):
                     "type": "overlap",
                     "severity": "high",
                     "events": [a["id"], b["id"]],
-                    "message": f"{a['title']} and {b['title']} overlap by {_fmt_minutes(overlap)}.",
+                    "message": f"{a['title']} and {b['title']} overlap by {fmt_minutes(overlap)}.",
                     "meta": {"overlap_minutes": overlap},
                 })
                 continue
@@ -62,8 +59,8 @@ def detect_issues(events, exam_periods=(), travel_minutes_fn=None):
                         "type": "travel_gap",
                         "severity": "medium",
                         "events": [a["id"], b["id"]],
-                        "message": (f"Only {_fmt_minutes(gap)} between {a['title']} and {b['title']}, "
-                                    f"but the trip takes about {_fmt_minutes(travel)}."),
+                        "message": (f"Only {fmt_minutes(gap)} between {a['title']} and {b['title']}, "
+                                    f"but the trip takes about {fmt_minutes(travel)}."),
                         "meta": {"gap_minutes": gap, "travel_minutes": travel},
                     })
 
