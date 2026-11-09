@@ -37,34 +37,42 @@ You need Python 3.10+ and Node 18+.
 
 ### 1. Backend
 
-```bash
+```powershell
 cd backend
 python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+.venv\Scripts\activate
+# macOS / Linux: source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env               # optional, everything core works without edits
-python seed.py                     # demo data (use --reset to wipe and reload)
+copy .env.example .env
+# macOS / Linux: cp .env.example .env
+python seed.py                     # demo data; if it says "already has data" run: python seed.py --reset
 python run.py                      # http://localhost:5000
 ```
 
+> **If `python seed.py` prints "Database already has data"**: the database was seeded before.
+> Run `python seed.py --reset` to wipe and reload fresh demo data.
+
 ### 2. Frontend
 
-```bash
+```powershell
 cd frontend
 npm install
 npm run dev                        # http://localhost:5173 (proxies /api to Flask)
+
+# Or build once so Flask directly serves the app on port 5000:
+npm run build                      # Creates production build in frontend/dist
 ```
 
 Sign in with `demo@eventure.app` / `demo1234`.
 
 ### 3. Check it works
 
-```bash
+```powershell
 cd backend
 python -m unittest discover -s tests -v
 ```
 
-39 tests cover the logic (clashes, scoring, parsing, email, geocoding, rate limits, Google helpers) and run anywhere. 16 more call the real API on an in-memory database and run once the requirements are installed.
+61 tests cover the full test suite (clashes, priority scoring, text extraction, email parsing, geocoding, rate limits, Google Calendar integration, and live API endpoints).
 
 ## What it does
 
@@ -125,7 +133,6 @@ docker compose --profile app exec app python seed.py                       # opt
 ```
 
 Without Docker: `cd frontend && npm run build`, then run the backend with `gunicorn -w 1 --threads 4 run:app`. Keep one worker so the reminder scheduler runs once. Behind a proxy (Render, Railway, nginx) set `TRUST_PROXY=1` so rate limits see each student's real address. The Dockerfile already sets it, so if you expose the container directly with no proxy in front, run it with `-e TRUST_PROXY=0`. For Google sign-in on a public URL, set `GOOGLE_REDIRECT_URI` to `https://your-domain/api/google/callback` and add it in the Google console. Push alerts need HTTPS.
-I could not run Docker here, so the Dockerfile is untested.
 
 ## Demo script (about 4 minutes)
 
