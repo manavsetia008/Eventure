@@ -1380,7 +1380,7 @@ tbody th { color: var(--muted); font-weight: 600; white-space: nowrap; }
 }
 
 /* ============================================================
-   RESPONSIVE DESIGN FOR LANDING PAGE
+   RESPONSIVE DESIGN (Landing Page & Internal Dashboard)
    ============================================================ */
 @media (max-width: 920px) {
   .landing-hero {
@@ -1393,4 +1393,74 @@ tbody th { color: var(--muted); font-weight: 600; white-space: nowrap; }
   .landing-menu { display: none; }
   .preview-metrics { grid-template-columns: 1fr; }
   .page-head { align-items: flex-start; }
+
+  /* Discover page: stack list and map vertically */
+  .discover {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .map-wrap {
+    position: static;
+    order: -1;
+    margin-bottom: 0.5rem;
+  }
+  .map {
+    height: 320px;
+  }
+}
+
+@media (max-width: 680px) {
+  .topbar {
+    padding: 0.65rem 1rem;
+    gap: 0.8rem;
+  }
+  .topbar nav {
+    gap: 0.25rem;
+  }
+  .topbar nav a {
+    padding: 0.3rem 0.55rem;
+    font-size: 0.82rem;
+  }
+  .page {
+    padding: 1.25rem 0.9rem 4rem;
+  }
+
+  /* Form grids collapse to 1 column so datetime inputs and labels don't crush */
+  .grid2, .grid3 {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  /* Summary stats cards on mobile */
+  .summary div {
+    min-width: 130px;
+    padding: 0.85rem 1rem;
+  }
+  .summary b {
+    font-size: 1.6rem;
+  }
+
+  /* Conflict fork element */
+  .fork {
+    grid-template-columns: 1fr 2rem 1fr;
+  }
+  .fork span {
+    font-size: 0.78rem;
+    padding: 0.35rem 0.5rem;
+    word-break: break-word;
+  }
+
+  /* Hero CTA buttons stack cleanly on small phones */
+  .hero-cta-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .hero-cta-group .btn {
+    text-align: center;
+  }
+
+  /* Modal & Card padding */
+  .card {
+    padding: 1.1rem 1.15rem;
+  }
 }
