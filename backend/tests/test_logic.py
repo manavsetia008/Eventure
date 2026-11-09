@@ -156,5 +156,145 @@ class TravelAndIcsTests(unittest.TestCase):
         self.assertTrue(text.endswith("END:VCALENDAR\r\n"))
 
 
+# ─── OCR preprocessing (unit tests that don't need Tesseract) ───────────────
+class OcrPreprocessTests(unittest.TestCase):
+    """Test _preprocess without calling Tesseract."""
+
+    def _preprocess(self, img):
+        from app.services.ocr import _preprocess
+        return _preprocess(img)
+
+    def test_greyscale_output(self):
+        from PIL import Image
+        img = Image.new("RGB", (200, 200), color=(200, 100, 50))
+        out = self._preprocess(img)
+        # binarised mode is "1" (black-and-white)
+        self.assertEqual(out.mode, "1")
+
+    def test_small_image_upscaled(self):
+        from PIL import Image
+        img = Image.new("L", (100, 80), color=200)
+        out = self._preprocess(img)
+        self.assertGreaterEqual(max(out.size), 800)
+
+    def test_large_image_not_upscaled(self):
+        from PIL import Image
+        img = Image.new("L", (1200, 900), color=200)
+        out = self._preprocess(img)
+        # width must stay 1200 — no downscaling
+        self.assertEqual(out.size[0], 1200)
+
+
+# ─── Additional conflict edge cases ─────────────────────────────────────────
+class ConflictEdgeTests(unittest.TestCase):
+    def ev(self, i, title, start, end=None, lat=None, lng=None, venue=None):
+        return {"id": i, "title": title, "start": start, "end": end,
+                "lat": lat, "lng": lng, "venue": venue}
+
+    def test_exact_boundary_no_overlap(self):
+        """Event B starts exactly when A ends — not an overlap."""
+        a = self.ev(1, "A", datetime(2026, 11, 1, 10), datetime(2026, 11, 1, 12))
+        b = self.ev(2, "B", datetime(2026, 11, 1, 12), datetime(2026, 11, 1, 14))
+        self.assertEqual(detect_issues([a, b]), [])
+
+    def test_single_event_no_issue(self):
+        a = self.ev(1, "Solo", datetime(2026, 11, 1, 10), datetime(2026, 11, 1, 12))
+        self.assertEqual(detect_issues([a]), [])
+
+    def test_exam_does_not_flag_past_event(self):
+        """An event that ended before the exam period should not be flagged."""
+        a = self.ev(1, "Old Event", datetime(2026, 10, 1, 10), datetime(2026, 10, 1, 12))
+        exams = [{"label": "mid-sems", "start": date(2026, 10, 19), "end": date(2026, 10, 24)}]
+        issues = detect_issues([a], exams)
+        self.assertEqual(issues, [])
+
+    def test_multiple_exam_periods_only_one_flagged(self):
+        """Only the period that overlaps is flagged."""
+        a = self.ev(1, "Contest", datetime(2026, 10, 21, 10), datetime(2026, 10, 21, 18))
+        exams = [
+            {"label": "mid-sems", "start": date(2026, 10, 19), "end": date(2026, 10, 24)},
+            {"label": "end-sems", "start": date(2026, 11, 20), "end": date(2026, 11, 28)},
+        ]
+        issues = detect_issues([a], exams)
+        exam_issues = [i for i in issues if i["type"] == "exam_week"]
+        self.assertEqual(len(exam_issues), 1)
+        self.assertIn("mid-sems", exam_issues[0]["message"])
+
+
+# ─── Additional priority edge cases ──────────────────────────────────────────
+class PriorityEdgeTests(unittest.TestCase):
+    NOW = datetime(2026, 10, 12, 9, 0)
+
+    def _item(self, i, title, category="hackathon", **kw):
+        base = {"id": i, "title": title, "category": category, "description": "",
+                "status": "interested", "start": datetime(2026, 10, 17, 10),
+                "stages": [], "travel_minutes": None, "in_exam": False}
+        base.update(kw)
+        return base
+
+    def test_score_never_negative(self):
+        """Even with exam penalty and long travel, score must be >= 0."""
+        a = self._item(1, "X", in_exam=True, travel_minutes=300)
+        s = score_item(a, [], self.NOW)
+        self.assertGreaterEqual(s["score"], 0)
+
+    def test_no_goals_gives_neutral_goal_score(self):
+        a = self._item(1, "Y")
+        s = score_item(a, [], self.NOW)
+        # goal part should be the neutral 20 when no goals are set
+        self.assertEqual(s["parts"]["goal"], 20)
+
+    def test_registered_status_adds_progress_points(self):
+        a = self._item(1, "Z", status="registered")
+        b = self._item(2, "Z", status="interested")
+        sa = score_item(a, [], self.NOW)
+        sb = score_item(b, [], self.NOW)
+        self.assertGreater(sa["score"], sb["score"])
+
+    def test_suggest_between_equal_scores_gives_message(self):
+        a = self._item(1, "Alpha")
+        b = self._item(2, "Beta")
+        sa = sb = score_item(a, [], self.NOW)  # both identical
+        result = suggest_between(a, sa, b, sb)
+        self.assertIn("Alpha", result["reason"])
+
+    def test_exam_keep_when_high_score(self):
+        """High-priority event in exam week should still suggest 'keep'."""
+        a = self._item(1, "AI Hackathon", category="hackathon",
+                       status="registered", travel_minutes=10,
+                       stages=[{"name": "Submit", "due": datetime(2026, 10, 13), "done": False}])
+        s = score_item(a, ["hackathon", "ai"], self.NOW)
+        # registered + urgency + goal fit should push score above 55 despite exam penalty
+        a_exam = self._item(1, "AI Hackathon", category="hackathon",
+                            status="registered", travel_minutes=10, in_exam=False,
+                            stages=[{"name": "Submit", "due": datetime(2026, 10, 13), "done": False}])
+        s_high = score_item(a_exam, ["hackathon", "ai"], self.NOW)
+        result = suggest_for_exam(a_exam, s_high, "mid-sems")
+        self.assertEqual(result["action"], "keep")
+
+
+# ─── Travel edge cases ───────────────────────────────────────────────────────
+class TravelEdgeTests(unittest.TestCase):
+    def test_same_point_returns_zero(self):
+        self.assertEqual(estimate_minutes(28.5459, 77.2732, 28.5459, 77.2732), 0)
+
+    def test_missing_one_coord_returns_none(self):
+        self.assertIsNone(estimate_minutes(28.5, None, 28.7, 77.2))
+        self.assertIsNone(estimate_minutes(None, 77.2, 28.7, 77.2))
+
+    def test_delhi_to_gurgaon_reasonable(self):
+        # IIIT Delhi → Cyber Hub Gurgaon: ~20–50 km, should be 30–90 min
+        mins = estimate_minutes(28.5459, 77.2732, 28.4950, 77.0890)
+        self.assertIsNotNone(mins)
+        self.assertGreater(mins, 20)
+        self.assertLess(mins, 120)
+
+    def test_haversine_known_distance(self):
+        # Delhi to Mumbai: roughly 1150 km straight line
+        km = haversine_km(28.6, 77.2, 19.07, 72.87)
+        self.assertGreater(km, 1000)
+        self.assertLess(km, 1400)
+
+
 if __name__ == "__main__":
     unittest.main()
