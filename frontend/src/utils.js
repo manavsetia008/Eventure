@@ -29,14 +29,33 @@ export function timeLeft(iso) {
   if (hours < 0) return "overdue";
   if (hours < 1) return "under 1 h left";
   if (hours < 48) return `${Math.floor(hours)} h left`;
-  return `${Math.floor(hours / 24)} days left`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} days left`;
+  const weeks = Math.floor(days / 7);
+  const remDays = days % 7;
+  return remDays ? `${weeks} wk ${remDays} d left` : `${weeks} wk left`;
 }
 export function fmtMinutes(m) {
   if (m == null) return "";
   if (m < 60) return `${m} min`;
-  const h = Math.floor(m / 60);
-  const r = m % 60;
-  return r ? `${h} h ${r} min` : `${h} h`;
+  const totalH = Math.floor(m / 60);
+  if (totalH < 24) {
+    const r = m % 60;
+    return r ? `${totalH} h ${r} min` : `${totalH} h`;
+  }
+  const days = Math.floor(totalH / 24);
+  const remH = totalH % 24;
+  if (days < 7) return remH ? `${days} d ${remH} h` : `${days} d`;
+  const weeks = Math.floor(days / 7);
+  const remD = days % 7;
+  return remD ? `${weeks} wk ${remD} d` : `${weeks} wk`;
+}
+
+export function fmtDuration(minutes) {
+  // Like fmtMinutes but capped at reasonable travel (max ~12 h shown for travel display)
+  if (minutes == null) return "";
+  if (minutes > 720) return "> 12 h"; // sanity cap for travel display
+  return fmtMinutes(minutes);
 }
 export const toInput = (iso) => (iso ? iso.slice(0, 16) : "");
 export const CATEGORIES = ["hackathon", "workshop", "conference", "seminar", "contest", "fest", "other"];
