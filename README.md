@@ -4,7 +4,7 @@
 [![Flask](https://img.shields.io/badge/Flask-3.0-000000.svg)](https://flask.palletsprojects.com/)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB.svg)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-5.4-646CFF.svg)](https://vitejs.dev/)
-[![Tests](https://img.shields.io/badge/Tests-61%20Passing-success.svg)](#3-check-it-works)
+[![Tests](https://img.shields.io/badge/Tests-109%20Passing-success.svg)](#3-check-it-works)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > **Every event, one thread.** The unified timeline and decision engine for college hackathons, competitions, and campus events.
@@ -43,8 +43,8 @@ flowchart LR
 ```
 
 **Tech Stack:**
-- **Frontend:** React 18, Vite, Leaflet interactive mapping with CartoDB tiles, Web Push, installable PWA.
-- **Backend:** Python Flask 3, SQLAlchemy ORM (15 relational tables), PyJWT stateless auth, APScheduler.
+- **Frontend:** React 18, Vite 5, Vitest, Leaflet interactive mapping with CartoDB tiles, Web Push, installable PWA.
+- **Backend:** Python Flask 3, SQLAlchemy ORM (15 relational tables), PyJWT stateless auth (RFC 7518 compliant), APScheduler.
 - **Database:** SQLite by default for zero-config local development; production-ready PostgreSQL via Docker.
 - **External Services:** OpenStreetMap Nominatim geocoding, Google Calendar OAuth sync, .ics private feeds, Tesseract OCR.
 
@@ -110,18 +110,33 @@ Open **`http://localhost:5000`** (or `http://localhost:5173` if running Vite dev
 
 ### 3. Check It Works (Automated Tests)
 
-Run the backend unit test suite:
+#### Backend Test Suite (91 tests):
 
 ```powershell
 cd backend
 python -m unittest discover -s tests -v
+# or using pytest:
+pytest tests -v
 ```
 
-**61 automated tests** run across:
-- Conflict detection (overlaps, travel transit gaps, exam periods, personal calendars)
+**91 automated tests** run across:
+- Conflict detection (direct overlaps, commute travel gaps, exam periods, personal calendars)
 - Algorithmic priority scoring and keep-or-skip recommendations
-- Poster text extraction and date inference
-- Security rate limiting, JWT validation, and live API endpoints
+- OCR preprocessing pipeline (greyscale, adaptive upscaling, binarization) and error recovery
+- Security rate limiting, RFC 7518 JWT validation, and live API endpoints
+
+#### Frontend Test Suite (18 tests):
+
+```powershell
+cd frontend
+npm test
+```
+
+**18 automated tests** run via Vitest across:
+- Date & range formatting (same-day, multi-day, fallback handling)
+- Relative time & deadline calculations (`timeLeft`, `timeAgo`)
+- Travel duration formatting and sanity caps
+- API client authentication flow, token storage, 401 auto-logout, and file uploads
 
 ---
 
@@ -158,16 +173,20 @@ eventure/
 │   ├── app/
 │   │   ├── models.py             # 15 SQLAlchemy tables
 │   │   ├── routes/               # Modular REST endpoints (auth, timeline, discover, etc.)
-│   │   └── services/             # Decoupled business logic (conflicts, travel, priority, ocr)
-│   ├── tests/                    # 61 unit and integration tests
+│   │   ├── services/             # Decoupled business logic (conflicts, travel, priority, ocr)
+│   │   └── utils.py              # Centralized shared helpers (formatting, dates, sanitization)
+│   ├── tests/                    # 91 unit and integration tests (pytest / unittest)
 │   ├── seed.py                   # Realistic multi-campus seed data
 │   └── run.py                    # Application entrypoint
 ├── frontend/
 │   ├── src/
 │   │   ├── pages/                # Timeline, Discover, AddEvent, Settings, Login, etc.
 │   │   ├── components/           # IssueCard, MapView, EventForm
+│   │   ├── api.test.js           # API client integration tests
+│   │   ├── utils.test.js         # Frontend utility test suite
+│   │   ├── utils.js              # Centralized UI utility functions
 │   │   └── styles.css            # Custom design system with high-contrast theme
-│   └── package.json              # React 18, Vite 5, Leaflet dependencies
+│   └── package.json              # React 18, Vite 5, Vitest, Leaflet dependencies
 ├── Dockerfile                    # Container definition
 ├── docker-compose.yml            # Multi-service setup (App + PostgreSQL)
 └── README.md                     # Documentation
