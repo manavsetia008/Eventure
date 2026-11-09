@@ -38,13 +38,15 @@ function Layout({ children }) {
     };
   }, []);
 
+  const firstName = user.name.split(" ")[0];
+
   return (
     <>
       <header className="topbar">
         <Link to="/" className="brand">
-          Eventure<span className="brand-dot" />
+          Eventure
         </Link>
-        <nav>
+        <nav aria-label="Main Navigation">
           <NavLink to="/" end>Timeline</NavLink>
           <NavLink to="/discover">Discover</NavLink>
           <NavLink to="/add">Add event</NavLink>
@@ -57,7 +59,7 @@ function Layout({ children }) {
           <Link to="/notifications" className="bell" aria-label="Notifications">
             Alerts{unread > 0 && <b>{unread}</b>}
           </Link>
-          <button className="linklike" onClick={logout}>Sign out ({user.name.split(" ")[0]})</button>
+          <button className="linklike logout-btn" onClick={logout}>Sign out ({firstName})</button>
         </div>
       </header>
       <main className="page">{children}</main>
