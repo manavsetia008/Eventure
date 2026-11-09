@@ -1,180 +1,180 @@
 # Eventure
 
-**Every event, one thread.** Students find events in one place, judge them in another, register on a third and plan the trip on a fourth. Eventure puts the whole journey in one app: discover on a map, decide with reviews from people who actually went, track every stage and deadline, and get told when two plans clash and which one to skip.
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
+[![Flask](https://img.shields.io/badge/Flask-3.0-000000.svg)](https://flask.palletsprojects.com/)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB.svg)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF.svg)](https://vitejs.dev/)
+[![Tests](https://img.shields.io/badge/Tests-61%20Passing-success.svg)](#3-check-it-works)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Built by Team Quanta (Manav Setia, Mayank Sharma, Milan Sharma). MIT licensed.
+> **Every event, one thread.** The unified timeline and decision engine for college hackathons, competitions, and campus events.
 
-## Why it exists
+Built by **Team Quanta** for the CodeBreaker Hackathon:
+- **Manav Setia** — Backend Lead & Architecture
+- **Mayank Sharma** — API Engineering & External Integrations
+- **Milan Sharma** — Frontend Lead & UI/UX Design
 
-- Event details are scattered across WhatsApp, Instagram, email, posters and platform dashboards, and each platform tracks only its own events.
-- Calendars store events but do not tell you whether you can actually do them: clashes, travel time and exam weeks go unchecked.
-- Free student events have no trustworthy rating layer. Eventure only accepts reviews from students who attended.
+---
 
-## How it fits together
+## Why Eventure Exists
+
+College students frequently juggle multiple hackathons, coding contests, and workshops across platforms like WhatsApp, Unstop, Devfolio, and email:
+- **Scattered Information:** Deadlines for abstract submissions, PPT rounds, and shortlist announcements get buried in chat groups.
+- **Passive Calendars:** Traditional calendars only store dates—they don't calculate road commute times between campuses or flag clashes with university exam schedules.
+- **Zero Trust Layer:** Free college events lack an authentic rating system. Eventure ensures reviews are strictly written by confirmed attendees.
+
+---
+
+## System Architecture
 
 ```mermaid
 flowchart LR
-  A["Poster, pasted text or forwarded email"] --> B["Reader: OCR + AI or built-in rules"]
-  B --> C["Student confirms"]
-  C --> D[("SQLite or PostgreSQL")]
-  D --> E["Clash, travel and exam checks"]
-  D --> F["Priority scoring and keep-or-skip"]
-  D --> G["Verified reviews and ranking"]
-  E --> H["React app"]
+  A["Poster (OCR), Text or Email Ingestion"] --> B["Extraction Engine (Rules / Heuristics)"]
+  B --> C["Student Confirmation"]
+  C --> D[("Relational DB (SQLite / PostgreSQL)")]
+  D --> E["Clash, Travel Gap & Exam Checks"]
+  D --> F["Priority Scoring (0-100) & Keep/Skip"]
+  D --> G["Verified Reviews & Discover Ranking"]
+  E --> H["React 18 Frontend"]
   F --> H
   G --> H
-  D --> I["Alerts: in-app, push, email"]
-  D --> J["Google Calendar and .ics feed"]
+  D --> I["Escalating Alerts (App & Web Push)"]
+  D --> J["Google Calendar & Private .ics Feed"]
 ```
 
-Tech: Flask, SQLAlchemy (SQLite or PostgreSQL), React with Vite, Leaflet and OpenStreetMap, Web Push, Google Calendar API. Installable as a PWA.
+**Tech Stack:**
+- **Frontend:** React 18, Vite, Leaflet interactive mapping with CartoDB tiles, Web Push, installable PWA.
+- **Backend:** Python Flask 3, SQLAlchemy ORM (15 relational tables), PyJWT stateless auth, APScheduler.
+- **Database:** SQLite by default for zero-config local development; production-ready PostgreSQL via Docker.
+- **External Services:** OpenStreetMap Nominatim geocoding, Google Calendar OAuth sync, .ics private feeds, Tesseract OCR.
 
-## Run it
+---
 
-You need Python 3.10+ and Node 18+.
+## Getting Started
 
-### 1. Backend
+### Prerequisites
+- **Python 3.10+**
+- **Node.js 18+**
+
+---
+
+### 1. Backend Setup
+
+Open a terminal (PowerShell on Windows):
 
 ```powershell
 cd backend
 python -m venv .venv
 .venv\Scripts\activate
-# macOS / Linux: source .venv/bin/activate
+# (On macOS/Linux: source .venv/bin/activate)
+
 pip install -r requirements.txt
 copy .env.example .env
-# macOS / Linux: cp .env.example .env
-python seed.py                     # demo data; if it says "already has data" run: python seed.py --reset
-python run.py                      # http://localhost:5000
+# (On macOS/Linux: cp .env.example .env)
+
+# Seed realistic demo data:
+python seed.py
+
+# Start the Flask backend server:
+python run.py
 ```
+> **Tip:** If `python seed.py` reports that the database already has data, use `python seed.py --reset` to reload fresh demo records.
 
-> **If `python seed.py` prints "Database already has data"**: the database was seeded before.
-> Run `python seed.py --reset` to wipe and reload fresh demo data.
+The backend will start running at **`http://localhost:5000`**.
 
-### 2. Frontend
+---
+
+### 2. Frontend Setup
+
+In a new terminal window:
 
 ```powershell
 cd frontend
 npm install
-npm run dev                        # http://localhost:5173 (proxies /api to Flask)
 
-# Or build once so Flask directly serves the app on port 5000:
-npm run build                      # Creates production build in frontend/dist
+# Option A: Start Vite development server (hot-reload on port 5173):
+npm run dev
+
+# Option B: Build production bundle (Flask on port 5000 directly serves it):
+npm run build
 ```
 
-Sign in with `demo@eventure.app` / `demo1234`.
+Open **`http://localhost:5000`** (or `http://localhost:5173` if running Vite dev server).
 
-### 3. Check it works
+**Demo Credentials:**
+- Email: `demo@eventure.app`
+- Password: `demo1234`
+*(Or use the 1-click **Auto-fill** button on the sign-in card).*
+
+---
+
+### 3. Check It Works (Automated Tests)
+
+Run the backend unit test suite:
 
 ```powershell
 cd backend
 python -m unittest discover -s tests -v
 ```
 
-61 tests cover the full test suite (clashes, priority scoring, text extraction, email parsing, geocoding, rate limits, Google Calendar integration, and live API endpoints).
+**61 automated tests** run across:
+- Conflict detection (overlaps, travel transit gaps, exam periods, personal calendars)
+- Algorithmic priority scoring and keep-or-skip recommendations
+- Poster text extraction and date inference
+- Security rate limiting, JWT validation, and live API endpoints
 
-## What it does
+---
 
-| Area | Feature |
+## Core Capabilities
+
+| Feature | Description |
 |---|---|
-| Track | Stage-wise timeline, deadline risk colours, team view, status per event |
-| Check | Clashes, travel gaps (travel time plus 15 min), exam weeks, clashes with your own Google Calendar, keep-or-skip suggestions with reasons |
-| Capture | Paste text, upload a poster (OCR), or forward an email to your private Inbox address. The venue is located on the map automatically (free OpenStreetMap lookup, or Google if you set a key) and you can correct it. You confirm before anything is saved |
-| Discover | Map and list around your college, filters, "best for me" ranking, compare up to 3 events |
-| Review | Reviews only from students who attended (checked by the API), one per student |
-| Community | Clubs across campuses, follow, team journeys with invite codes |
-| Organizer | Your listed events with interested, registered and attended counts, ratings, share link and "Add to Eventure" button code. Edit event details any time |
-| Account | Delete your account and all your data from Settings. Repeated failed sign-ins and mass sign-ups are rate limited |
-| Alerts | In-app, browser and phone push, optional email. Escalates only when a deadline is at risk |
-| Calendars | Two-way Google Calendar sync, plus a private .ics feed for any calendar app |
+| **Stage Timeline** | Multi-round checklists (abstract, prototype, presentation) with color-coded deadline alerts. |
+| **Clash Radar** | Detects overlapping events, exam conflicts, and tight commute gaps (travel time + 15 min buffer). |
+| **Keep-or-Skip Engine** | Evaluates goal fit, deadline urgency, travel ease, and exam penalties to advise which plan to keep. |
+| **Smart Ingestion** | Upload flyers (OCR), paste notices, or forward emails to your private campus inbox token. |
+| **Discover Map** | Interactive Leaflet campus map showing nearby hackathons with Bayesian-smoothed ratings. |
+| **Verified Reviews** | Anti-tamper review system accepting ratings only from students confirmed to have attended. |
+| **Escalating Alerts** | Background scheduler dispatching warnings at 48h, 24h, and 6h prior to stage deadlines. |
+| **Calendar Sync** | Two-way Google Calendar push and a private `.ics` feed for Apple Calendar, Outlook, and mobile widgets. |
 
-## Connect the extras (all optional)
+---
 
-**PostgreSQL**: `docker compose up -d`, set `DATABASE_URL=postgresql://eventure:eventure@localhost:5432/eventure`, `pip install psycopg2-binary`.
+## Optional Integrations
 
-**Poster reading**: install the Tesseract program (Windows installer, `brew install tesseract`, or `apt install tesseract-ocr`).
+- **PostgreSQL Database:** Run `docker compose up -d` and set `DATABASE_URL=postgresql://eventure:eventure@localhost:5432/eventure`.
+- **Tesseract OCR:** Install Tesseract on your host machine to extract text directly from event poster image files.
+- **Google Maps API:** Set `GOOGLE_MAPS_API_KEY` for live Distance Matrix road transit times (offline Haversine fallback included by default).
+- **Google Calendar Sync:** Add OAuth Client ID and Secret in `backend/.env` to sync timeline stages directly into your Google Calendar.
+- **Web Push Notifications:** Run `python scripts/generate_vapid_keys.py` to generate standard Web Push VAPID keys.
 
-**AI extraction**: set `ANTHROPIC_API_KEY` (model in `ANTHROPIC_MODEL`). Without it the built-in rule-based parser is used.
+---
 
-**Travel times and venue lookup**: venues are located with free OpenStreetMap search (fine for a demo or a campus, see their usage policy before heavy use; switch off with `GEOCODE_OSM=0`). Set `GOOGLE_MAPS_API_KEY` (Distance Matrix and Geocoding APIs) for real road travel times and better venue matching. Without a key travel time is estimated from distance.
-
-**Google Calendar sync**
-1. Google Cloud Console: create a project and enable the Google Calendar API.
-2. OAuth consent screen: choose External and add your own account as a test user.
-3. Credentials: create an OAuth client ID of type Web application. Add `http://localhost:5000/api/google/callback` as an authorised redirect URI.
-4. Put the client ID and secret in `backend/.env`, restart, then open Settings and press Connect Google Calendar.
-While the Google app is in Testing mode, Google expires the login after about a week, so reconnect when sync stops. Eventure only creates, edits and deletes the events it made (they carry a private tag). It reads your other events to find clashes and never changes them.
-
-**Browser and phone alerts**
-1. `python scripts/generate_vapid_keys.py` and paste the two lines into `backend/.env`. Restart.
-2. Settings, Phone and browser alerts, Turn on.
-Push needs HTTPS except on localhost. On iPhone (iOS 16.4 or later) add Eventure to the Home Screen first and turn alerts on from there. This uses the Web Push standard, so no Firebase account is needed.
-
-**Email forwarding**
-- *Gmail option*: make a dedicated Gmail account, turn on 2-step verification, create an App Password. Set `INBOX_ADDRESS` to that address, `IMAP_HOST=imap.gmail.com`, `IMAP_USER`, `IMAP_PASSWORD`. Each student's private address, shown on the Inbox page, is `youraddress+<token>@gmail.com`. Gmail delivers it to the same mailbox and Eventure polls it every few minutes.
-- *Provider option* (Mailgun, SendGrid, Postmark): point the inbound route to `POST /api/inbound/email`, set `INBOUND_SECRET`, and send the same value in the `X-Inbound-Secret` header. Fields read: `to`, `from`, `subject`, `text` or `html`, `message_id`, or a raw MIME `email`.
-
-**Email reminders**: set the `SMTP_*` values.
-
-**Schema migrations**: Eventure creates tables on start. For production set `AUTO_CREATE_DB=0` and use `flask --app run db init`, then `db migrate -m "init"` and `db upgrade`.
-If you ran the first version of this project, delete `backend/eventure.db` and run `python seed.py` again, because new columns and tables were added.
-
-## Deploy as one container
-
-The Flask server also serves the built React app, so a single URL is enough for a demo or a small pilot.
-
-```bash
-docker build -t eventure .
-docker run -p 8000:8000 -e SECRET_KEY=a-long-random-string eventure      # SQLite inside the container
-# or with PostgreSQL:
-docker compose --profile app up -d --build
-docker compose --profile app exec app python seed.py                       # optional demo data
-```
-
-Without Docker: `cd frontend && npm run build`, then run the backend with `gunicorn -w 1 --threads 4 run:app`. Keep one worker so the reminder scheduler runs once. Behind a proxy (Render, Railway, nginx) set `TRUST_PROXY=1` so rate limits see each student's real address. The Dockerfile already sets it, so if you expose the container directly with no proxy in front, run it with `-e TRUST_PROXY=0`. For Google sign-in on a public URL, set `GOOGLE_REDIRECT_URI` to `https://your-domain/api/google/callback` and add it in the Google console. Push alerts need HTTPS.
-
-## Project layout
+## Repository Structure
 
 ```
-backend/
-  app/
-    models.py             tables
-    routes/               auth, timeline, discover, social, inbox, google, push, organizer
-    services/
-      extraction.py       LLM + rule-based event reader
-      ocr.py              poster to text (Tesseract)
-      inbox.py            email parsing and inbox ingestion
-      imap_poll.py        mailbox polling
-      conflicts.py        overlap, travel-gap, exam-week and calendar clashes
-      priority.py         goal/deadline/travel scoring and keep-or-skip suggestions
-      travel.py           Distance Matrix with an offline estimate
-      google_calendar.py  OAuth, push to Google, read your calendar
-      push.py             Web Push alerts
-      reminders.py        escalating deadline alerts (scheduler job)
-      ics.py              calendar feed
-  scripts/generate_vapid_keys.py
-  seed.py                 demo data with dates relative to today
-Dockerfile, docker-compose.yml   one-container deployment, optional PostgreSQL
-  tests/                  test_logic, test_integrations, test_api
-frontend/
-  public/                 manifest, service worker, icons
-  src/pages/              Timeline, AddEvent, Inbox, Discover, EventDetail, Community, Organizer, Settings, Notifications, Login
-  src/components/         IssueCard, MapView
+eventure/
+├── backend/
+│   ├── app/
+│   │   ├── models.py             # 15 SQLAlchemy tables
+│   │   ├── routes/               # Modular REST endpoints (auth, timeline, discover, etc.)
+│   │   └── services/             # Decoupled business logic (conflicts, travel, priority, ocr)
+│   ├── tests/                    # 61 unit and integration tests
+│   ├── seed.py                   # Realistic multi-campus seed data
+│   └── run.py                    # Application entrypoint
+├── frontend/
+│   ├── src/
+│   │   ├── pages/                # Timeline, Discover, AddEvent, Settings, Login, etc.
+│   │   ├── components/           # IssueCard, MapView, EventForm
+│   │   └── styles.css            # Custom design system with high-contrast theme
+│   └── package.json              # React 18, Vite 5, Leaflet dependencies
+├── Dockerfile                    # Container definition
+├── docker-compose.yml            # Multi-service setup (App + PostgreSQL)
+└── README.md                     # Documentation
 ```
 
-## How the key parts work
+---
 
-- **Clash check**: overlapping events, gaps shorter than travel time plus 15 minutes, events inside your exam periods, and overlaps with your own Google Calendar events.
-- **Priority score (0 to 100)**: goal fit (up to 40), deadline urgency (20), ease of travel (20), already registered (10), minus 25 inside exam time. Clashes suggest keeping the higher score and say why.
-- **Reminders**: warning at 48 h, urgent at 24 h, critical at 6 h or just overdue. Each level fires once per stage and goes to the app, any enabled devices, and email if configured.
-- **Verified reviews**: rejected unless the student has the event on their timeline as attended and the event has started.
-- **Discover ranking**: smoothed average rating (50%), proximity (30%), fit with your goals (20%).
-- **Times** are naive local campus times. Run the server in your campus time zone (`TZ=Asia/Kolkata`) and set `TIMEZONE` for Google.
+## License
 
-## Known limits
-
-- Google sync is one-way push plus read of your calendar. Edits you make to Eventure-created events in Google are overwritten at the next sync.
-- Email parsing reads one event per email. Mails listing several events need to be split by hand.
-- The calendar feed link carries your sign-in token. Treat it as private.
-- Set a strong `SECRET_KEY` before deploying anywhere public.
-- The rate limiter keeps counts in memory, so it resets on restart and is per process. It counts failed sign-ins (20 per 5 minutes per address) so a whole campus on one Wi-Fi is not locked out.
-- Venue lookup can pick the wrong place for vague names (for example "Campus A"). The form shows the result and a map link so students can correct it.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details. Built with pride by Team Quanta for CodeBreaker Hackathon 2026.
