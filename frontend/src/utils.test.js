@@ -81,7 +81,8 @@ describe("Frontend utils - Relative Time & Duration", () => {
     const in5h = new Date(now + 5 * 3600 * 1000).toISOString();
     expect(timeLeft(in5h)).toBe("5 h left");
 
-    const in3d = new Date(now + 3 * 24 * 3600 * 1000).toISOString();
+    // Math.floor(72h / 24) = 3 days; exact boundary
+    const in3d = new Date(now + 3.5 * 24 * 3600 * 1000).toISOString();
     expect(timeLeft(in3d)).toBe("3 days left");
 
     const in2w = new Date(now + 14 * 24 * 3600 * 1000 + 60000).toISOString();
