@@ -64,29 +64,50 @@ export default function AddEvent() {
   }
 
   const notice =
-    source === "rules" ? <p className="notice">Read with the built-in parser. Check every field below.</p>
-    : source === "llm" ? <p className="notice">Read by AI. Check every field below.</p>
+    source === "rules" ? <p className="notice">Read with the built-in parser. Check every field below before saving.</p>
+    : source === "llm" ? <p className="notice">Read by AI parser. Review dates, times and deadlines below.</p>
     : null;
 
   return (
     <>
-      <h1>Add an event</h1>
+      <div className="page-head">
+        <div>
+          <h1>Add an event</h1>
+          <p className="muted small">Paste event text, upload a poster, or enter details by hand.</p>
+        </div>
+      </div>
+
       {!initial ? (
         <section className="card">
-          <h2>Paste it, drop a poster, or forward the details</h2>
-          <p className="muted">We read the dates, venue and deadlines. You check them before anything is saved.</p>
+          <h2>Paste text or upload a poster</h2>
+          <p className="muted small">
+            We extract the title, dates, venue and deadlines. You review them before anything is saved.
+          </p>
+
           <label>
-            Event text or email
-            <textarea rows={8} value={text} onChange={(e) => setText(e.target.value)} placeholder={"Hackathon X\nVenue: Campus A\n17 Oct 2026, 10:00 AM to 6:00 PM\nRegistrations close 12 Oct"} />
+            Event text or forwarded announcement
+            <textarea
+              rows={7}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={"Hackathon X\nVenue: Campus A\n17 Oct 2026, 10:00 AM to 6:00 PM\nRegistrations close 12 Oct"}
+            />
           </label>
+
           <label>
             Poster or screenshot (optional)
             <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files[0] || null)} />
           </label>
+
           {error && <p className="error">{error}</p>}
+
           <div className="row">
-            <button className="btn" onClick={read} disabled={busy || (!text.trim() && !file)}>{busy ? "Reading..." : "Read the details"}</button>
-            <button className="btn ghost" onClick={() => { setInitial({ ...BLANK }); setSource("manual"); }}>Fill in manually</button>
+            <button className="btn small" onClick={read} disabled={busy || (!text.trim() && !file)}>
+              {busy ? "Reading details..." : "Read details"}
+            </button>
+            <button className="btn ghost small" onClick={() => { setInitial({ ...BLANK }); setSource("manual"); }}>
+              Fill in manually
+            </button>
           </div>
         </section>
       ) : (

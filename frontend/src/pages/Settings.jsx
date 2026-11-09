@@ -40,24 +40,33 @@ function GoogleCard() {
   if (!st) return null;
   return (
     <section className="card">
-      <h2>Google Calendar sync</h2>
+      <div className="card-head">
+        <h2>Google Calendar sync</h2>
+        {st.connected ? <span className="pill ok">Connected</span> : <span className="pill">Not connected</span>}
+      </div>
       {!st.configured ? (
-        <p className="muted">Not switched on for this server. The admin adds a Google client ID and secret (see the README). The calendar feed below works without it.</p>
+        <p className="muted small">
+          Not enabled on this server. The calendar feed below works without setup.
+        </p>
       ) : (
         <>
-          <p className="muted">Sends your events and open deadlines to your Google Calendar, and checks your own calendar so a dentist visit or class clash shows up on your timeline. Only events Eventure created are changed.</p>
+          <p className="muted small">
+            Sends your events and deadlines to Google Calendar, and detects clashes with your personal schedule.
+          </p>
           <div className="row">
             {!st.connected ? (
-              <button className="btn" disabled={busy} onClick={() => run(async () => { const r = await api.get("/google/connect"); window.location.href = r.url; })}>Connect Google Calendar</button>
+              <button className="btn small" disabled={busy} onClick={() => run(async () => { const r = await api.get("/google/connect"); window.location.href = r.url; })}>
+                Connect Google Calendar
+              </button>
             ) : (
               <>
-                <button className="btn" disabled={busy} onClick={() => run(async () => {
+                <button className="btn small" disabled={busy} onClick={() => run(async () => {
                   const r = await api.post("/google/sync");
                   const c = r.counts;
                   setMsg(`Sent ${c.created + c.updated} items${c.deleted ? `, removed ${c.deleted}` : ""}${c.failed ? `, ${c.failed} could not be sent` : ""}.`);
                   await loadStatus();
                 })}>{busy ? "Syncing..." : "Sync now"}</button>
-                <button className="btn ghost" disabled={busy} onClick={() => window.confirm("Disconnect and remove the events Eventure added to your calendar?") && run(async () => { await api.post("/google/disconnect"); await loadStatus(); })}>Disconnect</button>
+                <button className="btn ghost small" disabled={busy} onClick={() => window.confirm("Disconnect and remove the events Eventure added to your calendar?") && run(async () => { await api.post("/google/disconnect"); await loadStatus(); })}>Disconnect</button>
                 {st.last_sync && <span className="muted small">Last sync {st.last_sync.replace("T", " ")}</span>}
               </>
             )}
@@ -72,7 +81,7 @@ function GoogleCard() {
 
 function PushCard() {
   const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
-  const [key, setKey] = useState(null); // null: loading, "": not set up on the server
+  const [key, setKey] = useState(null);
   const [enabled, setEnabled] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -97,12 +106,14 @@ function PushCard() {
   };
 
   async function enable() {
-    if ((await Notification.requestPermission()) !== "granted") throw new Error("Alerts are blocked for this site. Allow notifications in your browser settings, then try again.");
+    if ((await Notification.requestPermission()) !== "granted") {
+      throw new Error("Alerts are blocked in this browser. Allow notifications in browser settings, then try again.");
+    }
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(key) });
     await api.post("/push/subscribe", sub.toJSON());
     setEnabled(true);
-    setMsg("Alerts are on for this device.");
+    setMsg("Alerts are turned on for this device.");
   }
 
   async function disable() {
@@ -117,22 +128,25 @@ function PushCard() {
 
   return (
     <section className="card">
-      <h2>Phone and browser alerts</h2>
+      <div className="card-head">
+        <h2>Phone and browser alerts</h2>
+        {enabled ? <span className="pill ok">Active</span> : <span className="pill">Off</span>}
+      </div>
       {!supported ? (
-        <p className="muted">This browser cannot receive push alerts. On iPhone, add Eventure to your Home Screen first (Share, then Add to Home Screen), then open it from there.</p>
+        <p className="muted small">This browser cannot receive push alerts. On iOS, add Eventure to your Home Screen first.</p>
       ) : key === "" ? (
-        <p className="muted">Not switched on for this server. The admin generates alert keys (see the README).</p>
+        <p className="muted small">Push alerts are not configured on this server.</p>
       ) : (
         <>
-          <p className="muted">Get a ping when a deadline is about to be missed. We only send alerts when something is at risk.</p>
+          <p className="muted small">Get notifications when a critical deadline is at risk.</p>
           <div className="row">
             {enabled ? (
               <>
-                <button className="btn ghost" onClick={() => run(async () => { await api.post("/push/test"); setMsg("Test sent."); })}>Send a test</button>
-                <button className="btn ghost" onClick={() => run(disable)}>Turn off on this device</button>
+                <button className="btn ghost small" onClick={() => run(async () => { await api.post("/push/test"); setMsg("Test alert sent."); })}>Send a test</button>
+                <button className="btn ghost small" onClick={() => run(disable)}>Turn off on this device</button>
               </>
             ) : (
-              <button className="btn" disabled={key === null} onClick={() => run(enable)}>Turn on alerts</button>
+              <button className="btn small" disabled={key === null} onClick={() => run(enable)}>Turn on alerts</button>
             )}
           </div>
         </>
@@ -167,17 +181,17 @@ function DeleteAccountCard() {
 
   return (
     <section className="card danger">
-      <h2>Delete my account</h2>
-      <p className="muted">Removes your timeline, reviews, alerts and Google Calendar events that Eventure added. Events you listed publicly stay for the students who joined them. This cannot be undone.</p>
+      <h2>Delete account</h2>
+      <p className="muted small">Removes your timeline, reviews, alerts, and calendar integrations. Public events you created remain for other attendees. This cannot be undone.</p>
       {!open ? (
-        <button className="btn ghost" onClick={() => setOpen(true)}>Delete my account</button>
+        <button className="btn ghost small" onClick={() => setOpen(true)}>Delete my account</button>
       ) : (
         <form onSubmit={remove}>
           <label>Type your password to confirm<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
           {err && <p className="error">{err}</p>}
           <div className="row">
-            <button className="btn danger-btn" disabled={busy}>{busy ? "Deleting..." : "Delete everything"}</button>
-            <button type="button" className="btn ghost" onClick={() => { setOpen(false); setPassword(""); setErr(""); }}>Cancel</button>
+            <button className="btn danger-btn small" disabled={busy}>{busy ? "Deleting..." : "Delete everything"}</button>
+            <button type="button" className="btn ghost small" onClick={() => { setOpen(false); setPassword(""); setErr(""); }}>Cancel</button>
           </div>
         </form>
       )}
@@ -214,10 +228,10 @@ export default function Settings() {
   }
 
   function useMyLocation() {
-    if (!navigator.geolocation) return setError("Your browser cannot share its location. Enter the coordinates by hand.");
+    if (!navigator.geolocation) return setError("Your browser cannot share location. Enter coordinates manually.");
     navigator.geolocation.getCurrentPosition(
       (pos) => setP((x) => ({ ...x, college_lat: pos.coords.latitude.toFixed(5), college_lng: pos.coords.longitude.toFixed(5) })),
-      () => setError("Location was blocked. Enter the coordinates by hand, for example from Google Maps."),
+      () => setError("Location access was denied. Enter coordinates manually."),
     );
   }
 
@@ -236,36 +250,50 @@ export default function Settings() {
   const feed = calendarFeedUrl();
   return (
     <>
-      <h1>Settings</h1>
+      <div className="page-head">
+        <div>
+          <h1>Settings</h1>
+          <p className="muted small">Account profile, campus location, and external calendar sync.</p>
+        </div>
+      </div>
+
       {error && <p className="error">{error}</p>}
 
       <form className="card" onSubmit={saveProfile}>
-        <h2>You and your college</h2>
+        <h2>Profile & Campus</h2>
         <label>Name<input value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} required /></label>
-        <label>College<input value={p.college} onChange={(e) => setP({ ...p, college: e.target.value })} /></label>
+        <label>College<input value={p.college} onChange={(e) => setP({ ...p, college: e.target.value })} placeholder="e.g. IIIT Delhi, DTU" /></label>
         <div className="grid2">
           <label>College latitude<input value={p.college_lat} onChange={(e) => setP({ ...p, college_lat: e.target.value })} inputMode="decimal" placeholder="28.5459" /></label>
           <label>College longitude<input value={p.college_lng} onChange={(e) => setP({ ...p, college_lng: e.target.value })} inputMode="decimal" placeholder="77.2732" /></label>
         </div>
-        <button type="button" className="linklike small" onClick={useMyLocation}>Use my current location (do this on campus)</button>
-        <label>Your goals (used to rank events and suggest what to skip)<input value={p.goals} onChange={(e) => setP({ ...p, goals: e.target.value })} placeholder="hackathon, ai, internships" /></label>
-        <div className="row"><button className="btn">Save</button>{msg && <span className="muted">{msg}</span>}</div>
+        <div style={{ marginBottom: ".8rem" }}>
+          <button type="button" className="linklike small" onClick={useMyLocation}>Use my current location (on campus)</button>
+        </div>
+        <label>Goals and interests<input value={p.goals} onChange={(e) => setP({ ...p, goals: e.target.value })} placeholder="hackathon, ai, web" /></label>
+        <div className="row">
+          <button className="btn small">Save</button>
+          {msg && <span className="muted small">{msg}</span>}
+        </div>
       </form>
 
       <section className="card">
-        <h2>Exam and sessional weeks</h2>
-        <p className="muted">Events that land in these dates are flagged, and low-priority ones get a skip suggestion.</p>
+        <h2>Exam periods</h2>
+        <p className="muted small">Events that overlap with these dates are flagged with skip suggestions.</p>
         <ul className="plain">
           {exams.map((x) => (
-            <li key={x.id}>{x.label}: {x.start_date} to {x.end_date} <button className="linklike small" onClick={() => api.del(`/exams/${x.id}`).then(loadExams)}>Remove</button></li>
+            <li key={x.id}>
+              {x.label}: {x.start_date} to {x.end_date}{" "}
+              <button type="button" className="linklike small" onClick={() => api.del(`/exams/${x.id}`).then(loadExams)}>Remove</button>
+            </li>
           ))}
-          {exams.length === 0 && <li className="muted">None added yet.</li>}
+          {exams.length === 0 && <li className="muted small">No exam periods added yet.</li>}
         </ul>
         <form className="row" onSubmit={addExam}>
-          <input value={exam.label} onChange={(e) => setExam({ ...exam, label: e.target.value })} placeholder="Sessionals" aria-label="Label" required />
+          <input value={exam.label} onChange={(e) => setExam({ ...exam, label: e.target.value })} placeholder="Label (e.g. Sessionals)" aria-label="Label" required />
           <input type="date" value={exam.start_date} onChange={(e) => setExam({ ...exam, start_date: e.target.value })} aria-label="Start date" required />
           <input type="date" value={exam.end_date} onChange={(e) => setExam({ ...exam, end_date: e.target.value })} aria-label="End date" required />
-          <button className="btn">Add</button>
+          <button className="btn small">Add exam period</button>
         </form>
       </section>
 
@@ -273,13 +301,14 @@ export default function Settings() {
       <PushCard />
 
       <section className="card">
-        <h2>Calendar feed</h2>
-        <p className="muted">Works with any calendar app, with no Google sign-in. In Google Calendar choose Other calendars, then From URL, and paste this link. Your events and open deadlines appear there and update on their own (Google can take several hours to refresh). Anyone with the link can read your timeline, so keep it private.</p>
+        <h2>Calendar feed (.ics)</h2>
+        <p className="muted small">Works with Apple Calendar, Outlook, and Google Calendar without sign-in.</p>
         <div className="row">
-          <input readOnly value={feed} onFocus={(e) => e.target.select()} aria-label="Calendar feed URL" />
-          <button className="btn" onClick={() => navigator.clipboard.writeText(feed).then(() => setCopied(true))}>{copied ? "Copied" : "Copy"}</button>
+          <input readOnly value={feed} onFocus={(e) => e.target.select()} aria-label="Calendar feed URL" className="mono" />
+          <button className="btn small" onClick={() => navigator.clipboard.writeText(feed).then(() => setCopied(true))}>
+            {copied ? "Copied" : "Copy"}
+          </button>
         </div>
-        <p className="muted small">The link works while your sign-in session is valid. Sign in again and copy a fresh link if it stops updating.</p>
       </section>
 
       <DeleteAccountCard />

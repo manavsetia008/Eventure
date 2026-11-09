@@ -16,7 +16,7 @@ export default function EditEvent() {
     api
       .get(`/events/${id}`)
       .then(({ event: e, mine }) => {
-        if (!mine.is_owner) return setBlocked("Only the person who added this event can edit it.");
+        if (!mine.is_owner) return setBlocked("Only the organizer who added this event can edit its public details.");
         setInitial({
           ...BLANK,
           title: e.title || "",
@@ -48,14 +48,33 @@ export default function EditEvent() {
     }
   }
 
-  if (blocked) return <><p className="error">{blocked}</p><p><Link to="/">Back to your timeline</Link></p></>;
-  if (!initial) return <p className="muted">Loading...</p>;
+  if (blocked) {
+    return (
+      <div className="card" style={{ marginTop: "2rem", textAlign: "center" }}>
+        <p className="error" style={{ display: "inline-block" }}>{blocked}</p>
+        <p style={{ marginTop: "1rem" }}><Link to="/" className="btn">Back to Timeline</Link></p>
+      </div>
+    );
+  }
+
+  if (!initial) return <p className="muted" style={{ marginTop: "2rem" }}>Loading event details...</p>;
+
   return (
     <>
-      <p><Link to={`/events/${id}`}>Back to the event</Link></p>
-      <h1>Edit event</h1>
-      <p className="muted">Changes show up on everyone's timeline that has this event. Stages and deadlines stay personal and are edited on your timeline.</p>
-      <EventForm initial={initial} mode="edit" saving={saving} error={error} submitLabel="Save changes" onSubmit={save} />
+      <div style={{ marginBottom: "1rem" }}>
+        <Link to={`/events/${id}`} className="linklike small">← Back to event page</Link>
+      </div>
+      <div className="page-head">
+        <div>
+          <h1>Edit Event Details</h1>
+          <p className="muted" style={{ margin: 0 }}>
+            Updates apply to the public listing for everyone following this event.
+          </p>
+        </div>
+      </div>
+      <div style={{ marginTop: "1.2rem" }}>
+        <EventForm initial={initial} mode="edit" saving={saving} error={error} submitLabel="Save changes" onSubmit={save} />
+      </div>
     </>
   );
 }

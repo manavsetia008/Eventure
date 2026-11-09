@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
-import { cap, fmtMinutes, fmtRange } from "../utils";
+import { cap, fmtDuration, fmtRange } from "../utils";
 
 const SCALE = [1, 2, 3, 4, 5];
 
@@ -46,7 +46,7 @@ export default function EventDetail() {
         {ev.description && <p>{ev.description}</p>}
         <ul className="facts">
           {ev.club_name && <li><b>Organised by</b> {ev.club_name}</li>}
-          {ev.distance_km != null && <li><b>From your college</b> {ev.distance_km} km, about {fmtMinutes(ev.travel_minutes)} by road</li>}
+          {ev.distance_km != null && <li><b>From your college</b> {ev.distance_km} km, about {fmtDuration(ev.travel_minutes)} by road</li>}
           {ev.registration_deadline && <li><b>Register by</b> {fmtRange(ev.registration_deadline)}</li>}
           {ev.url && <li><a href={ev.url} target="_blank" rel="noreferrer">Official page</a></li>}
         </ul>

@@ -2,10 +2,25 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import { fmtDate } from "../utils";
 
+function timeAgo(dateString) {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+  const diffSec = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (diffSec < 60) return "just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH}h ago`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD < 7) return `${diffD}d ago`;
+  return fmtDate(dateString);
+}
+
 export default function Notifications() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
+  const [checking, setChecking] = useState(false);
 
   const load = useCallback(() => api.get("/notifications").then(setData).catch((e) => setError(e.message)), []);
   useEffect(() => { load(); }, [load]);
@@ -20,25 +35,55 @@ export default function Notifications() {
     }
   };
 
+  const handleCheckDeadlines = async () => {
+    setChecking(true);
+    setNote("");
+    try {
+      const r = await api.post("/notifications/check");
+      setNote(r.created ? `Checked: ${r.created} deadline reminder${r.created > 1 ? "s" : ""} generated.` : "Checked: no upcoming deadlines are currently at risk.");
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setChecking(false);
+    }
+  };
+
   return (
     <>
       <div className="page-head">
-        <h1>Alerts</h1>
+        <div>
+          <h1>Alerts & Reminders</h1>
+          <p className="muted small">Notifications for critical deadlines, stages, and clashes.</p>
+        </div>
         <div className="row">
-          <button className="btn ghost" onClick={() => run(async () => { const r = await api.post("/notifications/check"); setNote(r.created ? `${r.created} new alert${r.created > 1 ? "s" : ""}.` : "Nothing at risk right now."); })}>Check my deadlines now</button>
-          <button className="btn" onClick={() => run(() => api.post("/notifications/read-all"))}>Mark all read</button>
+          <button className="btn ghost small" disabled={checking} onClick={handleCheckDeadlines}>
+            {checking ? "Checking..." : "Check deadlines now"}
+          </button>
+          <button className="btn small" onClick={() => run(() => api.post("/notifications/read-all"))}>
+            Mark all read
+          </button>
         </div>
       </div>
+
       {note && <p className="notice">{note}</p>}
       {error && <p className="error">{error}</p>}
-      {!data ? <p className="muted">Loading...</p> : data.notifications.length === 0 ? (
-        <div className="card empty"><p>No alerts. We only message you when a deadline is actually at risk.</p></div>
+
+      {!data ? (
+        <p className="muted center">Loading alerts...</p>
+      ) : data.notifications.length === 0 ? (
+        <div className="card empty">
+          <p>No active alerts. Reminders appear only when an actionable deadline approaches.</p>
+        </div>
       ) : (
         <ul className="plain alerts">
           {data.notifications.map((n) => (
             <li key={n.id} className={`alert lvl-${n.level} ${n.read ? "read" : ""}`}>
-              <span>{n.message}</span>
-              <span className="muted small">{fmtDate(n.created_at)}</span>
+              <div className="alert-content">
+                <span className="alert-message">{n.message}</span>
+                <span className="muted small" title={fmtDate(n.created_at)}>{timeAgo(n.created_at)}</span>
+              </div>
+              <span className={`pill level-pill ${n.level}`}>{n.level}</span>
             </li>
           ))}
         </ul>
