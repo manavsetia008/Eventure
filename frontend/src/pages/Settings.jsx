@@ -2,12 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, calendarFeedUrl } from "../api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
-
-function urlBase64ToUint8Array(b64) {
-  const padded = (b64 + "=".repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(padded);
-  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
-}
+import { urlBase64ToUint8Array } from "../utils";
 
 function GoogleCard() {
   const [st, setSt] = useState(null);

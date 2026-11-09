@@ -1,20 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
-import { fmtDate } from "../utils";
-
-function timeAgo(dateString) {
-  if (!dateString) return "";
-  const d = new Date(dateString);
-  const diffSec = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (diffSec < 60) return "just now";
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `${diffH}h ago`;
-  const diffD = Math.floor(diffH / 24);
-  if (diffD < 7) return `${diffD}d ago`;
-  return fmtDate(dateString);
-}
+import { fmtDate, timeAgo } from "../utils";
 
 export default function Notifications() {
   const [data, setData] = useState(null);

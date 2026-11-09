@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import { cap, fmtDate, fmtRange, timeLeft } from "../utils";
-
-function clubAvatar(name) {
-  return name ? name.trim()[0].toUpperCase() : "?";
-}
+import { cap, clubAvatar, fmtDate, fmtRange, timeLeft } from "../utils";
 
 function Clubs() {
   const [clubs, setClubs] = useState(null);

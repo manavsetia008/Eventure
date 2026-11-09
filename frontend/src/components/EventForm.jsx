@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { api } from "../api";
-import { CATEGORIES, cap } from "../utils";
+import { CATEGORIES, blank, cap } from "../utils";
 
 export const BLANK = {
   title: "", platform: "", category: "other", venue_name: "", lat: "", lng: "", start_at: "", end_at: "",
   registration_deadline: "", url: "", description: "", stages: [], status: "registered", is_public: false,
 };
-
-const blank = (v) => (v === "" || v === undefined ? null : v);
 
 export default function EventForm({ initial, mode, notice, saving, error, submitLabel, onSubmit, onBack }) {
   const [form, setForm] = useState(initial);
