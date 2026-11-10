@@ -74,6 +74,18 @@ function GoogleCard() {
   );
 }
 
+const CAMPUS_PRESETS = [
+  { label: "-- Select a campus preset to auto-fill --", college: "", lat: "", lng: "" },
+  { label: "IIIT Delhi (Okhla Industrial Estate)", college: "IIIT Delhi", lat: "28.5459", lng: "77.2732" },
+  { label: "IIT Delhi (Hauz Khas)", college: "IIT Delhi", lat: "28.5450", lng: "77.1926" },
+  { label: "DTU / Delhi Tech University (Rohini)", college: "DTU Delhi", lat: "28.7499", lng: "77.1170" },
+  { label: "NSUT (Dwarka Campus)", college: "NSUT Delhi", lat: "28.6091", lng: "77.0351" },
+  { label: "IGDTUW (Kashmere Gate)", college: "IGDTUW", lat: "28.6653", lng: "77.2324" },
+  { label: "Delhi University (North Campus)", college: "DU North Campus", lat: "28.6892", lng: "77.2104" },
+  { label: "IIT Bombay (Powai)", college: "IIT Bombay", lat: "19.0760", lng: "72.8777" },
+  { label: "BITS Pilani (Pilani Campus)", college: "BITS Pilani", lat: "28.3639", lng: "75.5870" },
+];
+
 function PushCard() {
   const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
   const [key, setKey] = useState(null);
@@ -128,7 +140,17 @@ function PushCard() {
         {enabled ? <span className="pill ok">Active</span> : <span className="pill">Off</span>}
       </div>
       {!supported ? (
-        <p className="muted small">This browser cannot receive push alerts. On iOS, add Eventure to your Home Screen first.</p>
+        <div className="notice small">
+          <strong>Device push compatibility:</strong>
+          <p className="muted" style={{ margin: "0.25rem 0 0.4rem" }}>
+            This browser does not support background push alerts in its current mode.
+          </p>
+          <ul style={{ margin: 0, paddingLeft: "1.2rem", color: "var(--muted)" }}>
+            <li><strong>Android:</strong> Open in Chrome or Edge, tap menu (⋮) and select <em>"Install App"</em> or <em>"Add to Home screen"</em>.</li>
+            <li><strong>iOS:</strong> Open in Safari, tap Share (⎋), then select <em>"Add to Home Screen"</em> to enable Web Push.</li>
+            <li><strong>Desktop:</strong> Works directly in Chrome, Edge, and Firefox when notification permissions are granted.</li>
+          </ul>
+        </div>
       ) : key === "" ? (
         <p className="muted small">Push alerts are not configured on this server.</p>
       ) : (
@@ -148,6 +170,150 @@ function PushCard() {
       )}
       {msg && <p className="notice">{msg}</p>}
       {err && <p className="error">{err}</p>}
+    </section>
+  );
+}
+
+function PortalsCard() {
+  const [portals, setPortals] = useState([]);
+  const [name, setName] = useState("");
+  const [domain, setDomain] = useState("");
+  const [email, setEmail] = useState("");
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    api.get("/portals")
+      .then((r) => setPortals(r.portals || []))
+      .catch((e) => setErr(e.message));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const add = async (e) => {
+    e.preventDefault();
+    setErr("");
+    setMsg("");
+    setBusy(true);
+    try {
+      await api.post("/portals", { name, domain_or_name: domain, registered_email: email });
+      setName("");
+      setDomain("");
+      setEmail("");
+      setMsg("Portal added to your tracked watcher list.");
+      load();
+    } catch (ex) {
+      setErr(ex.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggle = async (id, current) => {
+    try {
+      await api.patch(`/portals/${id}`, { auto_sync: !current });
+      load();
+    } catch (ex) {
+      setErr(ex.message);
+    }
+  };
+
+  const sync = async (id, pName) => {
+    setErr("");
+    setMsg("");
+    setBusy(true);
+    try {
+      const res = await api.post(`/portals/${id}/sync`);
+      setMsg(res.message || `Checked updates for ${pName}`);
+      load();
+    } catch (ex) {
+      setErr(ex.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (id) => {
+    if (!window.confirm("Remove this portal from your watcher list?")) return;
+    try {
+      await api.del(`/portals/${id}`);
+      load();
+    } catch (ex) {
+      setErr(ex.message);
+    }
+  };
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <div>
+          <h2>Tracked Portals & Registration Watcher</h2>
+          <p className="muted small">
+            Choose which competition websites (e.g. Unstop, Devfolio, xyz.com) you participate on. Eventure monitors your registered email and syncs registration deadlines automatically.
+          </p>
+        </div>
+      </div>
+
+      {err && <p className="error">{err}</p>}
+      {msg && <p className="notice">{msg}</p>}
+
+      <div className="portal-grid">
+        {portals.map((p) => (
+          <div key={p.id} className="portal-card">
+            <div className="portal-card-header">
+              <strong>{p.name}</strong>
+              <span className={`pill ${p.auto_sync ? "ok" : ""}`}>{p.auto_sync ? "Auto-Sync Active" : "Paused"}</span>
+            </div>
+            <div className="portal-card-body">
+              <div><code>{p.domain_or_name}</code></div>
+              <div className="small muted">Email: {p.registered_email || "Account default"}</div>
+              {p.last_synced_at && <div className="small muted">Checked: {p.last_synced_at.replace("T", " ").slice(0, 16)}</div>}
+            </div>
+            <div className="portal-card-actions">
+              <button type="button" className="linklike small" disabled={busy} onClick={() => sync(p.id, p.name)}>
+                Sync deadlines
+              </button>
+              <button type="button" className="linklike small" onClick={() => toggle(p.id, p.auto_sync)}>
+                {p.auto_sync ? "Pause" : "Enable"}
+              </button>
+              <button type="button" className="linklike small" style={{ color: "var(--alert)" }} onClick={() => remove(p.id)}>
+                Remove
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <form onSubmit={add} style={{ marginTop: "1.2rem", paddingTop: "1rem", borderTop: "1px solid var(--line)" }}>
+        <h3 style={{ fontSize: "0.95rem", marginBottom: "0.6rem" }}>Add a competition site or custom portal</h3>
+        <div className="row">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Portal name (e.g. XYZ Hackathons)"
+            required
+            aria-label="Portal name"
+          />
+          <input
+            value={domain}
+            onChange={(e) => setDomain(e.target.value)}
+            placeholder="Domain or URL (e.g. xyz.com)"
+            required
+            aria-label="Portal domain"
+          />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Your registered email (optional)"
+            aria-label="Registered email"
+          />
+          <button className="btn small" disabled={busy}>
+            {busy ? "Adding..." : "Add portal"}
+          </button>
+        </div>
+      </form>
     </section>
   );
 }
@@ -257,14 +423,45 @@ export default function Settings() {
       <form className="card" onSubmit={saveProfile}>
         <h2>Profile & Campus</h2>
         <label>Name<input value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} required /></label>
-        <label>College<input value={p.college} onChange={(e) => setP({ ...p, college: e.target.value })} placeholder="e.g. IIIT Delhi, DTU" /></label>
-        <div className="grid2">
-          <label>College latitude<input value={p.college_lat} onChange={(e) => setP({ ...p, college_lat: e.target.value })} inputMode="decimal" placeholder="28.5459" /></label>
-          <label>College longitude<input value={p.college_lng} onChange={(e) => setP({ ...p, college_lng: e.target.value })} inputMode="decimal" placeholder="77.2732" /></label>
+        
+        <label>
+          Campus Preset (Auto-detect & transit)
+          <select
+            onChange={(e) => {
+              const selected = CAMPUS_PRESETS.find((c) => c.label === e.target.value);
+              if (selected && selected.college) {
+                setP((x) => ({ ...x, college: selected.college, college_lat: selected.lat, college_lng: selected.lng }));
+              }
+            }}
+            defaultValue=""
+          >
+            {CAMPUS_PRESETS.map((c) => (
+              <option key={c.label} value={c.label}>{c.label}</option>
+            ))}
+          </select>
+        </label>
+
+        <label>College / Institution Name<input value={p.college} onChange={(e) => setP({ ...p, college: e.target.value })} placeholder="e.g. IIIT Delhi, DTU" /></label>
+        
+        <div style={{ margin: "0.4rem 0 0.8rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+          <div>
+            {p.college_lat && p.college_lng ? (
+              <span className="small ok">📍 Campus pinned for commute estimates ({p.college_lat}, {p.college_lng})</span>
+            ) : (
+              <span className="small muted">Campus coordinates not pinned yet.</span>
+            )}
+          </div>
+          <button type="button" className="linklike small" onClick={useMyLocation}>Auto-detect campus via GPS</button>
         </div>
-        <div style={{ marginBottom: ".8rem" }}>
-          <button type="button" className="linklike small" onClick={useMyLocation}>Use my current location (on campus)</button>
-        </div>
+
+        <details style={{ marginBottom: "1rem" }}>
+          <summary className="small muted">Fine-tune GPS coordinates manually (optional)</summary>
+          <div className="grid2" style={{ marginTop: "0.4rem" }}>
+            <label>Latitude<input value={p.college_lat} onChange={(e) => setP({ ...p, college_lat: e.target.value })} inputMode="decimal" placeholder="28.5459" /></label>
+            <label>Longitude<input value={p.college_lng} onChange={(e) => setP({ ...p, college_lng: e.target.value })} inputMode="decimal" placeholder="77.2732" /></label>
+          </div>
+        </details>
+
         <label>Goals and interests<input value={p.goals} onChange={(e) => setP({ ...p, goals: e.target.value })} placeholder="hackathon, ai, web" /></label>
         <div className="row">
           <button className="btn small">Save</button>
@@ -292,6 +489,7 @@ export default function Settings() {
         </form>
       </section>
 
+      <PortalsCard />
       <GoogleCard />
       <PushCard />
 

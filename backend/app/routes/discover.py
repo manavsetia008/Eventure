@@ -3,7 +3,7 @@ from sqlalchemy import func
 
 from ..auth import login_required
 from ..extensions import db
-from ..models import STATUSES, Event, Review, Stage, UserEvent
+from ..models import STATUSES, Event, Review, Stage, TrackedPortal, UserEvent
 from ..services.priority import goal_fit, score_item
 from ..services.travel import estimate_minutes, haversine_km
 from ..utils import ApiError, now
@@ -33,7 +33,7 @@ def rating_table(event_ids=None):
 NO_RATING = {"avg": None, "count": 0, "organisation": None, "learning": None, "value": None, "bayes": PRIOR_MEAN}
 
 
-def event_card(ev, user, ratings, in_timeline):
+def event_card(ev, user, ratings, in_timeline, portal_keys=None):
     dist = None
     if user.college_lat is not None and ev.lat is not None:
         dist = round(haversine_km(user.college_lat, user.college_lng, ev.lat, ev.lng), 1)
@@ -41,11 +41,21 @@ def event_card(ev, user, ratings, in_timeline):
     r = ratings.get(ev.id, NO_RATING)
     fit, _ = goal_fit(user.goals_list, ev.category, ev.title, ev.description)
     prox = max(0.0, 1 - dist / 50) if dist is not None else 0.3
-    rank = round(100 * (0.5 * r["bayes"] / 5 + 0.3 * prox + 0.2 * fit / 40), 1)
+    
+    # Check if event comes from a portal the student actively tracks
+    is_tracked_portal = False
+    if portal_keys:
+        p_str = (ev.platform or "").lower()
+        u_str = (ev.url or "").lower()
+        is_tracked_portal = any(k in p_str or k in u_str for k in portal_keys)
+
+    portal_boost = 15.0 if is_tracked_portal else 0.0
+    rank = round(100 * (0.5 * r["bayes"] / 5 + 0.3 * prox + 0.2 * fit / 40) + portal_boost, 1)
+
     return {
         **ev.to_dict(), "distance_km": dist, "travel_minutes": travel,
         "rating": {k: r[k] for k in ("avg", "count", "organisation", "learning", "value")},
-        "in_timeline": ev.id in in_timeline, "rank": rank,
+        "in_timeline": ev.id in in_timeline, "rank": rank, "is_tracked_portal": is_tracked_portal,
     }
 
 
@@ -63,9 +73,17 @@ def discover():
         q = q.filter(func.lower(Event.title).like(like) | func.lower(Event.description).like(like) | func.lower(Event.venue_name).like(like))
     events = q.order_by(Event.start_at).limit(200).all()
 
+    # User's tracked portals
+    user_portals = TrackedPortal.query.filter_by(user_id=user.id).all()
+    portal_keys = [p.domain_or_name.lower() for p in user_portals] + [p.name.lower() for p in user_portals]
+
     ratings = rating_table([e.id for e in events])
     mine = {ue.event_id for ue in UserEvent.query.filter_by(user_id=user.id).all()}
-    cards = [event_card(e, user, ratings, mine) for e in events]
+    cards = [event_card(e, user, ratings, mine, portal_keys) for e in events]
+
+    portals_only = (request.args.get("portals_only") or "").lower() in ("true", "1")
+    if portals_only:
+        cards = [c for c in cards if c["is_tracked_portal"]]
 
     radius = request.args.get("radius_km", type=float)
     if radius:
@@ -78,7 +96,7 @@ def discover():
     else:
         cards.sort(key=lambda c: -c["rank"])
     college = {"name": user.college, "lat": user.college_lat, "lng": user.college_lng}
-    return jsonify(events=cards, college=college)
+    return jsonify(events=cards, college=college, tracked_portals=[p.name for p in user_portals])
 
 
 @bp.get("/events/<int:event_id>")
@@ -106,6 +124,7 @@ def event_detail(event_id):
         event=card,
         reviews=[{**r.to_dict(), "mine": r.user_id == user.id} for r in reviews],
         mine={"user_event_id": ue.id if ue else None, "status": ue.status if ue else None,
+              "notes": ue.notes if ue else "",
               "can_review": can_review, "review_blocked_reason": reason, "is_owner": ev.created_by == user.id},
     )
 

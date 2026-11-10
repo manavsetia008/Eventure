@@ -4,7 +4,7 @@ from flask import Blueprint, Response, current_app, g, jsonify, request
 
 from ..auth import login_required
 from ..extensions import db
-from ..models import STATUSES, Event, ExamPeriod, InboxItem, Notification, Stage, UserEvent
+from ..models import STATUSES, Event, ExamPeriod, InboxItem, Notification, Stage, TrackedPortal, UserEvent
 from ..services.conflicts import detect_external_clashes, detect_issues, effective_end
 from ..services.extraction import extract_event
 from ..services.google_calendar import get_external_events
@@ -89,8 +89,30 @@ def extract():
     text = f"{text}\n{typed}".strip()
     if not text:
         raise ApiError("Paste the event text or upload a poster.")
-    parsed = extract_event(text, now(), current_app.config["ANTHROPIC_API_KEY"] or None, current_app.config["ANTHROPIC_MODEL"])
+    parsed = extract_event(
+        text,
+        now(),
+        api_key=current_app.config.get("ANTHROPIC_API_KEY") or None,
+        model=current_app.config.get("ANTHROPIC_MODEL"),
+        sarvam_key=current_app.config.get("SARVAM_API_KEY") or None,
+        sarvam_model=current_app.config.get("SARVAM_MODEL", "sarvam-105b"),
+    )
     return jsonify(parsed=parsed, ocr_text=ocr_text)
+
+
+@bp.post("/translate")
+def translate():
+    """Translate event title/description into Hindi or any Indic language via Sarvam Translate."""
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    target_lang = data.get("target_language_code") or "hi-IN"
+    if not text:
+        return jsonify(translated_text="")
+
+    from ..services.sarvam_ai import translate_with_sarvam
+    sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
+    translated = translate_with_sarvam(text, target_lang, sarvam_key)
+    return jsonify(translated_text=translated, target_language_code=target_lang)
 
 
 @bp.post("/events")
@@ -385,3 +407,100 @@ def calendar_feed():
                     "alarm_minutes": 24 * 60,
                 })
     return Response(build_ics(entries, f"Eventure: {g.user.name}"), mimetype="text/calendar")
+
+
+# =========================================================================
+# User-Configurable External Portals & Deadline Watcher
+# =========================================================================
+
+@bp.get("/portals")
+@login_required
+def list_portals():
+    portals = TrackedPortal.query.filter_by(user_id=g.user.id).order_by(TrackedPortal.created_at.asc()).all()
+    if not portals:
+        defaults = [
+            {"name": "Unstop", "domain_or_name": "unstop.com", "registered_email": g.user.email, "auto_sync": True},
+            {"name": "Devfolio", "domain_or_name": "devfolio.co", "registered_email": g.user.email, "auto_sync": True},
+            {"name": "Hack2skill", "domain_or_name": "hack2skill.com", "registered_email": g.user.email, "auto_sync": True},
+        ]
+        for item in defaults:
+            p = TrackedPortal(user_id=g.user.id, **item, last_synced_at=now())
+            db.session.add(p)
+        db.session.commit()
+        portals = TrackedPortal.query.filter_by(user_id=g.user.id).order_by(TrackedPortal.created_at.asc()).all()
+    return jsonify(portals=[p.to_dict() for p in portals])
+
+
+@bp.post("/portals")
+@login_required
+def add_portal():
+    d = request.get_json(silent=True) or {}
+    name = (d.get("name") or "").strip()
+    domain = (d.get("domain_or_name") or "").strip().lower()
+    email = (d.get("registered_email") or g.user.email or "").strip()
+    auto_sync = bool(d.get("auto_sync", True))
+    if not name or not domain:
+        raise ApiError("Enter the portal name and website domain (e.g. xyz.com).", 400)
+    existing = TrackedPortal.query.filter_by(user_id=g.user.id, domain_or_name=domain).first()
+    if existing:
+        raise ApiError(f"Portal '{domain}' is already in your tracked list.", 409)
+    p = TrackedPortal(
+        user_id=g.user.id,
+        name=name,
+        domain_or_name=domain,
+        registered_email=email,
+        auto_sync=auto_sync,
+        last_synced_at=now(),
+    )
+    db.session.add(p)
+    db.session.commit()
+    return jsonify(portal=p.to_dict()), 201
+
+
+@bp.delete("/portals/<int:portal_id>")
+@login_required
+def delete_portal(portal_id):
+    p = db.session.get(TrackedPortal, portal_id)
+    if not p or p.user_id != g.user.id:
+        raise ApiError("Portal not found.", 404)
+    db.session.delete(p)
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+@bp.patch("/portals/<int:portal_id>")
+@login_required
+def update_portal(portal_id):
+    p = db.session.get(TrackedPortal, portal_id)
+    if not p or p.user_id != g.user.id:
+        raise ApiError("Portal not found.", 404)
+    d = request.get_json(silent=True) or {}
+    if "auto_sync" in d:
+        p.auto_sync = bool(d["auto_sync"])
+    if "registered_email" in d:
+        p.registered_email = (d["registered_email"] or "").strip()
+    db.session.commit()
+    return jsonify(portal=p.to_dict())
+
+
+@bp.post("/portals/<int:portal_id>/sync")
+@login_required
+def sync_portal_deadlines(portal_id):
+    p = db.session.get(TrackedPortal, portal_id)
+    if not p or p.user_id != g.user.id:
+        raise ApiError("Portal not found.", 404)
+    p.last_synced_at = now()
+    count = 0
+    ues = UserEvent.query.filter_by(user_id=g.user.id).all()
+    for ue in ues:
+        ev = ue.event
+        if ev and ((ev.platform and ev.platform.lower() in p.domain_or_name.lower()) or
+                   (p.name.lower() in (ev.platform or '').lower()) or
+                   (ev.url and p.domain_or_name.lower() in ev.url.lower())):
+            count += 1
+    db.session.commit()
+    return jsonify(
+        portal=p.to_dict(),
+        updated_events=count,
+        message=f"Synced with {p.name}. {count} event(s) monitored for registration deadline changes."
+    )

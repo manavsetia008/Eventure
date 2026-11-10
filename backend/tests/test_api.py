@@ -350,6 +350,38 @@ class ApiTests(unittest.TestCase):
                                   content_type="multipart/form-data", headers=h)
         self.assertEqual(r_file.status_code, 422)
 
+    def test_tracked_portals_crud_and_sync(self):
+        h = self.user("portals@x.com")
+        # 1. List default portals
+        res = self.client.get("/api/portals", headers=h)
+        self.assertEqual(res.status_code, 200)
+        portals = res.get_json()["portals"]
+        self.assertGreaterEqual(len(portals), 3)
+
+        # 2. Add custom portal (e.g. xyz.com)
+        add_res = self.client.post("/api/portals", json={
+            "name": "XYZ Hackathons",
+            "domain_or_name": "xyz.com",
+            "registered_email": "portals@x.com",
+            "auto_sync": True,
+        }, headers=h)
+        self.assertEqual(add_res.status_code, 201)
+        portal_id = add_res.get_json()["portal"]["id"]
+
+        # 3. Patch portal
+        patch_res = self.client.patch(f"/api/portals/{portal_id}", json={"auto_sync": False}, headers=h)
+        self.assertEqual(patch_res.status_code, 200)
+        self.assertFalse(patch_res.get_json()["portal"]["auto_sync"])
+
+        # 4. Sync portal
+        sync_res = self.client.post(f"/api/portals/{portal_id}/sync", headers=h)
+        self.assertEqual(sync_res.status_code, 200)
+        self.assertIn("message", sync_res.get_json())
+
+        # 5. Delete portal
+        del_res = self.client.delete(f"/api/portals/{portal_id}", headers=h)
+        self.assertEqual(del_res.status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main()

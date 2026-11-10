@@ -15,7 +15,7 @@ function Rating({ r }) {
 
 export default function Discover() {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState({ q: "", category: "", radius_km: "", sort: "rank" });
+  const [filters, setFilters] = useState({ q: "", category: "", radius_km: "", portals_only: "", sort: "rank" });
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [picked, setPicked] = useState([]);
@@ -80,6 +80,10 @@ export default function Discover() {
           <option value="25">Within 25 km</option>
           <option value="50">Within 50 km</option>
         </select>
+        <select value={filters.portals_only} onChange={set("portals_only")} aria-label="Portal Source">
+          <option value="">All Platforms</option>
+          <option value="true">My Tracked Portals Only</option>
+        </select>
         <select value={filters.sort} onChange={set("sort")} aria-label="Sort">
           <option value="rank">Best for me</option>
           <option value="date">Soonest</option>
@@ -113,6 +117,7 @@ export default function Discover() {
                     <p className="muted small">{ev.venue_name}{ev.club_name ? ` · ${ev.club_name}` : ""}</p>
                   </div>
                   <div className="pills">
+                    {ev.is_tracked_portal && <span className="pill ok">My Tracked Portal</span>}
                     {ev.platform && <span className="pill">{ev.platform}</span>}
                     <span className="pill alt">{cap(ev.category)}</span>
                   </div>
@@ -126,15 +131,27 @@ export default function Discover() {
                 </div>
 
                 <div className="card-foot">
-                  <label className="check small">
-                    <input
-                      type="checkbox"
-                      checked={picked.includes(ev.id)}
-                      onChange={() => toggle(ev.id)}
-                      disabled={!picked.includes(ev.id) && picked.length >= 3}
-                    />
-                    Compare
-                  </label>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <label className="check small" style={{ margin: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={picked.includes(ev.id)}
+                        onChange={() => toggle(ev.id)}
+                        disabled={!picked.includes(ev.id) && picked.length >= 3}
+                      />
+                      Compare
+                    </label>
+                    {ev.url && (
+                      <a
+                        href={ev.url.startsWith("http") ? ev.url : `https://${ev.url}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="linklike small"
+                      >
+                        Official Page ↗
+                      </a>
+                    )}
+                  </div>
                   <button className="btn small" disabled={ev.in_timeline} onClick={() => add(ev)}>
                     {ev.in_timeline ? "On timeline" : "Add to timeline"}
                   </button>

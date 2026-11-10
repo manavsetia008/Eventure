@@ -258,3 +258,28 @@ class PushSubscription(db.Model):
     p256dh = db.Column(db.String(200), nullable=False)
     auth = db.Column(db.String(100), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
+
+
+class TrackedPortal(db.Model):
+    """User-selected hackathon or competition platform for automatic registration & deadline sync."""
+    __tablename__ = "tracked_portals"
+    __table_args__ = (db.UniqueConstraint("user_id", "domain_or_name", name="uq_user_portal"),)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    name = db.Column(db.String(150), nullable=False)
+    domain_or_name = db.Column(db.String(200), nullable=False)
+    registered_email = db.Column(db.String(200))
+    auto_sync = db.Column(db.Boolean, default=True)
+    last_synced_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "domain_or_name": self.domain_or_name,
+            "registered_email": self.registered_email,
+            "auto_sync": bool(self.auto_sync),
+            "last_synced_at": iso(self.last_synced_at) if self.last_synced_at else None,
+            "created_at": iso(self.created_at),
+        }
