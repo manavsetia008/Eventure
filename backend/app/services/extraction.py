@@ -269,7 +269,14 @@ def extract_with_llm(text, api_key, model, now):
     return _normalise(_load_json(out), text)
 
 
-def extract_event(text, now, api_key=None, model=None):
+def extract_event(text, now, api_key=None, model=None, sarvam_key=None, sarvam_model="sarvam-105b"):
+    if sarvam_key:
+        try:
+            from .sarvam_ai import extract_event_with_sarvam
+            res = extract_event_with_sarvam(text, sarvam_key, sarvam_model or "sarvam-105b", now)
+            return _normalise(res, text)
+        except Exception as exc:
+            logging.warning("Sarvam AI extraction failed (%s), falling back...", exc)
     if api_key:
         try:
             return extract_with_llm(text, api_key, model, now)

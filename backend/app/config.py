@@ -23,6 +23,8 @@ class Config:
 
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
     ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5-5")
+    SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
+    SARVAM_MODEL = os.getenv("SARVAM_MODEL", "sarvam-105b")
     GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
 
     ENABLE_SCHEDULER = os.getenv("ENABLE_SCHEDULER", "1") == "1"
