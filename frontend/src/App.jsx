@@ -9,12 +9,13 @@ import EditEvent from "./pages/EditEvent.jsx";
 import EventDetail from "./pages/EventDetail.jsx";
 import Inbox from "./pages/Inbox.jsx";
 import Login from "./pages/Login.jsx";
+import NotFound from "./pages/NotFound.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import Organizer from "./pages/Organizer.jsx";
 import Settings from "./pages/Settings.jsx";
 import Timeline from "./pages/Timeline.jsx";
 
-function Layout({ children }) {
+function Layout({ children, theme, toggleTheme }) {
   const { user, logout } = useAuth();
   const [unread, setUnread] = useState(0);
   const [inbox, setInbox] = useState(0);
@@ -56,6 +57,14 @@ function Layout({ children }) {
           <NavLink to="/settings">Settings</NavLink>
         </nav>
         <div className="topbar-right">
+          <button
+            type="button"
+            className="theme-toggle-btn"
+            onClick={toggleTheme}
+            aria-label="Toggle light or dark theme"
+          >
+            {theme === "dark" ? "Light" : "Dark"}
+          </button>
           <Link to="/notifications" className="bell" aria-label="Notifications">
             Alerts{unread > 0 && <b>{unread}</b>}
           </Link>
@@ -67,29 +76,42 @@ function Layout({ children }) {
   );
 }
 
-function Protected({ children }) {
+function Protected({ children, theme, toggleTheme }) {
   const { user, loading } = useAuth();
   const location = useLocation();
   if (loading) return <p className="center muted">Loading...</p>;
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
-  return <Layout>{children}</Layout>;
+  return <Layout theme={theme} toggleTheme={toggleTheme}>{children}</Layout>;
 }
 
 export default function App() {
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("eventure_theme") || "light";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("eventure_theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((t) => (t === "dark" ? "light" : "dark"));
+  };
+
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/" element={<Protected><Timeline /></Protected>} />
-      <Route path="/add" element={<Protected><AddEvent /></Protected>} />
-      <Route path="/inbox" element={<Protected><Inbox /></Protected>} />
-      <Route path="/organizer" element={<Protected><Organizer /></Protected>} />
-      <Route path="/discover" element={<Protected><Discover /></Protected>} />
-      <Route path="/events/:id/edit" element={<Protected><EditEvent /></Protected>} />
-      <Route path="/events/:id" element={<Protected><EventDetail /></Protected>} />
-      <Route path="/community" element={<Protected><Community /></Protected>} />
-      <Route path="/notifications" element={<Protected><Notifications /></Protected>} />
-      <Route path="/settings" element={<Protected><Settings /></Protected>} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="/" element={<Protected theme={theme} toggleTheme={toggleTheme}><Timeline /></Protected>} />
+      <Route path="/add" element={<Protected theme={theme} toggleTheme={toggleTheme}><AddEvent /></Protected>} />
+      <Route path="/inbox" element={<Protected theme={theme} toggleTheme={toggleTheme}><Inbox /></Protected>} />
+      <Route path="/organizer" element={<Protected theme={theme} toggleTheme={toggleTheme}><Organizer /></Protected>} />
+      <Route path="/discover" element={<Protected theme={theme} toggleTheme={toggleTheme}><Discover /></Protected>} />
+      <Route path="/events/:id/edit" element={<Protected theme={theme} toggleTheme={toggleTheme}><EditEvent /></Protected>} />
+      <Route path="/events/:id" element={<Protected theme={theme} toggleTheme={toggleTheme}><EventDetail /></Protected>} />
+      <Route path="/community" element={<Protected theme={theme} toggleTheme={toggleTheme}><Community /></Protected>} />
+      <Route path="/notifications" element={<Protected theme={theme} toggleTheme={toggleTheme}><Notifications /></Protected>} />
+      <Route path="/settings" element={<Protected theme={theme} toggleTheme={toggleTheme}><Settings /></Protected>} />
+      <Route path="*" element={<Protected theme={theme} toggleTheme={toggleTheme}><NotFound /></Protected>} />
     </Routes>
   );
 }

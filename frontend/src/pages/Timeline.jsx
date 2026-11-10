@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth.jsx";
 import IssueCard from "../components/IssueCard.jsx";
+import HackathonVault from "../components/HackathonVault.jsx";
 import { cap, fmtDate, fmtDuration, fmtRange, timeLeft } from "../utils";
 
 const STATUSES = ["interested", "registered", "attended", "skipped"];
@@ -42,6 +43,11 @@ function AddStage({ onAdd }) {
 
 function Node({ it, act }) {
   const ev = it.event;
+  const [editingUrl, setEditingUrl] = useState(false);
+  const [urlVal, setUrlVal] = useState(ev.url || "");
+
+  const fullUrl = ev.url ? (ev.url.startsWith("http") ? ev.url : `https://${ev.url}`) : "";
+
   return (
     <li className={`node risk-${it.risk || "none"} ${it.status === "skipped" ? "is-skipped" : ""}`}>
       <article className="card">
@@ -62,6 +68,66 @@ function Node({ it, act }) {
               </span>
             )}
           </div>
+        </div>
+
+        {/* Direct official link to hackathon / event */}
+        <div style={{ margin: "0.4rem 0 0.6rem", display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+          {fullUrl && !editingUrl ? (
+            <>
+              <a
+                href={fullUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="btn small"
+                style={{ padding: "0.22rem 0.65rem", fontSize: "0.8rem", textDecoration: "none" }}
+              >
+                Go to Hackathon Page ↗
+              </a>
+              <button
+                type="button"
+                className="linklike small muted"
+                onClick={() => { setUrlVal(ev.url || ""); setEditingUrl(true); }}
+              >
+                Edit link
+              </button>
+            </>
+          ) : !editingUrl ? (
+            <button
+              type="button"
+              className="linklike small"
+              onClick={() => { setUrlVal(""); setEditingUrl(true); }}
+            >
+              + Add official hackathon link
+            </button>
+          ) : (
+            <div className="row small" style={{ width: "100%", margin: "0.2rem 0" }}>
+              <input
+                type="url"
+                value={urlVal}
+                onChange={(e) => setUrlVal(e.target.value)}
+                placeholder="Paste official event URL (https://...)"
+                style={{ maxWidth: "320px", padding: "0.3rem 0.5rem" }}
+                aria-label="Official event URL"
+              />
+              <button
+                type="button"
+                className="btn small"
+                onClick={() => {
+                  act(() => api.put(`/events/${ev.id}`, { url: urlVal.trim() }));
+                  setEditingUrl(false);
+                }}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                className="btn ghost small"
+                onClick={() => setEditingUrl(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
 
         {it.travel_minutes ? (
@@ -96,6 +162,12 @@ function Node({ it, act }) {
           </ul>
         )}
 
+        <HackathonVault
+          userEventId={it.id}
+          initialNotes={it.notes || ""}
+          onUpdate={() => load()}
+        />
+
         <div className="card-foot">
           <AddStage onAdd={(name, due) => act(() => api.post(`/user-events/${it.id}/stages`, { name, due_at: due }))} />
           <div className="row status-actions">
@@ -129,6 +201,7 @@ export default function Timeline() {
   const [error, setError] = useState("");
   const [dismissed, setDismissed] = useState([]);
   const [showSkipped, setShowSkipped] = useState(false);
+  const [lang, setLang] = useState("en");
 
   const load = useCallback(() => api.get("/timeline").then(setData).catch((e) => setError(e.message)), []);
   useEffect(() => { load(); }, [load]);
@@ -158,10 +231,30 @@ export default function Timeline() {
     <>
       <div className="page-head">
         <div>
-          <h1>My timeline</h1>
-          <p className="muted small">Track stages, deadlines, and schedule conflicts in one place.</p>
+          <h1>{lang === "hi" ? "मेरी टाइमलाइन (Timeline)" : "My timeline"}</h1>
+          <p className="muted small">
+            {lang === "hi"
+              ? "सभी चरण, समय-सीमा और शेड्यूल टकराव एक जगह ट्रैक करें।"
+              : "Track stages, deadlines, and schedule conflicts in one place."}
+          </p>
         </div>
-        <Link to="/add" className="btn">Add event</Link>
+        <div className="row">
+          <div className="lang-picker">
+            <span className="small muted">Language:</span>
+            <select
+              value={lang}
+              onChange={(e) => setLang(e.target.value)}
+              className="lang-select"
+              aria-label="Language selection"
+            >
+              <option value="en">English</option>
+              <option value="hi">हिन्दी (Hindi)</option>
+              <option value="bn">বাংলা (Bengali)</option>
+              <option value="ta">தமிழ் (Tamil)</option>
+            </select>
+          </div>
+          <Link to="/add" className="btn">Add event</Link>
+        </div>
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -175,15 +268,15 @@ export default function Timeline() {
       <div className="summary">
         <div>
           <b>{live.length}</b>
-          <span>upcoming events</span>
+          <span>{lang === "hi" ? "आगामी कार्यक्रम" : "upcoming events"}</span>
         </div>
         <div>
           <b>{week}</b>
-          <span>deadlines this week</span>
+          <span>{lang === "hi" ? "इस सप्ताह की समय-सीमा" : "deadlines this week"}</span>
         </div>
         <div className={issues.length ? "hot" : ""}>
           <b>{issues.length}</b>
-          <span>decisions needed</span>
+          <span>{lang === "hi" ? "निर्णय आवश्यक" : "decisions needed"}</span>
         </div>
       </div>
 

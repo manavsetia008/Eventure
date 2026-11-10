@@ -11,6 +11,14 @@ export default function Login() {
   const [form, setForm] = useState({ name: "", email: "", password: "", college: "", goals: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem("eventure_theme") || "light");
+
+  function toggleTheme() {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    localStorage.setItem("eventure_theme", next);
+    document.documentElement.setAttribute("data-theme", next);
+  }
 
   if (user) return <Navigate to={from} replace />;
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -64,6 +72,14 @@ export default function Login() {
           </nav>
 
           <div className="landing-nav-actions">
+            <button
+              type="button"
+              className="theme-toggle-btn"
+              onClick={toggleTheme}
+              aria-label="Toggle light or dark theme"
+            >
+              {theme === "dark" ? "Light" : "Dark"}
+            </button>
             <button className="btn ghost small" onClick={quickDemoLogin} disabled={busy}>
               Demo login
             </button>
@@ -269,6 +285,16 @@ export default function Login() {
 
         <div className="compact-features-grid">
           <div className="feature-item-card">
+            <h3>Sarvam AI Notice Extraction</h3>
+            <p>Paste Hinglish WhatsApp circulars, forwarded emails, or event posters. Powered by Sarvam-105B Indic AI to extract dates, venues, and registration milestones.</p>
+          </div>
+
+          <div className="feature-item-card">
+            <h3>Multilingual Campus Access</h3>
+            <p>Instant bilingual view powered by Sarvam Translate across Indian languages (English, हिन्दी, বাংলা, தமிழ்) for cross-campus accessibility.</p>
+          </div>
+
+          <div className="feature-item-card">
             <h3>Travel & Transit Buffer</h3>
             <p>Calculates real travel times from your college. Flags events when the gap between back-to-back sessions is too tight.</p>
           </div>
@@ -284,18 +310,8 @@ export default function Login() {
           </div>
 
           <div className="feature-item-card">
-            <h3>Verified Reviews</h3>
-            <p>Feedback and ratings contributed exclusively by students who attended previous editions of the event.</p>
-          </div>
-
-          <div className="feature-item-card">
-            <h3>Notice & Flyer Extraction</h3>
-            <p>Paste circular text or upload event posters to extract dates, venue coordinates, and registration links automatically.</p>
-          </div>
-
-          <div className="feature-item-card">
-            <h3>Calendar Feed (.ics)</h3>
-            <p>Sync your timeline directly into Google Calendar, Apple Calendar, or Outlook with automated updates.</p>
+            <h3>Verified Reviews & Calendar Sync</h3>
+            <p>Peer reviews contributed by verified past attendees, plus automatic .ics feed sync with Google Calendar and Apple Calendar.</p>
           </div>
         </div>
       </section>

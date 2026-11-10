@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import EventForm, { BLANK } from "../components/EventForm.jsx";
@@ -33,6 +33,13 @@ export default function AddEvent() {
   const [error, setError] = useState("");
   const [initial, setInitial] = useState(fromInbox ? fromParsed(fromInbox) : null);
   const [source, setSource] = useState(fromInbox ? fromInbox.source || "" : "");
+  const [portals, setPortals] = useState([]);
+
+  useEffect(() => {
+    api.get("/portals")
+      .then((r) => setPortals(r.portals || []))
+      .catch(() => {});
+  }, []);
 
   async function read() {
     setError("");
@@ -63,10 +70,22 @@ export default function AddEvent() {
     }
   }
 
-  const notice =
-    source === "rules" ? <p className="notice">Read with the built-in parser. Check every field below before saving.</p>
-    : source === "llm" ? <p className="notice">Read by AI parser. Review dates, times and deadlines below.</p>
-    : null;
+  const notice = source ? (
+    <p className="notice">
+      <strong>Details Extracted:</strong> Review title, dates, venue, and deadlines below. You can also add or change the official hackathon link before confirming.
+    </p>
+  ) : null;
+
+  function loadHinglishSample() {
+    setText(
+      "HackIIITD 2026 Innovation Challenge:\n" +
+      "Venue: IIIT Delhi Campus, Audi 2\n" +
+      "Starts: 21 Nov 2026, 12:00 PM | Ends: 22 Nov 2026, 02:00 PM\n" +
+      "Abstract submission deadline: 18 Nov 11:59 PM\n" +
+      "Official website: https://unstop.com/hackathons/hackiiitd-2026\n" +
+      "Final round shortlisted teams must present live demo on Sunday 10:00 AM."
+    );
+  }
 
   return (
     <>
@@ -79,10 +98,19 @@ export default function AddEvent() {
 
       {!initial ? (
         <section className="card">
-          <h2>Paste text or upload a poster</h2>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+            <h2>Import from announcement or poster</h2>
+            <span className="portal-badge">Smart Extraction</span>
+          </div>
           <p className="muted small">
-            We extract the title, dates, venue and deadlines. You review them before anything is saved.
+            We extract the title, dates, venue, registration deadlines, and website link. You review them before saving.
           </p>
+
+          <div style={{ marginBottom: "0.6rem" }}>
+            <button type="button" className="linklike small" onClick={loadHinglishSample}>
+              Paste sample campus announcement
+            </button>
+          </div>
 
           <label>
             Event text or forwarded announcement
@@ -90,7 +118,7 @@ export default function AddEvent() {
               rows={7}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={"Hackathon X\nVenue: Campus A\n17 Oct 2026, 10:00 AM to 6:00 PM\nRegistrations close 12 Oct"}
+              placeholder={"Hackathon X\nVenue: Campus A\n17 Oct 2026, 10:00 AM to 6:00 PM\nRegistrations close 12 Oct\nLink: https://..."}
             />
           </label>
 
@@ -101,7 +129,7 @@ export default function AddEvent() {
 
           {error && <p className="error">{error}</p>}
 
-          <div className="row">
+          <div className="row" style={{ marginTop: "1rem" }}>
             <button className="btn small" onClick={read} disabled={busy || (!text.trim() && !file)}>
               {busy ? "Reading details..." : "Read details"}
             </button>
@@ -109,6 +137,28 @@ export default function AddEvent() {
               Fill in manually
             </button>
           </div>
+
+          {portals.length > 0 && (
+            <div style={{ marginTop: "1.2rem", paddingTop: "0.9rem", borderTop: "1px solid var(--line)" }}>
+              <span className="small muted">Or create from your tracked portals: </span>
+              <div style={{ display: "inline-flex", gap: "0.4rem", flexWrap: "wrap", marginTop: "0.3rem" }}>
+                {portals.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="pill"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => {
+                      setInitial({ ...BLANK, platform: p.name });
+                      setSource("portal");
+                    }}
+                  >
+                    + {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       ) : (
         <EventForm

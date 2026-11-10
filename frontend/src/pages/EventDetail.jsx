@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import { cap, fmtDuration, fmtRange } from "../utils";
+import HackathonVault from "../components/HackathonVault.jsx";
 
 const SCALE = [1, 2, 3, 4, 5];
 
@@ -10,8 +11,13 @@ export default function EventDetail() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [form, setForm] = useState({ organisation: 4, learning: 4, value: 4, comment: "" });
+  const [editingUrl, setEditingUrl] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
 
-  const load = useCallback(() => api.get(`/events/${id}`).then(setData).catch((e) => setError(e.message)), [id]);
+  const load = useCallback(() => api.get(`/events/${id}`).then((res) => {
+    setData(res);
+    setUrlInput(res.event.url || "");
+  }).catch((e) => setError(e.message)), [id]);
   useEffect(() => { load(); }, [load]);
 
   const run = async (fn) => {
@@ -48,9 +54,77 @@ export default function EventDetail() {
           {ev.club_name && <li><b>Organised by</b> {ev.club_name}</li>}
           {ev.distance_km != null && <li><b>From your college</b> {ev.distance_km} km, about {fmtDuration(ev.travel_minutes)} by road</li>}
           {ev.registration_deadline && <li><b>Register by</b> {fmtRange(ev.registration_deadline)}</li>}
-          {ev.url && <li><a href={ev.url} target="_blank" rel="noreferrer">Official page</a></li>}
+          <li>
+            <b>Official portal link: </b>
+            {ev.url ? (
+              <span>
+                <a href={ev.url.startsWith("http") ? ev.url : `https://${ev.url}`} target="_blank" rel="noreferrer">
+                  {ev.url} ↗
+                </a>
+                <button
+                  type="button"
+                  className="linklike small muted"
+                  style={{ marginLeft: "0.6rem" }}
+                  onClick={() => { setUrlInput(ev.url || ""); setEditingUrl(true); }}
+                >
+                  Change link
+                </button>
+              </span>
+            ) : (
+              <span>
+                <span className="muted">No link attached yet. </span>
+                {!editingUrl && (
+                  <button type="button" className="linklike small" onClick={() => setEditingUrl(true)}>
+                    + Add official link
+                  </button>
+                )}
+              </span>
+            )}
+          </li>
         </ul>
-        <div className="row">
+
+        {editingUrl && (
+          <div className="row small" style={{ margin: "0.6rem 0", padding: "0.6rem", background: "var(--surface)", borderRadius: "6px" }}>
+            <input
+              type="url"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              placeholder="Paste official event URL (https://...)"
+              style={{ maxWidth: "360px" }}
+              aria-label="Official event URL"
+            />
+            <button
+              type="button"
+              className="btn small"
+              onClick={() => {
+                run(() => api.put(`/events/${ev.id}`, { url: urlInput.trim() }));
+                setEditingUrl(false);
+              }}
+            >
+              Save link
+            </button>
+            <button
+              type="button"
+              className="btn ghost small"
+              onClick={() => setEditingUrl(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        <div className="row" style={{ marginTop: "1rem" }}>
+          {ev.url && (
+            <a
+              href={ev.url.startsWith("http") ? ev.url : `https://${ev.url}`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn small"
+              style={{ textDecoration: "none" }}
+            >
+              Go to Official Hackathon Page ↗
+            </a>
+          )}
           {!mine.status && <button className="btn" onClick={() => run(() => api.post(`/events/${ev.id}/join`, { status: "registered" }))}>Add to timeline as registered</button>}
           {!mine.status && <button className="btn ghost" onClick={() => run(() => api.post(`/events/${ev.id}/join`, { status: "interested" }))}>Just interested</button>}
           {mine.status && mine.status !== "attended" && (
@@ -59,6 +133,14 @@ export default function EventDetail() {
           {mine.status && <span className="pill">On your timeline: {mine.status}</span>}
           {mine.is_owner && <Link className="btn ghost" to={`/events/${ev.id}/edit`}>Edit details</Link>}
         </div>
+
+        {mine.user_event_id && (
+          <HackathonVault
+            userEventId={mine.user_event_id}
+            initialNotes={mine.notes || ""}
+            onUpdate={() => load()}
+          />
+        )}
       </section>
 
       <section>

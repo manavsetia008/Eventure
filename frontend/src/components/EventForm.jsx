@@ -38,7 +38,7 @@ export default function EventForm({ initial, mode, notice, saving, error, submit
     const lat = form.lat === "" ? null : Number(form.lat);
     const lng = form.lng === "" ? null : Number(form.lng);
     if (Number.isNaN(lat) || Number.isNaN(lng)) {
-      return setLocalError("Latitude and longitude must be numbers (e.g. 28.5459 and 77.2732).");
+      return setLocalError("Coordinates must be numbers (e.g. 28.5459 and 77.2732).");
     }
     if ((lat === null) !== (lng === null)) {
       return setLocalError("Enter both latitude and longitude, or leave both blank.");
@@ -100,7 +100,7 @@ export default function EventForm({ initial, mode, notice, saving, error, submit
           {lookup.busy ? "Looking up..." : "Look up location"}
         </button>
         {form.lat !== "" && form.lng !== "" && (
-          <span className="small muted">Map position: {form.lat}, {form.lng}</span>
+          <span className="small ok">📍 Venue pinned for travel estimates</span>
         )}
       </div>
 
@@ -111,7 +111,7 @@ export default function EventForm({ initial, mode, notice, saving, error, submit
       )}
 
       <details>
-        <summary className="small muted">Enter map coordinates manually</summary>
+        <summary className="small muted">Fine-tune venue GPS coordinates (optional)</summary>
         <div className="grid2">
           <label>Latitude<input value={form.lat} onChange={set("lat")} inputMode="decimal" placeholder="28.5459" /></label>
           <label>Longitude<input value={form.lng} onChange={set("lng")} inputMode="decimal" placeholder="77.2732" /></label>
@@ -125,7 +125,10 @@ export default function EventForm({ initial, mode, notice, saving, error, submit
 
       <div className="grid2">
         <label>Registration deadline<input type="datetime-local" value={form.registration_deadline} onChange={set("registration_deadline")} /></label>
-        <label>Official link<input value={form.url} onChange={set("url")} placeholder="https://" /></label>
+        <label>
+          Official link (optional)
+          <input value={form.url} onChange={set("url")} placeholder="https://unstop.com/... or event page (can add later)" />
+        </label>
       </div>
 
       <label>

@@ -89,8 +89,24 @@ export default function Inbox() {
                 <li><b>When</b>: {p.start_at ? fmtRange(p.start_at, p.end_at) : "Not found in email"}</li>
                 {p.venue_name && <li><b>Where</b>: {p.venue_name}</li>}
                 {p.registration_deadline && <li><b>Deadline</b>: {fmtRange(p.registration_deadline)}</li>}
+                {p.url && (
+                  <li>
+                    <b>Official link</b>: <a href={p.url.startsWith("http") ? p.url : `https://${p.url}`} target="_blank" rel="noreferrer">{p.url} ↗</a>
+                  </li>
+                )}
               </ul>
               <div className="row">
+                {p.url && (
+                  <a
+                    href={p.url.startsWith("http") ? p.url : `https://${p.url}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn small"
+                    style={{ textDecoration: "none" }}
+                  >
+                    Go to Hackathon Page ↗
+                  </a>
+                )}
                 <button
                   className="btn small"
                   onClick={() => navigate("/add", { state: { parsed: p, inboxId: item.id } })}
