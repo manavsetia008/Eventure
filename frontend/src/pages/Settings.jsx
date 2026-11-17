@@ -174,6 +174,109 @@ function PushCard() {
   );
 }
 
+function PriorityTuningCard({ user, onSaved }) {
+  const [mode, setMode] = useState(user.scoring_mode || "balanced");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+
+  const presets = [
+    {
+      id: "balanced",
+      title: "Balanced (Default)",
+      desc: "Equalized student weighting across interests, deadlines, and travel ease.",
+      weights: { "Interest Match": 40, "Deadline Urgency": 20, "Travel Proximity": 20, "Registered Status": 10, "Goal Match": 10 },
+    },
+    {
+      id: "interest_first",
+      title: "Interest-first",
+      desc: "Deep focus on career alignment, AI/web tracks, and specific hackathon categories.",
+      weights: { "Interest Match": 60, "Deadline Urgency": 15, "Travel Proximity": 10, "Registered Status": 10, "Goal Match": 5 },
+    },
+    {
+      id: "deadline_first",
+      title: "Deadline-first",
+      desc: "Prioritizes immediate submission rounds, abstract deadlines, and urgent PPTs.",
+      weights: { "Interest Match": 25, "Deadline Urgency": 40, "Travel Proximity": 15, "Registered Status": 10, "Goal Match": 10 },
+    },
+    {
+      id: "nearby_first",
+      title: "Nearby-first",
+      desc: "Minimizes road travel time and maximizes local campus opportunities.",
+      weights: { "Interest Match": 25, "Deadline Urgency": 15, "Travel Proximity": 40, "Registered Status": 10, "Goal Match": 10 },
+    },
+  ];
+
+  const save = async (m) => {
+    setMode(m);
+    setSaving(true);
+    setMsg("");
+    setErr("");
+    try {
+      const res = await api.patch("/me", { scoring_mode: m });
+      if (onSaved) onSaved(res.user);
+      setMsg(`Priority scoring tuned to "${presets.find((p) => p.id === m)?.title}".`);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <div>
+          <h2>Priority Fit Score System</h2>
+          <p className="muted small">Customize how Eventure ranks and scores hackathons on your timeline (0–100).</p>
+        </div>
+        <span className="pill ok">Active: {presets.find((p) => p.id === mode)?.title || "Balanced"}</span>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginTop: "1rem" }}>
+        {presets.map((p) => {
+          const isSelected = mode === p.id;
+          return (
+            <div
+              key={p.id}
+              onClick={() => save(p.id)}
+              style={{
+                border: isSelected ? "2px solid var(--thread)" : "1px solid var(--line)",
+                borderRadius: "var(--radius, 10px)",
+                padding: "1rem",
+                background: isSelected ? "rgba(230, 126, 34, 0.05)" : "var(--surface)",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                <strong style={{ color: isSelected ? "var(--thread)" : "var(--ink)", fontSize: "0.92rem" }}>
+                  {isSelected ? "● " : "○ "} {p.title}
+                </strong>
+                {isSelected && <span className="pill" style={{ background: "var(--thread)", color: "#fff", fontSize: "0.68rem" }}>Active</span>}
+              </div>
+              <p className="muted small" style={{ margin: "0 0 0.8rem", minHeight: "2.4rem" }}>
+                {p.desc}
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                {Object.entries(p.weights).map(([k, w]) => (
+                  <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem" }}>
+                    <span className="muted">{k}</span>
+                    <span style={{ fontWeight: 600 }}>{w} pts</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {msg && <p className="notice small" style={{ marginTop: "1rem" }}>{msg}</p>}
+      {err && <p className="error small" style={{ marginTop: "1rem" }}>{err}</p>}
+    </section>
+  );
+}
+
 function PortalsCard() {
   const [portals, setPortals] = useState([]);
   const [name, setName] = useState("");
@@ -468,6 +571,8 @@ export default function Settings() {
           {msg && <span className="muted small">{msg}</span>}
         </div>
       </form>
+
+      <PriorityTuningCard user={user} onSaved={refresh} />
 
       <section className="card">
         <h2>Exam periods</h2>

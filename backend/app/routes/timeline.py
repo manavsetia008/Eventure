@@ -49,7 +49,7 @@ def logic_item(ue, user, exams, key=None):
     }
 
 
-def serialize_user_event(ue, item=None, score=None, now_=None):
+def serialize_user_event(ue, item=None, score=None, now_=None, score_parts=None):
     now_ = now_ or now()
     ev = ue.event
     undone = [s for s in ue.stages if not s.done and s.due_at]
@@ -59,18 +59,23 @@ def serialize_user_event(ue, item=None, score=None, now_=None):
     if next_stage and not past:  # a missed deadline on an event that is over is not actionable
         hours = (next_stage.due_at - now_).total_seconds() / 3600
         risk = "overdue" if hours < 0 else "high" if hours <= 48 else "medium" if hours <= 24 * 7 else "low"
+    final_score = getattr(ue, "custom_score", None)
+    if final_score is None:
+        final_score = score
     return {
         "id": ue.id,
         "status": ue.status,
         "team_id": ue.team_id,
         "notes": ue.notes,
+        "custom_score": getattr(ue, "custom_score", None),
         "event": ev.to_dict(),
         "stages": [s.to_dict() for s in ue.stages],
         "next_deadline": {"name": next_stage.name, "due_at": iso(next_stage.due_at)} if next_stage else None,
         "risk": risk,
         "past": past,
         "travel_minutes": item["travel_minutes"] if item else None,
-        "score": score,
+        "score": final_score,
+        "score_parts": score_parts or {},
     }
 
 
@@ -80,10 +85,20 @@ def extract():
     text, ocr_text = "", None
     upload = request.files.get("image")
     if upload:
-        try:
-            ocr_text = image_to_text(upload.read())
-        except OCRUnavailable as exc:
-            raise ApiError(str(exc), 422)
+        img_bytes = upload.read()
+        sarvam_key = current_app.config.get("SARVAM_API_KEY") or None
+        if sarvam_key:
+            try:
+                from ..services.sarvam_ai import ocr_with_sarvam
+                ocr_text = ocr_with_sarvam(img_bytes, sarvam_key)
+            except Exception:
+                pass
+        if not ocr_text:
+            try:
+                ocr_text = image_to_text(img_bytes)
+            except OCRUnavailable as exc:
+                if not ocr_text:
+                    raise ApiError(str(exc), 422)
         text = ocr_text
     typed = request.form.get("text") or (request.get_json(silent=True) or {}).get("text") or ""
     text = f"{text}\n{typed}".strip()
@@ -92,8 +107,6 @@ def extract():
     parsed = extract_event(
         text,
         now(),
-        api_key=current_app.config.get("ANTHROPIC_API_KEY") or None,
-        model=current_app.config.get("ANTHROPIC_MODEL"),
         sarvam_key=current_app.config.get("SARVAM_API_KEY") or None,
         sarvam_model=current_app.config.get("SARVAM_MODEL", "sarvam-105b"),
     )
@@ -217,9 +230,10 @@ def timeline():
     uevs = UserEvent.query.filter_by(user_id=user.id).all()
     exams = ExamPeriod.query.filter_by(user_id=user.id).all()
     goals = user.goals_list
+    scoring_mode = getattr(user, "scoring_mode", "balanced") or "balanced"
 
     items = {ue.id: logic_item(ue, user, exams, key) for ue in uevs}
-    scores = {i: score_item(it, goals, now_) for i, it in items.items()}
+    scores = {i: score_item(it, goals, now_, scoring_mode) for i, it in items.items()}
 
     upcoming = [
         it for it in items.values()
@@ -242,7 +256,7 @@ def timeline():
             issue["suggestion"] = suggest_for_exam(it, scores[it["id"]], issue["meta"]["exam"])
         issue["titles"] = [items[i]["title"] for i in ids]
 
-    serialized = [serialize_user_event(ue, items[ue.id], scores[ue.id]["score"], now_) for ue in uevs]
+    serialized = [serialize_user_event(ue, items[ue.id], scores[ue.id]["score"], now_, scores[ue.id].get("parts")) for ue in uevs]
     far = now_ + timedelta(days=3650)
 
     def sort_key(s):
@@ -266,6 +280,12 @@ def update_user_event(ue_id):
         ue.status = d["status"]
     if "notes" in d:
         ue.notes = d["notes"] or ""
+    if "score" in d or "custom_score" in d:
+        val = d.get("score") if "score" in d else d.get("custom_score")
+        if val is not None:
+            ue.custom_score = max(0, min(100, int(val)))
+        else:
+            ue.custom_score = None
     db.session.commit()
     return jsonify(user_event=serialize_user_event(ue))
 

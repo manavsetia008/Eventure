@@ -62,7 +62,7 @@ def me():
     return jsonify(user=g.user.to_dict())
 
 
-@bp.put("/me")
+@bp.route("/me", methods=["PUT", "PATCH"])
 @login_required
 def update_me():
     d = request.get_json(silent=True) or {}
@@ -80,6 +80,10 @@ def update_me():
         u.college_lng = to_float(d["college_lng"])
     if "goals" in d:
         u.goals = _goals(d["goals"])
+    if "scoring_mode" in d:
+        mode = (d["scoring_mode"] or "balanced").strip().lower()
+        if mode in ("balanced", "interest_first", "deadline_first", "nearby_first"):
+            u.scoring_mode = mode
     db.session.commit()
     return jsonify(user=u.to_dict())
 

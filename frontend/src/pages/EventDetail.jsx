@@ -160,7 +160,11 @@ export default function EventDetail() {
         )}
         {reviews.map((r) => (
           <article className="card review" key={r.id}>
-            <p><b>{r.author}</b>{r.college ? `, ${r.college}` : ""} <span className="pill ok">Attended</span> <span className="muted small">{r.overall} / 5</span></p>
+            <p>
+              <b>{r.author}</b>{r.college ? `, ${r.college}` : ""}{" "}
+              <span className="pill ok" title="Verified attendee confirmed by Eventure check-in">✓ Verified Attendee</span>{" "}
+              <span className="muted small">{r.overall} / 5</span>
+            </p>
             {r.comment && <p>{r.comment}</p>}
             {r.mine && <button className="linklike small" onClick={() => window.confirm("Delete your review?") && run(() => api.del(`/events/${ev.id}/reviews/mine`))}>Delete my review</button>}
           </article>

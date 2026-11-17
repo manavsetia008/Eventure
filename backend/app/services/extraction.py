@@ -1,6 +1,7 @@
 """Turn pasted text (or OCR text from a poster) into structured event details.
 
-Uses an LLM when ANTHROPIC_API_KEY is set, otherwise (or on any failure) a rule-based parser.
+Exclusively uses Sarvam AI Indic Intelligence (Sarvam-105B) when SARVAM_API_KEY is set,
+otherwise (or on any offline condition) a deterministic rule-based parser.
 The student always confirms the result in the UI before anything is saved.
 """
 import json
@@ -253,33 +254,18 @@ def _normalise(data, original_text):
     }
 
 
-def extract_with_llm(text, api_key, model, now):
-    resp = requests.post(
-        "https://api.anthropic.com/v1/messages",
-        headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-        json={
-            "model": model,
-            "max_tokens": 1000,
-            "messages": [{"role": "user", "content": LLM_PROMPT.format(today=now.strftime("%A %d %B %Y"), text=text[:6000])}],
-        },
-        timeout=40,
-    )
-    resp.raise_for_status()
-    out = "".join(b.get("text", "") for b in resp.json().get("content", []) if b.get("type") == "text")
-    return _normalise(_load_json(out), text)
-
-
 def extract_event(text, now, api_key=None, model=None, sarvam_key=None, sarvam_model="sarvam-105b"):
-    if sarvam_key:
+    """Extract structured event details.
+    
+    Exclusively powered by Sarvam AI Indic Intelligence (Sarvam-105B) with
+    resilient deterministic rule-based fallback when offline / no API key.
+    """
+    effective_sarvam_key = sarvam_key or api_key
+    if effective_sarvam_key:
         try:
             from .sarvam_ai import extract_event_with_sarvam
-            res = extract_event_with_sarvam(text, sarvam_key, sarvam_model or "sarvam-105b", now)
+            res = extract_event_with_sarvam(text, effective_sarvam_key, sarvam_model or "sarvam-105b", now)
             return _normalise(res, text)
         except Exception as exc:
-            logging.warning("Sarvam AI extraction failed (%s), falling back...", exc)
-    if api_key:
-        try:
-            return extract_with_llm(text, api_key, model, now)
-        except Exception as exc:
-            logging.warning("LLM extraction failed, falling back to rules: %s", exc)
+            logging.warning("Sarvam AI extraction failed (%s), falling back to deterministic rules...", exc)
     return extract_with_rules(text, now)

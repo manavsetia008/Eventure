@@ -1,6 +1,6 @@
 # Eventure
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-3.0-000000.svg)](https://flask.palletsprojects.com/)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB.svg)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-5.4-646CFF.svg)](https://vitejs.dev/)
@@ -8,21 +8,23 @@
 [![Tests](https://img.shields.io/badge/Tests-110%20Passing-success.svg)](#3-check-it-works)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **Every event, one thread.** The unified timeline and decision engine for college hackathons, competitions, and campus events.
+> **"Every campus event, in one intelligent thread. Powered by Sarvam AI Indic Intelligence."**
 
-Built by **Team Quanta** for **hackFront India Grand Finale (IIIT Delhi, 21–22 Nov 2026)**:
-- **Manav Setia** — Backend Lead & Architecture
+Built with pride by **Team Quanta** for **hackFront India Grand Finale (IIIT Delhi, 21–22 Nov 2026)**:
+- **Manav Setia** — Backend Architecture & Core Systems
 - **Mayank Sharma** — API Engineering & External Integrations
-- **Milan Sharma** — Frontend Lead & UI/UX Design
 
 ---
 
-## Why Eventure Exists
+## National Market Scale (AISHE Benchmark)
 
-College students frequently juggle multiple hackathons, coding contests, and workshops across platforms like WhatsApp, Unstop, Devfolio, and email:
-- **Scattered Information:** Deadlines for abstract submissions, PPT rounds, and shortlist announcements get buried in chat groups.
-- **Passive Calendars:** Traditional calendars only store dates—they don't calculate road commute times between campuses or flag clashes with university exam schedules.
-- **Zero Trust Layer:** Free college events lack an authentic rating system. Eventure ensures reviews are strictly written by confirmed attendees.
+Eventure is engineered for the sheer scale of the Indian Higher Education ecosystem, benchmarked against the **Ministry of Education AISHE (All India Survey on Higher Education)** findings:
+
+- **4.50 Crore (45 Million)** Enrolled Higher Education Students across India.
+- **1,289 Universities & Institutes of National Importance** (IITs, IIITs, NITs, Central & State Universities).
+- **48,246 Affiliated Colleges** hosting thousands of hackathons, fests, and cultural events every semester.
+
+Campus communication is fragmented across unstructured WhatsApp forwards, Unstop links, Devfolio portals, and university notice boards. Eventure provides the single intelligent, multi-lingual thread that turns chaos into a prioritized roadmap.
 
 ---
 
@@ -30,33 +32,44 @@ College students frequently juggle multiple hackathons, coding contests, and wor
 
 ```mermaid
 flowchart LR
-  A["Poster / Notice / WhatsApp Circular"] --> B["Sarvam AI (sarvam-105b) + OCR"]
-  B --> C["Student Confirmation"]
-  C --> D[("Relational DB (SQLite / PostgreSQL)")]
-  D --> E["Deterministic Clash & Commute Engine"]
-  D --> F["Keep-or-Skip Priority Scoring (0-100)"]
-  D --> G["Verified Reviews & Discover Map"]
-  E --> H["React 18 Frontend (Dual-Theme)"]
+  A["Poster / Notice / WhatsApp Hinglish Circular"] --> B["Sarvam AI Indic Engine (sarvam-105b + Indic OCR)"]
+  B --> C["Human-in-the-Loop Confirmation"]
+  C --> D[("16 Relational Tables (SQLAlchemy ORM)")]
+  D --> E["Deterministic Clash & Commute Engine (Buffer = Gap - Travel - 15m)"]
+  D --> F["Keep-or-Skip Priority Fit Engine (0-100 Score)"]
+  D --> G["Verified Attendee Reviews & Discover Map"]
+  E --> H["React 18 Frontend (Matte Slate Navy & Clean Slate)"]
   F --> H
   G --> H
-  H --> K["Sarvam Translate (Indic Multilingual UI)"]
-  D --> I["Escalating Push & In-App Alerts"]
-  D --> J["Google Calendar & Private .ics Feed"]
+  H --> K["Sarvam Translate (22 Scheduled Indic Languages)"]
+  D --> I["Escalating Push & Web Alerts"]
+  D --> J["Two-Way Google Calendar Sync & Private .ics Feed"]
 ```
 
-**Tech Stack:**
-- **Frontend:** React 18, Vite 5, Vitest, Leaflet interactive mapping with CartoDB tiles, Web Push, installable PWA, Dual-Theme (Carbon Slate & Clean Slate).
-- **Backend:** Python Flask 3, SQLAlchemy ORM (15 relational tables), PyJWT stateless auth (RFC 7518 compliant), APScheduler.
-- **AI & Indic Language:** Sarvam AI (`sarvam-105b` MoE chat model for Hinglish notice extraction, `Sarvam Translate` for Indic languages: Hindi, Bengali, Tamil), with 100% zero-crash deterministic fallback.
-- **Database:** SQLite by default for zero-config local development; production-ready PostgreSQL via Docker.
-- **External Services:** OpenStreetMap Nominatim geocoding, Google Calendar OAuth sync, .ics private feeds, Tesseract OCR.
+### 16 Relational Tables (SQLAlchemy ORM)
+1. `users` — Student profiles, campus geolocation, career goals, and custom scoring mode.
+2. `events` — Canonical campus competitions, categories, venues, and registration URLs.
+3. `user_events` — Individual student journeys, stages, submission notes, and custom score overrides.
+4. `stages` — Multi-round milestones (Abstract, PPT, Prototype, Finals) with due dates.
+5. `exam_periods` — Student semester exam datesheets for the Academic Shield clash detector.
+6. `reviews` — Anti-tamper peer reviews restricted strictly to verified attendees.
+7. `clubs` — College societies, technical chapters, and student clubs.
+8. `club_follows` — Student-to-club subscription mappings.
+9. `teams` — Hackathon squads with unique 6-character team join codes.
+10. `team_members` — Squad rosters syncing timeline stages across teammates.
+11. `inbox_items` — Forwarded emails with Sarvam-parsed structured drafts.
+12. `google_accounts` — OAuth tokens for two-way Google Calendar synchronization.
+13. `synced_items` — Cross-references between Eventure stages and external Google events.
+14. `push_subscriptions` — RFC 8291 / 8292 VAPID Web Push endpoints.
+15. `notifications` — In-app alerts, deadline reminders, and conflict warnings.
+16. `tracked_portals` — User-selected platforms (Unstop, Devfolio, MLH) with auto-sync watchers.
 
 ---
 
 ## Getting Started
 
 ### Prerequisites
-- **Python 3.10+**
+- **Python 3.11+**
 - **Node.js 18+**
 
 ---
@@ -75,15 +88,15 @@ pip install -r requirements.txt
 copy .env.example .env
 # (On macOS/Linux: cp .env.example .env)
 
-# Seed realistic demo data:
-python seed.py
+# Seed realistic Delhi NCR campus demo data:
+python seed.py --reset
 
 # Start the Flask backend server:
 python run.py
 ```
-> **Tip:** If `python seed.py` reports that the database already has data, use `python seed.py --reset` to reload fresh demo records.
 
-The backend will start running at **`http://localhost:5000`**.
+The backend server starts at **`http://localhost:5000`**.
+*(Zero-API-key fallback: Eventure runs 100% locally with built-in deterministic rules and offline Haversine commute estimation even without external API keys).*
 
 ---
 
@@ -98,20 +111,23 @@ npm install
 # Option A: Start Vite development server (hot-reload on port 5173):
 npm run dev
 
-# Option B: Build production bundle (Flask on port 5000 directly serves it):
+# Option B: Build production bundle (Flask directly serves static assets):
 npm run build
 ```
 
 Open **`http://localhost:5000`** (or `http://localhost:5173` if running Vite dev server).
 
 **Demo Credentials:**
-- Email: `demo@eventure.app`
-- Password: `demo1234`
-*(Or use the 1-click **Auto-fill** button on the sign-in card).*
+- **Student A (AI/Hackathon Profile -> Score 82):**
+  - Email: `demo@eventure.app`
+  - Password: `demo1234`
+- **Student B (Design Profile -> Score 20):**
+  - Email: `student2@eventure.app`
+  - Password: `demo1234`
 
 ---
 
-### 3. Check It Works (Automated Tests)
+### 3. Check It Works (110 Automated Tests)
 
 #### Backend Test Suite (92 tests):
 
@@ -122,12 +138,12 @@ python -m unittest discover -s tests -v
 pytest tests -v
 ```
 
-**92 automated tests** run across:
-- Conflict detection (direct overlaps, commute travel gaps, exam periods, personal calendars)
-- Algorithmic priority scoring and keep-or-skip recommendations
-- User-configurable tracked portals CRUD, sync watcher, and platform affinity ranking boost
+**92 automated tests** verify:
+- Deterministic clash radar (direct overlaps, commute travel gaps, exam shields, personal calendars)
+- Algorithmic priority fit scoring (0–100) and keep-or-skip recommendations across tuning modes
+- Tracked portals watcher CRUD, automatic sync status, and platform affinity ranking boost
 - OCR preprocessing pipeline (greyscale, adaptive upscaling, binarization) and error recovery
-- Security rate limiting, RFC 7518 JWT validation, and live API endpoints
+- Security rate limiting, RFC 7518 JWT validation, and live REST endpoints
 
 #### Frontend Test Suite (18 tests):
 
@@ -148,58 +164,26 @@ npm test
 
 | Feature | Description |
 |---|---|
-| **Sarvam AI Extraction** | `sarvam-105b` extracts multi-stage milestones, venues, and deadlines from Hinglish circulars & posters. |
-| **Indic Multilingual UI** | Powered by `Sarvam Translate` across English, Hindi, Bengali, and Tamil for campus accessibility. |
-| **Submission Vault** | Dedicated toolkit storing live demo URL, GitHub repo, slides, video link, 1-click `Copy All Links`, pre-submission checklist, and venue Wi-Fi/table info. |
-| **Direct Portal Navigation** | 1-click button to open official hackathon page directly from timeline, inbox, and event cards, plus inline link editor. |
-| **Tracked Portals Watcher** | User-defined portal tracker (Unstop, Devfolio, Hack2skill, custom `xyz.com`) with automated deadline sync and ranking affinity boost (+15). |
-| **Stage Timeline** | Multi-round checklists (abstract, prototype, presentation) with color-coded deadline alerts. |
-| **Clash Radar** | Detects overlapping events, exam conflicts, and tight commute gaps (travel time + 15 min buffer). |
-| **Keep-or-Skip Engine** | Evaluates goal fit, deadline urgency, travel ease, and exam penalties to advise which plan to keep. |
-| **Smart Ingestion** | Upload flyers (OCR), paste notices, or forward emails to your private campus inbox token. |
-| **Discover Map** | Interactive Leaflet campus map showing nearby hackathons with Bayesian-smoothed ratings and "My Portals" filter. |
-| **Verified Reviews** | Anti-tamper review system accepting ratings only from students confirmed to have attended. |
-| **Escalating Alerts** | Background scheduler dispatching warnings at 48h, 24h, and 6h prior to stage deadlines. |
-| **Calendar Sync** | Two-way Google Calendar push and a private `.ics` feed for Apple Calendar, Outlook, and mobile widgets. |
+| **Sarvam Indic Intelligence** | Powered by `sarvam-105b` chat completions and Sarvam Indic Document OCR for extracting milestones from Hinglish flyers and WhatsApp circulars. |
+| **Indic Multilingual UI** | 1-click language switcher powered by `Sarvam Translate` supporting Hindi, Bengali, Tamil, Telugu, and Marathi. |
+| **Priority Fit Score (0–100)** | Algorithmic scoring with student-customizable tuning presets (Balanced, Interest-first, Deadline-first, Nearby-first) and transparent mathematical breakdown tooltip. |
+| **Inline Priority Editing** | Interactive score badge allowing students to override and prioritize hackathons according to personal focus. |
+| **Deterministic Clash Radar** | Highlights schedule overlaps, transit gaps (`Buffer = Gap - Travel Time - 15m`), and university exam conflicts with 1-click resolution actions. |
+| **Hackathon Submission Vault** | Pre-deadline toolkit storing GitHub repo, live demo, slides, demo video, and tech stack tags with a 1-click **"Copy All Links"** button. |
+| **Automated Portal Tracker** | Watcher panel for major hackathon platforms (Unstop, Devfolio, MLH, Campus portals) with automated sync toggles. |
+| **Verified Attendee Reviews** | Anti-tamper review system accepting ratings only from students confirmed to have attended after the event start date. |
+| **Discover Map** | Interactive Leaflet campus map showing nearby hackathons with Bayesian-smoothed ratings and commute distances. |
+| **Two-Way Calendar Sync** | Direct Google Calendar sync and private `.ics` feed for Apple Calendar, Outlook, and mobile widgets. |
 
 ---
 
-## Optional Integrations
+## Docker Deployment
 
-- **Sarvam AI API:** Set `SARVAM_API_KEY` in `backend/.env` to enable `sarvam-105b` extraction and `Sarvam Translate` Indic translation.
-- **PostgreSQL Database:** Run `docker compose up -d` and set `DATABASE_URL=postgresql://eventure:eventure@localhost:5432/eventure`.
-- **Tesseract OCR:** Install Tesseract on your host machine to extract text directly from event poster image files.
-- **Google Maps API:** Set `GOOGLE_MAPS_API_KEY` for live Distance Matrix road transit times (offline Haversine fallback included by default).
-- **Google Calendar Sync:** Add OAuth Client ID and Secret in `backend/.env` to sync timeline stages directly into your Google Calendar.
-- **Web Push Notifications:** Run `python scripts/generate_vapid_keys.py` to generate standard Web Push VAPID keys.
+For containerized deployment with PostgreSQL:
 
----
-
-## Repository Structure
-
+```bash
+docker compose up -d --build
 ```
-eventure/
-├── backend/
-│   ├── app/
-│   │   ├── models.py             # 16 SQLAlchemy tables (including TrackedPortal)
-│   │   ├── routes/               # Modular REST endpoints (auth, timeline, discover, portals, etc.)
-│   │   ├── services/             # Business logic (sarvam_ai, conflicts, travel, priority, ocr)
-│   │   └── utils.py              # Centralized shared helpers (formatting, dates, sanitization)
-│   ├── tests/                    # 92 unit and integration tests (pytest / unittest)
-│   ├── seed.py                   # Realistic multi-campus seed data
-│   └── run.py                    # Application entrypoint
-├── frontend/
-│   ├── src/
-│   │   ├── pages/                # Timeline, Discover, AddEvent, Settings, Login, NotFound, etc.
-│   │   ├── components/           # IssueCard, MapView, EventForm, HackathonVault
-│   │   ├── api.test.js           # API client integration tests
-│   │   ├── utils.test.js         # Frontend utility test suite
-│   │   ├── utils.js              # Centralized UI utility functions
-│   │   └── styles.css            # Clean Slate (Light) & Carbon Slate (Dark) design system
-│   └── package.json              # React 18, Vite 5, Vitest, Leaflet dependencies
-├── Dockerfile                    # Container definition
-├── docker-compose.yml            # Multi-service setup (App + PostgreSQL)
-└── README.md                     # Documentation
 
 ---
 

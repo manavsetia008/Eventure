@@ -134,3 +134,23 @@ def translate_with_sarvam(text: str, target_lang: str, api_key: str, source_lang
     except Exception as exc:
         logging.warning("Sarvam translation failed (%s), returning original text.", exc)
         return text
+
+
+def ocr_with_sarvam(image_bytes: bytes, api_key: str) -> str:
+    """Extract text from poster/flyer image using Sarvam Indic Document OCR."""
+    if not image_bytes or not api_key:
+        return ""
+    headers = {
+        "api-subscription-key": api_key,
+    }
+    files = {
+        "file": ("poster.png", image_bytes, "image/png"),
+    }
+    try:
+        resp = requests.post(f"{SARVAM_BASE_URL}/document-ocr", headers=headers, files=files, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("parsed_text", "")
+    except Exception as exc:
+        logging.warning("Sarvam Document OCR failed (%s), falling back...", exc)
+        return ""

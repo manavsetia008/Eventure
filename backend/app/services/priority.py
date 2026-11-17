@@ -67,15 +67,44 @@ def _effort(minutes):
     return 2
 
 
-def score_item(item, goals, now):
+WEIGHT_PRESETS = {
+    "balanced": {"goal": 40, "urgency": 20, "effort": 20, "progress": 10},
+    "interest_first": {"goal": 60, "urgency": 15, "effort": 10, "progress": 10},
+    "deadline_first": {"goal": 25, "urgency": 40, "effort": 15, "progress": 10},
+    "nearby_first": {"goal": 25, "urgency": 15, "effort": 40, "progress": 10},
+}
+
+
+def score_item(item, goals, now, scoring_mode="balanced"):
     goal, goal_reasons = goal_fit(goals, item.get("category"), item.get("title"), item.get("description"))
-    parts = {
-        "goal": goal,
-        "urgency": _urgency(item, now),
-        "effort": _effort(item.get("travel_minutes")),
-        "progress": 10 if item.get("status") == "registered" else 0,
-        "exam": -25 if item.get("in_exam") else 0,
-    }
+    raw_urgency = _urgency(item, now)
+    raw_effort = _effort(item.get("travel_minutes"))
+    raw_progress = 10 if item.get("status") == "registered" else 0
+    exam_penalty = -25 if item.get("in_exam") else 0
+
+    mode = scoring_mode if scoring_mode in WEIGHT_PRESETS else "balanced"
+    if mode == "balanced":
+        parts = {
+            "goal": goal,
+            "urgency": raw_urgency,
+            "effort": raw_effort,
+            "progress": raw_progress,
+            "exam": exam_penalty,
+        }
+    else:
+        w = WEIGHT_PRESETS[mode]
+        scaled_goal = round((goal / 40.0) * w["goal"])
+        scaled_urgency = round((raw_urgency / 20.0) * w["urgency"])
+        scaled_effort = round((raw_effort / 20.0) * w["effort"])
+        scaled_progress = round((raw_progress / 10.0) * w["progress"])
+        parts = {
+            "goal": scaled_goal,
+            "urgency": scaled_urgency,
+            "effort": scaled_effort,
+            "progress": scaled_progress,
+            "exam": exam_penalty,
+        }
+
     total = max(0, min(100, sum(parts.values())))
     return {"score": total, "parts": parts, "reasons": goal_reasons}
 

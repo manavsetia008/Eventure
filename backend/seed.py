@@ -55,7 +55,8 @@ def main():
         sat = today + timedelta(days=(5 - today.weekday()) % 7 or 7)
         next_mon = sat + timedelta(days=2)
 
-        demo = user("Demo Student", "demo@eventure.app", "IIIT Delhi", "hackathon, ai, web")
+        demo = user("Manav Setia (Demo)", "demo@eventure.app", "IIIT Delhi", "hackathon, ai, web")
+        student_b = user("Mayank Sharma (Design Profile)", "student2@eventure.app", "DTU", "design, ui, ux")
         riya = user("Riya Verma", "riya@eventure.app", "DTU")
         kabir = user("Kabir Singh", "kabir@eventure.app", "NSUT")
         meera = user("Meera Nair", "meera@eventure.app", "IIT Delhi")
@@ -107,16 +108,19 @@ def main():
                 db.session.add(Stage(user_event_id=ue.id, name=name, due_at=due, done=done))
             return ue
 
-        # Demo student's timeline
+        # Demo student's timeline (Student A: AI profile -> Score 82)
         journey(demo, hack_x, "registered", [
             ("Register", at(today - timedelta(days=3), 23, 59), True),
-            ("Submit", at(today + timedelta(days=2), 18), False),
-            ("Shortlist", at(sat - timedelta(days=1), 12), False),
+            ("Submit", at(today + timedelta(days=5), 18), False),
+            ("Shortlist", at(sat + timedelta(days=6), 12), False),
         ])
         journey(demo, work_y, "interested")
         journey(demo, contest_z, "interested", [("Register", contest_z.registration_deadline, False)])
         journey(demo, past1, "attended")  # can leave a verified review
-        db.session.add(ExamPeriod(user_id=demo.id, label="sessionals", start_date=next_mon, end_date=next_mon + timedelta(days=4)))
+        db.session.add(ExamPeriod(user_id=demo.id, label="sessionals", start_date=next_mon + timedelta(days=7), end_date=next_mon + timedelta(days=11)))
+
+        # Student B's timeline (Design profile -> Score 20 on Hackathon X)
+        journey(student_b, hack_x, "interested", [("Submit", at(today + timedelta(days=5), 18), False)])
 
         # Verified reviews from other students
         def review(u, ev, org, learn, val, text):

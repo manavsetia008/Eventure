@@ -4,6 +4,7 @@ import { api } from "../api";
 import { useAuth } from "../auth.jsx";
 import IssueCard from "../components/IssueCard.jsx";
 import HackathonVault from "../components/HackathonVault.jsx";
+import PriorityEditor from "../components/PriorityEditor.jsx";
 import { cap, fmtDate, fmtDuration, fmtRange, timeLeft } from "../utils";
 
 const STATUSES = ["interested", "registered", "attended", "skipped"];
@@ -63,9 +64,13 @@ function Node({ it, act }) {
             {ev.platform && <span className="pill">{ev.platform}</span>}
             {ev.category && <span className="pill alt">{cap(ev.category)}</span>}
             {it.score != null && (
-              <span className="pill score" title="Goal fit, deadline urgency and ease of travel">
-                Priority {it.score}
-              </span>
+              <PriorityEditor
+                value={it.score}
+                scoreParts={it.score_parts}
+                onChange={(newScore) =>
+                  act(() => api.patch(`/user-events/${it.id}`, { score: newScore }))
+                }
+              />
             )}
           </div>
         </div>
@@ -201,7 +206,13 @@ export default function Timeline() {
   const [error, setError] = useState("");
   const [dismissed, setDismissed] = useState([]);
   const [showSkipped, setShowSkipped] = useState(false);
-  const [lang, setLang] = useState("en");
+  const [lang, setLang] = useState(() => localStorage.getItem("eventure_lang") || "en");
+
+  useEffect(() => {
+    const handler = (e) => setLang(e.detail);
+    window.addEventListener("eventure_lang_change", handler);
+    return () => window.removeEventListener("eventure_lang_change", handler);
+  }, []);
 
   const load = useCallback(() => api.get("/timeline").then(setData).catch((e) => setError(e.message)), []);
   useEffect(() => { load(); }, [load]);

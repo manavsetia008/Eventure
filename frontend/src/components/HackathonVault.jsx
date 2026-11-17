@@ -13,6 +13,7 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
       demo_url: "",
       deck_url: "",
       video_url: "",
+      tech_stack: "",
       table_no: "",
       wifi_ssid: "",
       wifi_pass: "",
@@ -65,10 +66,12 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
 
   const copyAllLinks = () => {
     const text = [
-      `Live Demo: ${vault.demo_url || "N/A"}`,
-      `GitHub Repo: ${vault.github_url || "N/A"}`,
-      `Pitch Deck / Slides: ${vault.deck_url || "N/A"}`,
-      `Demo Video: ${vault.video_url || "N/A"}`,
+      `### Project Submission Links (Unstop / Devfolio)`,
+      `• Live Demo / Deployment: ${vault.demo_url || "N/A"}`,
+      `• GitHub Repository: ${vault.github_url || "N/A"}`,
+      `• Presentation Slides: ${vault.deck_url || "N/A"}`,
+      `• Demo Video URL: ${vault.video_url || "N/A"}`,
+      `• Tech Stack: ${vault.tech_stack || "React, Flask, Sarvam AI, SQLite"}`,
     ].join("\n");
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
@@ -177,6 +180,15 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
                 value={vault.video_url || ""}
                 onChange={(e) => updateField("video_url", e.target.value)}
                 placeholder="https://youtu.be/... or Loom"
+              />
+            </div>
+            <div className="vault-field" style={{ gridColumn: "1 / -1" }}>
+              <label>Tech Stack Tags (Libraries, Frameworks, AI Models)</label>
+              <input
+                type="text"
+                value={vault.tech_stack || ""}
+                onChange={(e) => updateField("tech_stack", e.target.value)}
+                placeholder="e.g. React 18, Flask 3, Sarvam-105B Indic LLM, Vite, Leaflet, SQLite"
               />
             </div>
           </div>

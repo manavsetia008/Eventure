@@ -1,40 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 /* ============================================================
-   Eventure — Dual-Theme High-Clarity Design System
-   Carbon Slate (Dark) / Clean Slate (Light)
-   Professional engineering standards, zero gimmicks.
-   ============================================================ */
+    Eventure — Dual-Theme High-Clarity Design System
+    Warm Amber Accent / Clean Slate (Light) / Matte Navy (Dark)
+    Professional engineering standards, zero gimmicks.
+    ============================================================ */
 
 :root {
-  /* Light Theme — Clean Slate */
+  /* Light Theme — Soft Grey-White + Warm Amber */
   --bg: #F6F8FA;
   --card: #FFFFFF;
-  --surface: #F3F4F6;
+  --surface: #F0F1F3;
   --line: #D0D7DE;
   --line-strong: #AFB8C1;
   --ink: #1F2328;
   --text-body: #24292F;
   --muted: #57606A;
-  --thread: #0969DA;
-  --navy: #1F2328;
-  --indigo: #312E81;
-  --alert: #CF222E;
-  --amber: #9A6700;
-  --teal: #1A7F37;
-  --btn-primary-bg: #1F2328;
+  --thread: #E67E22;
+  --navy: #0D1117;
+  --indigo: #2C3E50;
+  --alert: #E74C3C;
+  --amber: #F39C12;
+  --teal: #2ECC71;
+  --btn-primary-bg: #E67E22;
   --btn-primary-text: #FFFFFF;
-  --btn-primary-border: #1F2328;
-  --nav-active-bg: #EAECEF;
-  --nav-active-text: #1F2328;
-  --radius: 8px;
-  --shadow-sm: 0 1px 2px 0 rgba(27, 31, 36, 0.04);
-  --shadow: 0 3px 6px 0 rgba(27, 31, 36, 0.06);
-  --shadow-card: 0 8px 24px rgba(140, 149, 159, 0.12);
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
-  --font-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+  --btn-primary-border: #D35400;
+  --nav-active-bg: #FFF3E0;
+  --nav-active-text: #E67E22;
+  --radius: 10px;
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.06);
+  --shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 8px 28px rgba(0, 0, 0, 0.08);
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 [data-theme="dark"] {
-  /* Dark Theme — Carbon Slate (Real GitHub/Linear Standards) */
+  /* Dark Theme — Matte Navy Slate + Warm Amber */
   --bg: #0D1117;
   --card: #161B22;
   --surface: #21262D;
@@ -43,20 +44,20 @@
   --ink: #E6EDF3;
   --text-body: #C9D1D9;
   --muted: #848D97;
-  --thread: #388BFD;
+  --thread: #F39C12;
   --navy: #E6EDF3;
   --indigo: #79C0FF;
   --alert: #F85149;
-  --amber: #D29922;
-  --teal: #2EA043;
-  --btn-primary-bg: #238636;
+  --amber: #F39C12;
+  --teal: #2ECC71;
+  --btn-primary-bg: #E67E22;
   --btn-primary-text: #FFFFFF;
   --btn-primary-border: rgba(240, 246, 252, 0.1);
   --nav-active-bg: #21262D;
-  --nav-active-text: #E6EDF3;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow: 0 3px 6px 0 rgba(0, 0, 0, 0.4);
-  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --nav-active-text: #F39C12;
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+  --shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 8px 28px rgba(0, 0, 0, 0.55);
 }
 
 /* ---- Reset & Base ---- */
@@ -173,7 +174,7 @@ p { margin: 0 0 0.6rem; color: var(--text-body); }
 }
 
 /* ============================================================
-   TOPBAR (Internal App) - Clean & Unified
+   TOPBAR (Internal App) — Clean & Unified
    ============================================================ */
 .topbar {
   display: flex;
@@ -337,7 +338,7 @@ p { margin: 0 0 0.6rem; color: var(--text-body); }
   background: var(--btn-primary-bg);
   color: var(--btn-primary-text);
   border: 1px solid var(--btn-primary-border);
-  border-radius: 6px;
+  border-radius: 10px;
   padding: 0.5rem 1.1rem;
   font: inherit;
   font-weight: 600;
@@ -347,16 +348,19 @@ p { margin: 0 0 0.6rem; color: var(--text-body); }
   display: inline-block;
   line-height: 1.4;
   box-shadow: var(--shadow-sm);
-  transition: all 0.15s ease, transform 0.05s ease;
+  transition: all 0.2s ease, transform 0.1s ease;
 }
 
 .btn:hover:not(:disabled) {
-  filter: brightness(1.12);
+  filter: brightness(1.15);
+  box-shadow: 0 4px 14px rgba(230, 126, 34, 0.3);
   color: var(--btn-primary-text);
   text-decoration: none;
+  transform: translateY(-1px);
 }
 .btn:active:not(:disabled) {
   transform: translateY(1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn.ghost {
@@ -364,6 +368,7 @@ p { margin: 0 0 0.6rem; color: var(--text-body); }
   color: var(--text-body);
   border-color: var(--line);
   box-shadow: var(--shadow-sm);
+  border-radius: 10px;
 }
 
 .btn.ghost:hover:not(:disabled) {
@@ -371,12 +376,13 @@ p { margin: 0 0 0.6rem; color: var(--text-body); }
   border-color: var(--line-strong);
   color: var(--ink);
   filter: none;
+  box-shadow: var(--shadow);
 }
 
 .btn.small {
   padding: 0.3rem 0.7rem;
   font-size: 0.82rem;
-  border-radius: 5px;
+  border-radius: 8px;
 }
 
 .btn:disabled {
@@ -466,14 +472,14 @@ select option {
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--thread);
-  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
+  box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.15);
   outline: none;
 }
 
 [data-theme="dark"] input:focus,
 [data-theme="dark"] select:focus,
 [data-theme="dark"] textarea:focus {
-  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.2);
 }
 
 input[type="checkbox"] { width: auto; }
@@ -560,7 +566,7 @@ ul.plain li:last-child { border-bottom: none; }
 }
 
 /* ============================================================
-   PILLS & TAGS (High Contrast, Crisp, No Baby Pastels)
+   PILLS & TAGS
    ============================================================ */
 .pills {
   display: flex;
@@ -592,6 +598,13 @@ ul.plain li:last-child { border-bottom: none; }
   color: var(--thread);
   border: 1px solid var(--thread);
   font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.pill.score:hover {
+  background: var(--thread);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(230, 126, 34, 0.25);
 }
 
 .pill.ok {
@@ -720,17 +733,17 @@ ul.plain li:last-child { border-bottom: none; }
 .node.risk-overdue::before,
 .node.risk-high::before {
   background: var(--alert);
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.4);
+  box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.4);
 }
 
 .node.risk-medium::before {
   background: var(--amber);
-  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.4);
+  box-shadow: 0 0 0 2px rgba(243, 156, 18, 0.4);
 }
 
 .node.risk-low::before {
   background: var(--teal);
-  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.4);
+  box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.4);
 }
 
 .node.risk-overdue .card,
@@ -1140,11 +1153,11 @@ tbody th { color: var(--muted); font-weight: 600; white-space: nowrap; }
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: rgba(35, 134, 54, 0.15);
+  background: rgba(46, 204, 113, 0.15);
   color: var(--teal);
   font-size: 0.72rem;
   font-weight: 700;
-  border: 1px solid rgba(35, 134, 54, 0.35);
+  border: 1px solid rgba(46, 204, 113, 0.35);
   flex-shrink: 0;
 }
 
@@ -1198,7 +1211,7 @@ tbody th { color: var(--muted); font-weight: 600; white-space: nowrap; }
   background: var(--thread);
   color: #ffffff;
   font-weight: 600;
-  border-radius: 6px;
+  border-radius: 10px;
   border: 1px solid transparent;
 }
 .auth-action-btn:hover {

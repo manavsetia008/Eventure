@@ -20,6 +20,7 @@ class User(db.Model):
     college_lat = db.Column(db.Float)
     college_lng = db.Column(db.Float)
     goals = db.Column(db.String(500), default="")  # comma separated, e.g. "hackathon, ai, internships"
+    scoring_mode = db.Column(db.String(30), default="balanced")  # balanced, interest_first, deadline_first, nearby_first
     inbox_token = db.Column(db.String(32), unique=True, nullable=False, default=lambda: secrets.token_hex(5))
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -42,6 +43,7 @@ class User(db.Model):
             "college_lat": self.college_lat,
             "college_lng": self.college_lng,
             "goals": self.goals_list,
+            "scoring_mode": self.scoring_mode or "balanced",
         }
 
 
@@ -130,6 +132,7 @@ class UserEvent(db.Model):
     status = db.Column(db.String(20), default="interested", nullable=False)
     team_id = db.Column(db.Integer, db.ForeignKey("teams.id"))
     notes = db.Column(db.Text, default="")
+    custom_score = db.Column(db.Integer, nullable=True)  # user manual priority override
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     event = db.relationship("Event")

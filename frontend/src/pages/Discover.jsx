@@ -20,6 +20,22 @@ export default function Discover() {
   const [error, setError] = useState("");
   const [picked, setPicked] = useState([]);
   const [compare, setCompare] = useState(null);
+  const [portals, setPortals] = useState([]);
+
+  const loadPortals = useCallback(() => {
+    api.get("/portals").then((r) => setPortals(r.portals || [])).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadPortals();
+  }, [loadPortals]);
+
+  const toggleSync = async (p) => {
+    try {
+      await api.patch(`/portals/${p.id}`, { auto_sync: !p.auto_sync });
+      loadPortals();
+    } catch {}
+  };
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -65,6 +81,60 @@ export default function Discover() {
         <div>
           <h1>Discover events</h1>
           <p className="muted small">Find verified campus events, view locations on map, and compare side by side.</p>
+        </div>
+      </div>
+
+      {/* Portal Tracker Strip */}
+      <div className="card" style={{ padding: "0.85rem 1.1rem", marginBottom: "1.2rem", background: "var(--card)", border: "1px solid var(--line)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.6rem", marginBottom: "0.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontSize: "1.1rem" }}>⚡</span>
+            <strong style={{ fontSize: "0.92rem" }}>Automated Portal Tracker</strong>
+            <span className="small muted">Auto-sync & deadline reminders across hackathon platforms</span>
+          </div>
+          <Link to="/settings" className="small linklike">Manage portals ↗</Link>
+        </div>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+          {portals.length === 0 ? (
+            <div className="small muted">
+              Tracking default campus sources (Unstop, Devfolio, MLH). <Link to="/settings">Add custom portals</Link> to watch.
+            </div>
+          ) : (
+            portals.map((p) => (
+              <div
+                key={p.id}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.45rem",
+                  padding: "0.25rem 0.65rem",
+                  borderRadius: "999px",
+                  border: `1px solid ${p.auto_sync ? "var(--teal)" : "var(--line)"}`,
+                  background: p.auto_sync ? "rgba(46, 204, 113, 0.08)" : "var(--surface)",
+                  fontSize: "0.8rem",
+                }}
+              >
+                <span style={{ fontWeight: 600, color: p.auto_sync ? "var(--ink)" : "var(--muted)" }}>{p.name}</span>
+                <button
+                  type="button"
+                  onClick={() => toggleSync(p)}
+                  style={{
+                    background: p.auto_sync ? "var(--teal)" : "var(--line)",
+                    color: p.auto_sync ? "#fff" : "var(--muted)",
+                    border: "none",
+                    borderRadius: "4px",
+                    padding: "0.1rem 0.4rem",
+                    fontSize: "0.68rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                  title={p.auto_sync ? "Auto-sync ON: Click to pause" : "Paused: Click to enable"}
+                >
+                  {p.auto_sync ? "SYNC ON" : "PAUSED"}
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

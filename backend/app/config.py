@@ -21,8 +21,7 @@ class Config:
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173")
     MAX_CONTENT_LENGTH = int(os.getenv("UPLOAD_MAX_MB", "8")) * 1024 * 1024
 
-    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-    ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5-5")
+    # Sarvam AI Indic Intelligence (Sarvam-105B & Sarvam Translate)
     SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
     SARVAM_MODEL = os.getenv("SARVAM_MODEL", "sarvam-105b")
     GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")

@@ -76,6 +76,10 @@ export default function AddEvent() {
     </p>
   ) : null;
 
+  function loadChatSample() {
+    setText("Kal 2 baje Audi 2 me hackathon meeting hai, PPT le aana. Abstract submission deadline 18 Nov 11:59 PM.");
+  }
+
   function loadHinglishSample() {
     setText(
       "HackIIITD 2026 Innovation Challenge:\n" +
@@ -99,16 +103,34 @@ export default function AddEvent() {
       {!initial ? (
         <section className="card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
-            <h2>Import from announcement or poster</h2>
-            <span className="portal-badge">Smart Extraction</span>
+            <h2>Indic Smart Capture: Chat to Milestones</h2>
+            <span className="portal-badge" style={{ background: "rgba(230, 126, 34, 0.12)", color: "var(--thread)", borderColor: "var(--thread)" }}>
+              ⚡ Sarvam-105B Indic Intelligence
+            </span>
           </div>
           <p className="muted small">
-            We extract the title, dates, venue, registration deadlines, and website link. You review them before saving.
+            Paste messy WhatsApp circulars, Telegram chats, Hinglish reminders, or upload posters. Sarvam AI extracts stages, deadlines, and venues for human-in-the-loop review.
           </p>
 
-          <div style={{ marginBottom: "0.6rem" }}>
-            <button type="button" className="linklike small" onClick={loadHinglishSample}>
-              Paste sample campus announcement
+          <div style={{ margin: "0.8rem 0", display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+            <span className="small muted">Try quick Indic samples:</span>
+            <button
+              type="button"
+              className="pill"
+              onClick={loadChatSample}
+              style={{ cursor: "pointer", background: "var(--surface)", border: "1px solid var(--line-strong)" }}
+              title="Click to paste Hinglish chat message"
+            >
+              💬 "Kal 2 baje Audi 2 me hackathon meeting hai..."
+            </button>
+            <button
+              type="button"
+              className="pill"
+              onClick={loadHinglishSample}
+              style={{ cursor: "pointer", background: "var(--surface)", border: "1px solid var(--line-strong)" }}
+              title="Click to paste multi-stage hackathon notice"
+            >
+              📄 HackIIITD Multi-Stage Notice
             </button>
           </div>
 

@@ -19,6 +19,13 @@ function Layout({ children, theme, toggleTheme }) {
   const { user, logout } = useAuth();
   const [unread, setUnread] = useState(0);
   const [inbox, setInbox] = useState(0);
+  const [lang, setLang] = useState(() => localStorage.getItem("eventure_lang") || "en");
+
+  const changeLang = (l) => {
+    setLang(l);
+    localStorage.setItem("eventure_lang", l);
+    window.dispatchEvent(new CustomEvent("eventure_lang_change", { detail: l }));
+  };
 
   useEffect(() => {
     let alive = true;
@@ -57,6 +64,22 @@ function Layout({ children, theme, toggleTheme }) {
           <NavLink to="/settings">Settings</NavLink>
         </nav>
         <div className="topbar-right">
+          <div className="lang-picker" title="Powered by Sarvam Translate across 22 Indic Languages">
+            <span style={{ fontSize: "0.76rem", fontWeight: 700, color: "var(--thread)" }}>🌐 Sarvam:</span>
+            <select
+              value={lang}
+              onChange={(e) => changeLang(e.target.value)}
+              className="lang-select"
+              aria-label="Indic language selection"
+            >
+              <option value="en">English</option>
+              <option value="hi">हिन्दी (Hindi)</option>
+              <option value="bn">বাংলা (Bengali)</option>
+              <option value="ta">தமிழ் (Tamil)</option>
+              <option value="te">తెలుగు (Telugu)</option>
+              <option value="mr">मराठी (Marathi)</option>
+            </select>
+          </div>
           <button
             type="button"
             className="theme-toggle-btn"
