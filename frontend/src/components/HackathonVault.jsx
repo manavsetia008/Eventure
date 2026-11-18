@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Archive, Check, Copy } from "lucide-react";
 import { api } from "../api";
 
 export default function HackathonVault({ userEventId, initialNotes = "", onUpdate }) {
@@ -89,7 +90,8 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
           onClick={() => setOpen(true)}
           style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem" }}
         >
-          <span>📦 Hackathon Toolkit & Submission Vault</span>
+          <Archive size={15} strokeWidth={1.75} />
+          <span>Hackathon Toolkit & Submission Vault</span>
           {hasAny && <span className="pill ok" style={{ fontSize: "0.72rem" }}>Ready</span>}
         </button>
       </div>
@@ -100,14 +102,18 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
     <div className="vault-section card" style={{ marginTop: "1rem", border: "1px solid var(--line-strong)" }}>
       <div className="vault-card-head">
         <div>
-          <h3 style={{ margin: 0, fontSize: "1.05rem" }}>📦 Hackathon Submission Vault & Venue Toolkit</h3>
+          <h3 style={{ margin: 0, fontSize: "1.05rem", display: "inline-flex", alignItems: "center", gap: "0.45rem" }}>
+            <Archive size={18} strokeWidth={1.75} style={{ color: "var(--thread)" }} />
+            <span>Hackathon Submission Vault & Venue Toolkit</span>
+          </h3>
           <p className="muted small" style={{ margin: "0.2rem 0 0" }}>
             Store your repo, demo link, slides, table number, and mentor feedback so you never scramble at deadline.
           </p>
         </div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button type="button" className="btn small" onClick={copyAllLinks}>
-            {copied ? "Copied Links!" : "📋 Copy All Links"}
+          <button type="button" className="btn small" onClick={copyAllLinks} style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            <span>{copied ? "Copied Links!" : "Copy All Links"}</span>
           </button>
           <button type="button" className="linklike small muted" onClick={() => setOpen(false)}>
             Close
@@ -256,7 +262,7 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
               <input
                 value={vault.wifi_ssid || ""}
                 onChange={(e) => updateField("wifi_ssid", e.target.value)}
-                placeholder="e.g. IIITD-Guest / HackFest-5G"
+                placeholder="e.g. Campus-Guest / HackFest-5G"
               />
             </div>
             <div className="vault-field">

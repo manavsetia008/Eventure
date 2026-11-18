@@ -1,0 +1,419 @@
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  ArrowRight,
+  CalendarDays,
+  ChevronDown,
+  ClipboardPaste,
+  Moon,
+  ScanSearch,
+  Sun,
+} from "lucide-react";
+import Logo from "../components/Logo.jsx";
+import Status from "../components/Status.jsx";
+import Badge from "../components/Badge.jsx";
+import { useAuth } from "../auth.jsx";
+
+const HOW_STEPS = [
+  {
+    icon: <ClipboardPaste size={20} strokeWidth={1.75} />,
+    title: "Paste notice or image",
+    desc: "Drop a poster image or paste the raw message text from your student group.",
+  },
+  {
+    icon: <ScanSearch size={20} strokeWidth={1.75} />,
+    title: "Extract dates & venues",
+    desc: "Review dates, location, deadlines, and registration links extracted in seconds.",
+  },
+  {
+    icon: <CalendarDays size={20} strokeWidth={1.75} />,
+    title: "Track on clear timeline",
+    desc: "See deadlines, commute travel times, and exam clashes all in one chronological thread.",
+  },
+];
+
+const FAQS = [
+  {
+    q: "Is Eventure free for students?",
+    a: "Yes, completely free. Eventure is built for students managing busy college event seasons with zero paywalls.",
+  },
+  {
+    q: "How does notice extraction work?",
+    a: "Eventure reads plain text, announcement notices, or forwards to extract event titles, venues, dates, and registration links automatically.",
+  },
+  {
+    q: "Can I connect external portals like Unstop or Devfolio?",
+    a: "Yes. Configure tracked platforms in Settings to monitor event updates and pull deadlines directly into your timeline.",
+  },
+  {
+    q: "How does travel time calculate departure times?",
+    a: "It estimates transit duration from your saved campus coordinates to the venue, adding a 15-minute buffer so you leave on time.",
+  },
+];
+
+export default function Landing({ theme, toggleTheme }) {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [openFaq, setOpenFaq] = useState(null);
+  const [busyDemo, setBusyDemo] = useState(false);
+  const [demoError, setDemoError] = useState("");
+
+  const howRef = useRef(null);
+  const featuresRef = useRef(null);
+  const faqRef = useRef(null);
+
+  const scrollTo = (ref) => {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  async function handleQuickDemo() {
+    setBusyDemo(true);
+    setDemoError("");
+    try {
+      await login("demo@eventure.app", "demo1234");
+      navigate("/");
+    } catch (err) {
+      setDemoError(err?.message || "Demo sign in failed. Please try signing in directly.");
+      navigate("/login");
+    } finally {
+      setBusyDemo(false);
+    }
+  }
+
+  return (
+    <div className="landing-page-wrap">
+      {/* ── 1. Sticky Navbar ── */}
+      <header className="landing-navbar">
+        <div className="landing-container landing-nav-inner">
+          <Link to="/" className="landing-brand-link" aria-label="Eventure home">
+            <Logo size={24} />
+          </Link>
+
+          <nav className="landing-nav-center" aria-label="Landing Navigation">
+            <button type="button" onClick={() => scrollTo(howRef)}>
+              How it works
+            </button>
+            <button type="button" onClick={() => scrollTo(featuresRef)}>
+              Features
+            </button>
+            <button type="button" onClick={() => scrollTo(faqRef)}>
+              FAQ
+            </button>
+          </nav>
+
+          <div className="landing-nav-right">
+            <button
+              type="button"
+              className="theme-toggle-btn"
+              onClick={toggleTheme}
+              aria-label="Toggle light or dark theme"
+            >
+              {theme === "dark" ? <Sun size={15} strokeWidth={1.75} /> : <Moon size={15} strokeWidth={1.75} />}
+            </button>
+            <Link to="/login" className="btn ghost small">
+              Sign in
+            </Link>
+            <button
+              type="button"
+              className="btn small"
+              onClick={handleQuickDemo}
+              disabled={busyDemo}
+            >
+              {busyDemo ? "Opening..." : "Get started"}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* ── 2. Hero Section ── */}
+      <section className="landing-hero-section">
+        <div className="landing-container landing-hero-grid">
+          <div className="landing-hero-text">
+            <h1 className="hero-title">
+              Every campus event. <span className="brand-accent">One clear thread.</span>
+            </h1>
+
+            <p className="hero-desc">
+              The unified timeline for students. Track hackathon deadlines, calculate commute travel times,
+              and avoid exam date clashes in one place.
+            </p>
+
+            <div className="hero-actions">
+              <button
+                type="button"
+                className="btn hero-cta-primary"
+                onClick={handleQuickDemo}
+                disabled={busyDemo}
+              >
+                <span>{busyDemo ? "Opening..." : "Open demo timeline"}</span>
+                <ArrowRight size={15} strokeWidth={1.75} />
+              </button>
+              <button
+                type="button"
+                className="btn ghost hero-cta-secondary"
+                onClick={() => scrollTo(howRef)}
+              >
+                See how it works
+              </button>
+            </div>
+
+            {demoError && (
+              <p className="hero-demo-error" role="alert">
+                {demoError}
+              </p>
+            )}
+          </div>
+
+          {/* Simple "Add event" preview card: Paste box + 4 extracted rows */}
+          <div className="landing-hero-preview">
+            <div className="clean-hero-card">
+              <div className="card-mock-title">Add event from notice</div>
+              
+              {/* Paste preview mockup */}
+              <div className="hero-mock-pastebox">
+                <span className="mock-paste-text">
+                  Campus Tech Fest 2026: Venue Main Campus Audi 2. Starts 21 Nov 10:00 AM, Abstract due 18 Nov...
+                </span>
+                <span className="mock-paste-badge">Extracted</span>
+              </div>
+
+              {/* 4 extracted rows */}
+              <div className="hero-extracted-list">
+                <div className="hero-extracted-row">
+                  <span className="row-key">Title</span>
+                  <span className="row-val">Tech Fest Finale</span>
+                </div>
+                <div className="hero-extracted-row">
+                  <span className="row-key">Date</span>
+                  <span className="row-val">21–22 Nov 2026</span>
+                </div>
+                <div className="hero-extracted-row">
+                  <span className="row-key">Venue</span>
+                  <span className="row-val">Main Campus, Hall A</span>
+                </div>
+                <div className="hero-extracted-row">
+                  <span className="row-key">Deadline</span>
+                  <div className="row-val-status">
+                    <span>18 Nov 11:59 PM</span>
+                    <Status variant="due_soon" label="Due soon" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 3. How It Works (3 Columns with dividers, clean icons) ── */}
+      <section className="landing-section subtle-bg" ref={howRef}>
+        <div className="landing-container">
+          <div className="section-head-simple">
+            <h2 className="section-title">How it works</h2>
+            <p className="section-subtitle">
+              From announcement message to organized timeline in three steps.
+            </p>
+          </div>
+
+          <div className="how-columns-row">
+            {HOW_STEPS.map((step, idx) => (
+              <div key={idx} className="how-column-item">
+                <div className="how-icon-wrap">{step.icon}</div>
+                <h3 className="how-col-title">{step.title}</h3>
+                <p className="how-col-desc">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 4. Features (2 Alternating text+visual rows, then small items) ── */}
+      <section className="landing-section" ref={featuresRef}>
+        <div className="landing-container">
+          <div className="section-head-simple">
+            <h2 className="section-title">Features</h2>
+            <p className="section-subtitle">
+              Built to manage the clash and scramble of college event seasons.
+            </p>
+          </div>
+
+          {/* Row 1: Text Left, Visual Right */}
+          <div className="feature-alt-row">
+            <div className="feature-alt-text">
+              <h3 className="feature-alt-title">Catch schedule and exam clashes early</h3>
+              <p className="feature-alt-desc">
+                When two events overlap or an event falls right inside your semester exam datesheet,
+                Eventure flags the collision immediately with concrete resolution options.
+              </p>
+            </div>
+            <div className="feature-alt-visual">
+              <div className="visual-mock-box">
+                <div className="visual-clash-header">
+                  <Badge variant="danger">Overlap detected</Badge>
+                </div>
+                <div className="visual-clash-names">
+                  <span>Tech Fest Finale</span>
+                  <span className="clash-vs">vs</span>
+                  <span>Cloud Workshop</span>
+                </div>
+                <p className="visual-clash-sub">Events share overlapping hours on Saturday</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 2: Visual Left, Text Right */}
+          <div className="feature-alt-row reverse">
+            <div className="feature-alt-text">
+              <h3 className="feature-alt-title">Know your commute transit time</h3>
+              <p className="feature-alt-desc">
+                Pin your campus coordinates once. Eventure calculates estimated road travel time and
+                adds a realistic safety buffer so you leave on time.
+              </p>
+            </div>
+            <div className="feature-alt-visual">
+              <div className="visual-mock-box">
+                <div className="visual-transit-route">
+                  <span className="route-stop">Main Campus</span>
+                  <span className="route-arrow">→</span>
+                  <span className="route-stop">Venue A</span>
+                </div>
+                <div className="visual-transit-meta">
+                  <span className="meta-time">42 min travel</span>
+                  <span className="meta-buffer">+15 min buffer</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom 3 simple text items */}
+          <div className="features-mini-row">
+            <div className="feature-mini-col">
+              <h4>Milestone Stages</h4>
+              <p>Break hackathons into abstract submissions, slide decks, and prototype checkpoints.</p>
+            </div>
+            <div className="feature-mini-col">
+              <h4>Submission Vault</h4>
+              <p>Keep your GitHub repository, demo links, table number, and team Wi-Fi info in one spot.</p>
+            </div>
+            <div className="feature-mini-col">
+              <h4>Verified Reviews</h4>
+              <p>Read honest reviews written strictly by students who attended past editions.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 5. FAQ (4 Questions) ── */}
+      <section className="landing-section subtle-bg" ref={faqRef}>
+        <div className="landing-container max-w-narrow">
+          <div className="section-head-simple">
+            <h2 className="section-title">Frequently asked questions</h2>
+          </div>
+
+          <div className="faq-clean-wrap">
+            {FAQS.map((faq, idx) => (
+              <div key={idx} className={`faq-row-item${openFaq === idx ? " open" : ""}`}>
+                <button
+                  type="button"
+                  className="faq-clean-btn"
+                  onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                  aria-expanded={openFaq === idx}
+                >
+                  <span>{faq.q}</span>
+                  <ChevronDown size={16} strokeWidth={1.75} className="faq-chevron" />
+                </button>
+                {openFaq === idx && <div className="faq-clean-answer">{faq.a}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 6. CTA Section (Clean distinct block on page bg, 80px spacing) ── */}
+      <section className="landing-cta-section">
+        <div className="landing-container">
+          <div className="landing-cta-box">
+            <h2 className="cta-band-title">Ready to streamline your event schedule?</h2>
+            <p className="cta-band-desc">
+              Track deadlines, avoid clashes, and keep all your campus events in one clear thread.
+            </p>
+            <div className="cta-clean-btn-row">
+              <button
+                type="button"
+                className="btn"
+                onClick={handleQuickDemo}
+                disabled={busyDemo}
+              >
+                <span>{busyDemo ? "Opening..." : "Open demo timeline"}</span>
+                <ArrowRight size={15} strokeWidth={1.75} />
+              </button>
+              <Link to="/signup" className="btn ghost">
+                Create account
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 7. Separate Footer Block (Distinct background: #F0F3F8 Light / #010409 Dark) ── */}
+      <footer className="landing-main-footer">
+        <div className="landing-container footer-simple-wrap">
+          <div className="footer-col-brand">
+            <Logo size={22} />
+            <p className="footer-tagline">
+              Every campus event, one clear thread.
+            </p>
+          </div>
+
+          <div className="footer-col-nav">
+            <div className="footer-col">
+              <span className="footer-col-heading">Product</span>
+              <Link to="/login" className="footer-nav-link">Timeline</Link>
+              <Link to="/discover" className="footer-nav-link">Discover</Link>
+              <Link to="/add" className="footer-nav-link">Add event</Link>
+            </div>
+
+            <div className="footer-col">
+              <span className="footer-col-heading">Account</span>
+              <Link to="/login" className="footer-nav-link">Sign in</Link>
+              <Link to="/signup" className="footer-nav-link">Create account</Link>
+              <button
+                type="button"
+                className="footer-nav-link"
+                style={{ textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                onClick={handleQuickDemo}
+                disabled={busyDemo}
+              >
+                Demo account
+              </button>
+            </div>
+
+            <div className="footer-col">
+              <span className="footer-col-heading">Help</span>
+              <button
+                type="button"
+                className="footer-nav-link"
+                style={{ textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                onClick={() => faqRef.current?.scrollIntoView({ behavior: "smooth" })}
+              >
+                FAQ
+              </button>
+              <button
+                type="button"
+                className="footer-nav-link"
+                style={{ textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                onClick={() => howRef.current?.scrollIntoView({ behavior: "smooth" })}
+              >
+                How it works
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="landing-container footer-bottom-divider">
+          <span>© 2026 Eventure</span>
+          <span style={{ fontSize: "12px", color: "var(--footer-muted)" }}>Built for campus events</span>
+        </div>
+      </footer>
+    </div>
+  );
+}

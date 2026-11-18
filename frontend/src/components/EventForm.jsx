@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { MapPin } from "lucide-react";
 import { api } from "../api";
 import { CATEGORIES, blank, cap } from "../utils";
 
@@ -100,7 +101,9 @@ export default function EventForm({ initial, mode, notice, saving, error, submit
           {lookup.busy ? "Looking up..." : "Look up location"}
         </button>
         {form.lat !== "" && form.lng !== "" && (
-          <span className="small ok">📍 Venue pinned for travel estimates</span>
+          <span className="small ok" style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem" }}>
+            <MapPin size={13} strokeWidth={1.75} /> Venue pinned for travel estimates
+          </span>
         )}
       </div>
 

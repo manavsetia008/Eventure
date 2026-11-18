@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ExternalLink } from "lucide-react";
 import { api } from "../api";
+import Chip from "../components/Chip.jsx";
 import { cap, fmtRange } from "../utils";
 
 export default function Inbox() {
@@ -81,8 +83,8 @@ export default function Inbox() {
                   <p className="muted small">From {item.sender || "unknown sender"}</p>
                 </div>
                 <div className="pills">
-                  {p.platform && <span className="pill">{p.platform}</span>}
-                  {p.category && <span className="pill alt">{cap(p.category)}</span>}
+                  {p.platform && <Chip label={p.platform} />}
+                  {p.category && <Chip label={cap(p.category)} />}
                 </div>
               </div>
               <ul className="facts">
@@ -95,16 +97,15 @@ export default function Inbox() {
                   </li>
                 )}
               </ul>
-              <div className="row">
+              <div className="row" style={{ alignItems: "center", gap: "0.5rem" }}>
                 {p.url && (
                   <a
                     href={p.url.startsWith("http") ? p.url : `https://${p.url}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="btn small"
-                    style={{ textDecoration: "none" }}
+                    className="btn-tertiary"
                   >
-                    Go to Hackathon Page ↗
+                    Open page <ExternalLink size={12} />
                   </a>
                 )}
                 <button

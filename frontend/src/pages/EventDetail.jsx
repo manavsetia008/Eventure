@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { ExternalLink } from "lucide-react";
 import { api } from "../api";
 import { cap, fmtDuration, fmtRange } from "../utils";
 import HackathonVault from "../components/HackathonVault.jsx";
+import StatusBadge from "../components/StatusBadge.jsx";
+import Chip from "../components/Chip.jsx";
+import Badge from "../components/Badge.jsx";
 
 const SCALE = [1, 2, 3, 4, 5];
 
@@ -42,8 +46,8 @@ export default function EventDetail() {
           <p className="muted">{fmtRange(ev.start_at, ev.end_at)}{ev.venue_name ? ` · ${ev.venue_name}` : ""}</p>
         </div>
         <div className="pills">
-          {ev.platform && <span className="pill">{ev.platform}</span>}
-          <span className="pill alt">{cap(ev.category)}</span>
+          {ev.platform && <Chip label={ev.platform} />}
+          <Chip label={cap(ev.category)} />
         </div>
       </div>
       {error && <p className="error">{error}</p>}
@@ -113,16 +117,15 @@ export default function EventDetail() {
           </div>
         )}
 
-        <div className="row" style={{ marginTop: "1rem" }}>
+        <div className="row" style={{ marginTop: "1rem", alignItems: "center", gap: "0.5rem" }}>
           {ev.url && (
             <a
               href={ev.url.startsWith("http") ? ev.url : `https://${ev.url}`}
               target="_blank"
               rel="noreferrer"
-              className="btn small"
-              style={{ textDecoration: "none" }}
+              className="btn-tertiary"
             >
-              Go to Official Hackathon Page ↗
+              Open page <ExternalLink size={12} />
             </a>
           )}
           {!mine.status && <button className="btn" onClick={() => run(() => api.post(`/events/${ev.id}/join`, { status: "registered" }))}>Add to timeline as registered</button>}
@@ -130,7 +133,7 @@ export default function EventDetail() {
           {mine.status && mine.status !== "attended" && (
             <button className="btn" onClick={() => run(() => api.patch(`/user-events/${mine.user_event_id}`, { status: "attended" }))}>I attended this</button>
           )}
-          {mine.status && <span className="pill">On your timeline: {mine.status}</span>}
+          {mine.status && <Badge variant="info">On timeline: {mine.status}</Badge>}
           {mine.is_owner && <Link className="btn ghost" to={`/events/${ev.id}/edit`}>Edit details</Link>}
         </div>
 
@@ -160,9 +163,9 @@ export default function EventDetail() {
         )}
         {reviews.map((r) => (
           <article className="card review" key={r.id}>
-            <p>
+            <p style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
               <b>{r.author}</b>{r.college ? `, ${r.college}` : ""}{" "}
-              <span className="pill ok" title="Verified attendee confirmed by Eventure check-in">✓ Verified Attendee</span>{" "}
+              <StatusBadge variant="active" label="Verified Attendee" />
               <span className="muted small">{r.overall} / 5</span>
             </p>
             {r.comment && <p>{r.comment}</p>}

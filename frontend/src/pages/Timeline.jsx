@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Check, ChevronDown, ChevronUp, ExternalLink, Plus, Trash2 } from "lucide-react";
 import { api } from "../api";
 import { useAuth } from "../auth.jsx";
 import IssueCard from "../components/IssueCard.jsx";
 import HackathonVault from "../components/HackathonVault.jsx";
 import PriorityEditor from "../components/PriorityEditor.jsx";
+import Chip from "../components/Chip.jsx";
+import Badge from "../components/Badge.jsx";
 import { cap, fmtDate, fmtDuration, fmtRange, timeLeft } from "../utils";
 
 const STATUSES = ["interested", "registered", "attended", "skipped"];
@@ -16,8 +19,8 @@ function AddStage({ onAdd }) {
 
   if (!open) {
     return (
-      <button type="button" className="linklike small add-stage-link" onClick={() => setOpen(true)}>
-        + Add stage
+      <button type="button" className="btn-tertiary add-stage-link" onClick={() => setOpen(true)}>
+        <Plus size={13} /> Add stage
       </button>
     );
   }
@@ -44,157 +47,215 @@ function AddStage({ onAdd }) {
 
 function Node({ it, act }) {
   const ev = it.event;
+  const [expanded, setExpanded] = useState(false);
   const [editingUrl, setEditingUrl] = useState(false);
   const [urlVal, setUrlVal] = useState(ev.url || "");
 
   const fullUrl = ev.url ? (ev.url.startsWith("http") ? ev.url : `https://${ev.url}`) : "";
 
+  const statusVariant =
+    it.status === "registered"
+      ? "success"
+      : it.status === "attended"
+      ? "info"
+      : it.status === "skipped"
+      ? "neutral"
+      : "neutral";
+
   return (
     <li className={`node risk-${it.risk || "none"} ${it.status === "skipped" ? "is-skipped" : ""}`}>
-      <article className="card">
-        <div className="card-head">
-          <div>
-            <h3><Link to={`/events/${ev.id}`}>{ev.title}</Link></h3>
-            <p className="muted small">
+      <article className="card" style={{ transition: "border-color 0.15s ease" }}>
+        {/* Clickable Header Row: Stripe/GitHub Table-Style */}
+        <div
+          className="card-head"
+          style={{ cursor: "pointer", userSelect: "none" }}
+          onClick={() => setExpanded(!expanded)}
+        >
+          <div style={{ minWidth: 0 }}>
+            <h3>
+              <Link
+                to={`/events/${ev.id}`}
+                className="event-title-link"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {ev.title}
+              </Link>
+            </h3>
+            <p className="muted small" style={{ margin: "0.2rem 0 0" }}>
               {fmtRange(ev.start_at, ev.end_at)}
               {ev.venue_name ? ` · ${ev.venue_name}` : ""}
             </p>
           </div>
-          <div className="pills">
-            {ev.platform && <span className="pill">{ev.platform}</span>}
-            {ev.category && <span className="pill alt">{cap(ev.category)}</span>}
+          <div className="pills" style={{ alignItems: "center", gap: "0.5rem" }}>
+            {ev.platform && <Chip label={ev.platform} />}
+            {ev.category && <Chip label={cap(ev.category)} />}
+            <Badge variant={statusVariant} label={cap(it.status)} />
             {it.score != null && (
-              <PriorityEditor
-                value={it.score}
-                scoreParts={it.score_parts}
-                onChange={(newScore) =>
-                  act(() => api.patch(`/user-events/${it.id}`, { score: newScore }))
-                }
-              />
+              <span onClick={(e) => e.stopPropagation()}>
+                <PriorityEditor
+                  value={it.score}
+                  scoreParts={it.score_parts}
+                  onChange={(newScore) =>
+                    act(() => api.patch(`/user-events/${it.id}`, { score: newScore }))
+                  }
+                />
+              </span>
             )}
+            <button
+              type="button"
+              className="btn-tertiary"
+              style={{ padding: "0.2rem 0.4rem", marginLeft: "0.25rem" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpanded(!expanded);
+              }}
+              aria-label={expanded ? "Collapse details" : "Expand stages & details"}
+              title={expanded ? "Collapse details" : "Expand stages & details"}
+            >
+              {it.stages.length > 0 && (
+                <span className="small muted" style={{ marginRight: "0.3rem" }}>
+                  {it.stages.filter((s) => s.done).length}/{it.stages.length}
+                </span>
+              )}
+              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
           </div>
         </div>
 
-        {/* Direct official link to hackathon / event */}
-        <div style={{ margin: "0.4rem 0 0.6rem", display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
-          {fullUrl && !editingUrl ? (
-            <>
-              <a
-                href={fullUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="btn small"
-                style={{ padding: "0.22rem 0.65rem", fontSize: "0.8rem", textDecoration: "none" }}
-              >
-                Go to Hackathon Page ↗
-              </a>
-              <button
-                type="button"
-                className="linklike small muted"
-                onClick={() => { setUrlVal(ev.url || ""); setEditingUrl(true); }}
-              >
-                Edit link
-              </button>
-            </>
-          ) : !editingUrl ? (
-            <button
-              type="button"
-              className="linklike small"
-              onClick={() => { setUrlVal(""); setEditingUrl(true); }}
-            >
-              + Add official hackathon link
-            </button>
-          ) : (
-            <div className="row small" style={{ width: "100%", margin: "0.2rem 0" }}>
-              <input
-                type="url"
-                value={urlVal}
-                onChange={(e) => setUrlVal(e.target.value)}
-                placeholder="Paste official event URL (https://...)"
-                style={{ maxWidth: "320px", padding: "0.3rem 0.5rem" }}
-                aria-label="Official event URL"
-              />
-              <button
-                type="button"
-                className="btn small"
-                onClick={() => {
-                  act(() => api.put(`/events/${ev.id}`, { url: urlVal.trim() }));
-                  setEditingUrl(false);
-                }}
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                className="btn ghost small"
-                onClick={() => setEditingUrl(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          )}
-        </div>
-
-        {it.travel_minutes ? (
-          <p className="small muted travel-note">About {fmtDuration(it.travel_minutes)} from your campus</p>
-        ) : null}
-
-        {it.stages.length > 0 && (
-          <ul className="stages">
-            {it.stages.map((s) => (
-              <li key={s.id} className={s.done ? "done" : ""}>
-                <label className="stage-label">
-                  <input
-                    type="checkbox"
-                    checked={s.done}
-                    onChange={(e) => act(() => api.patch(`/stages/${s.id}`, { done: e.target.checked }))}
-                  />
-                  <span>{s.name}</span>
-                </label>
-                <span className="muted small stage-due">
-                  {s.due_at ? fmtDate(s.due_at) : "No deadline"}
-                  {s.due_at && !s.done ? ` · ${timeLeft(s.due_at)}` : ""}
-                </span>
+        {/* Collapsible Details: Stages, Links, Submission Vault */}
+        {expanded && (
+          <div style={{ marginTop: "0.5rem", paddingTop: "0.65rem", borderTop: "1px solid var(--border)" }}>
+            {/* Official event link and actions */}
+            <div style={{ margin: "0.35rem 0 0.6rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+              {fullUrl && !editingUrl ? (
+                <>
+                  <a
+                    href={fullUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-tertiary"
+                  >
+                    Open page <ExternalLink size={12} />
+                  </a>
+                  <button
+                    type="button"
+                    className="btn-tertiary"
+                    onClick={() => { setUrlVal(ev.url || ""); setEditingUrl(true); }}
+                  >
+                    Edit link
+                  </button>
+                </>
+              ) : !editingUrl ? (
                 <button
-                  className="linklike small remove-stage"
-                  aria-label={`Remove ${s.name}`}
-                  onClick={() => act(() => api.del(`/stages/${s.id}`))}
+                  type="button"
+                  className="btn-tertiary"
+                  onClick={() => { setUrlVal(""); setEditingUrl(true); }}
+                >
+                  + Add official link
+                </button>
+              ) : (
+                <div className="row small" style={{ width: "100%", margin: "0.2rem 0" }}>
+                  <input
+                    type="url"
+                    value={urlVal}
+                    onChange={(e) => setUrlVal(e.target.value)}
+                    placeholder="Paste official event URL (https://...)"
+                    style={{ maxWidth: "320px", padding: "0.3rem 0.5rem" }}
+                    aria-label="Official event URL"
+                  />
+                  <button
+                    type="button"
+                    className="btn small"
+                    onClick={() => {
+                      act(() => api.put(`/events/${ev.id}`, { url: urlVal.trim() }));
+                      setEditingUrl(false);
+                    }}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    className="btn ghost small"
+                    onClick={() => setEditingUrl(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {it.travel_minutes ? (
+              <p className="small muted travel-note">About {fmtDuration(it.travel_minutes)} from your campus</p>
+            ) : null}
+
+            {it.stages.length > 0 && (
+              <ul className="timeline-stages-list">
+                {it.stages.map((s) => (
+                  <li key={s.id} className={`timeline-stage-item ${s.done ? "done" : ""}`}>
+                    <div className="timeline-stage-left">
+                      <label className="custom-stage-checkbox" aria-label={`Mark ${s.name} done`}>
+                        <input
+                          type="checkbox"
+                          checked={s.done}
+                          onChange={(e) => act(() => api.patch(`/stages/${s.id}`, { done: e.target.checked }))}
+                        />
+                        <span className="stage-checkbox-box">
+                          <Check size={11} strokeWidth={3} className="stage-checkbox-tick" />
+                        </span>
+                      </label>
+                      <span className="timeline-stage-name">{s.name}</span>
+                    </div>
+                    <div className="timeline-stage-right">
+                      <span className="timeline-stage-due">
+                        {s.due_at ? fmtDate(s.due_at) : "No deadline"}
+                        {s.due_at && !s.done ? ` · ${timeLeft(s.due_at)}` : ""}
+                      </span>
+                      <button
+                        type="button"
+                        className="timeline-stage-remove"
+                        aria-label={`Remove ${s.name}`}
+                        title="Remove stage"
+                        onClick={() => act(() => api.del(`/stages/${s.id}`))}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <HackathonVault
+              userEventId={it.id}
+              initialNotes={it.notes || ""}
+              onUpdate={() => load()}
+            />
+
+            <div className="card-foot" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.85rem", paddingTop: "0.75rem", borderTop: "1px solid var(--border)" }}>
+              <AddStage onAdd={(name, due) => act(() => api.post(`/user-events/${it.id}/stages`, { name, due_at: due }))} />
+              <div className="row status-actions" style={{ alignItems: "center", gap: "0.5rem" }}>
+                <select
+                  value={it.status}
+                  onChange={(e) => act(() => api.patch(`/user-events/${it.id}`, { status: e.target.value }))}
+                  aria-label="Status"
+                  className="clean-select"
+                >
+                  {STATUSES.map((s) => <option key={s} value={s}>{cap(s)}</option>)}
+                </select>
+                <button
+                  type="button"
+                  className="btn-tertiary danger"
+                  onClick={() =>
+                    window.confirm(`Remove ${ev.title} from your timeline?`) &&
+                    act(() => api.del(`/user-events/${it.id}`))
+                  }
                 >
                   Remove
                 </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <HackathonVault
-          userEventId={it.id}
-          initialNotes={it.notes || ""}
-          onUpdate={() => load()}
-        />
-
-        <div className="card-foot">
-          <AddStage onAdd={(name, due) => act(() => api.post(`/user-events/${it.id}/stages`, { name, due_at: due }))} />
-          <div className="row status-actions">
-            <select
-              value={it.status}
-              onChange={(e) => act(() => api.patch(`/user-events/${it.id}`, { status: e.target.value }))}
-              aria-label="Status"
-              className="status-select"
-            >
-              {STATUSES.map((s) => <option key={s} value={s}>{cap(s)}</option>)}
-            </select>
-            <button
-              className="linklike small"
-              onClick={() =>
-                window.confirm(`Remove ${ev.title} from your timeline?`) &&
-                act(() => api.del(`/user-events/${it.id}`))
-              }
-            >
-              Remove
-            </button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </article>
     </li>
   );
@@ -250,20 +311,6 @@ export default function Timeline() {
           </p>
         </div>
         <div className="row">
-          <div className="lang-picker">
-            <span className="small muted">Language:</span>
-            <select
-              value={lang}
-              onChange={(e) => setLang(e.target.value)}
-              className="lang-select"
-              aria-label="Language selection"
-            >
-              <option value="en">English</option>
-              <option value="hi">हिन्दी (Hindi)</option>
-              <option value="bn">বাংলা (Bengali)</option>
-              <option value="ta">தமிழ் (Tamil)</option>
-            </select>
-          </div>
           <Link to="/add" className="btn">Add event</Link>
         </div>
       </div>
@@ -276,24 +323,27 @@ export default function Timeline() {
         </p>
       )}
 
-      <div className="summary">
-        <div>
-          <b>{live.length}</b>
-          <span>{lang === "hi" ? "आगामी कार्यक्रम" : "upcoming events"}</span>
+      {/* Top Stats Row: 3 stats in one line, 24px/600 number, label beneath, 1px divider */}
+      <div className="timeline-stats-row">
+        <div className="timeline-stat-col">
+          <span className="timeline-stat-val">{live.length}</span>
+          <span className="timeline-stat-lbl">{lang === "hi" ? "आगामी कार्यक्रम" : "Upcoming events"}</span>
         </div>
-        <div>
-          <b>{week}</b>
-          <span>{lang === "hi" ? "इस सप्ताह की समय-सीमा" : "deadlines this week"}</span>
+        <div className="timeline-stat-div" />
+        <div className="timeline-stat-col">
+          <span className="timeline-stat-val">{week}</span>
+          <span className="timeline-stat-lbl">{lang === "hi" ? "इस सप्ताह की समय-सीमा" : "Deadlines this week"}</span>
         </div>
-        <div className={issues.length ? "hot" : ""}>
-          <b>{issues.length}</b>
-          <span>{lang === "hi" ? "निर्णय आवश्यक" : "decisions needed"}</span>
+        <div className="timeline-stat-div" />
+        <div className={`timeline-stat-col ${issues.length ? "hot" : ""}`}>
+          <span className="timeline-stat-val">{issues.length}</span>
+          <span className="timeline-stat-lbl">{lang === "hi" ? "शेड्यूल टकराव" : "Clashes to resolve"}</span>
         </div>
       </div>
 
       {issues.length > 0 && (
-        <section aria-label="Decisions needed" className="timeline-section">
-          <h2>Needs a decision</h2>
+        <section aria-label="Schedule conflicts" className="timeline-section">
+          <h2>Clashes to resolve</h2>
           {issues.map((issue) => (
             <IssueCard
               key={key(issue)}

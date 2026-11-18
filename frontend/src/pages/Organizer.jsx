@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import Badge from "../components/Badge.jsx";
 import { fmtRange } from "../utils";
 
 function ShareBox({ id }) {
@@ -86,8 +87,8 @@ export default function Organizer() {
                   </p>
                 </div>
                 <div className="pills">
-                  <span className={`pill ${ev.is_public ? "ok" : ""}`}>{ev.is_public ? "Public" : "Private"}</span>
-                  {!ev.upcoming && <span className="pill">Past</span>}
+                  <Badge variant={ev.is_public ? "success" : "neutral"}>{ev.is_public ? "Public" : "Private"}</Badge>
+                  {!ev.upcoming && <Badge variant="neutral">Past</Badge>}
                 </div>
               </div>
 
@@ -110,8 +111,8 @@ export default function Organizer() {
                 </div>
               </div>
 
-              <div className="card-foot">
-                <div className="row">
+              <div className="card-foot" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div className="row" style={{ margin: 0, gap: "0.5rem" }}>
                   <button className="btn ghost small" onClick={() => toggle(ev)}>
                     {ev.is_public ? "Make private" : "Make public"}
                   </button>
@@ -121,7 +122,7 @@ export default function Organizer() {
                     </button>
                   )}
                 </div>
-                <Link to={`/events/${ev.id}/edit`} className="linklike small">
+                <Link to={`/events/${ev.id}/edit`} className="btn-tertiary">
                   Edit details
                 </Link>
               </div>

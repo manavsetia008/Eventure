@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
+import { MapPin } from "lucide-react";
 import { api, calendarFeedUrl } from "../api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
+import Status from "../components/Status.jsx";
 import { urlBase64ToUint8Array } from "../utils";
 
 function GoogleCard() {
@@ -37,7 +39,7 @@ function GoogleCard() {
     <section className="card">
       <div className="card-head">
         <h2>Google Calendar sync</h2>
-        {st.connected ? <span className="pill ok">Connected</span> : <span className="pill">Not connected</span>}
+        <Status variant={st.connected ? "active" : "neutral"} label={st.connected ? "Connected" : "Not connected"} />
       </div>
       {!st.configured ? (
         <p className="muted small">
@@ -76,10 +78,10 @@ function GoogleCard() {
 
 const CAMPUS_PRESETS = [
   { label: "-- Select a campus preset to auto-fill --", college: "", lat: "", lng: "" },
-  { label: "IIIT Delhi (Okhla Industrial Estate)", college: "IIIT Delhi", lat: "28.5459", lng: "77.2732" },
-  { label: "IIT Delhi (Hauz Khas)", college: "IIT Delhi", lat: "28.5450", lng: "77.1926" },
-  { label: "DTU / Delhi Tech University (Rohini)", college: "DTU Delhi", lat: "28.7499", lng: "77.1170" },
-  { label: "NSUT (Dwarka Campus)", college: "NSUT Delhi", lat: "28.6091", lng: "77.0351" },
+  { label: "State Tech University (Main Campus)", college: "State Tech University", lat: "28.5459", lng: "77.2732" },
+  { label: "City Engineering College (Central Campus)", college: "City Engineering College", lat: "28.5450", lng: "77.1926" },
+  { label: "North Campus University", college: "North Campus University", lat: "28.7499", lng: "77.1170" },
+  { label: "West Institute of Technology", college: "West Institute of Technology", lat: "28.6091", lng: "77.0351" },
   { label: "IGDTUW (Kashmere Gate)", college: "IGDTUW", lat: "28.6653", lng: "77.2324" },
   { label: "Delhi University (North Campus)", college: "DU North Campus", lat: "28.6892", lng: "77.2104" },
   { label: "IIT Bombay (Powai)", college: "IIT Bombay", lat: "19.0760", lng: "72.8777" },
@@ -137,7 +139,7 @@ function PushCard() {
     <section className="card">
       <div className="card-head">
         <h2>Phone and browser alerts</h2>
-        {enabled ? <span className="pill ok">Active</span> : <span className="pill">Off</span>}
+        <Status variant={enabled ? "active" : "neutral"} label={enabled ? "Active" : "Off"} />
       </div>
       {!supported ? (
         <div className="notice small">
@@ -176,6 +178,20 @@ function PushCard() {
 
 function PriorityTuningCard({ user, onSaved }) {
   const [mode, setMode] = useState(user.scoring_mode || "balanced");
+  const [keepVal, setKeepVal] = useState(() => {
+    if (user?.threshold_keep != null) return user.threshold_keep;
+    const stored = localStorage.getItem("eventure_threshold_keep");
+    return stored ? Number(stored) : 55;
+  });
+  const [skipVal, setSkipVal] = useState(() => {
+    if (user?.threshold_skip != null) return user.threshold_skip;
+    const stored = localStorage.getItem("eventure_threshold_skip");
+    return stored ? Number(stored) : 40;
+  });
+  const [useMaybe, setUseMaybe] = useState(() => {
+    if (user?.use_maybe_range != null) return Boolean(user.use_maybe_range);
+    return localStorage.getItem("eventure_use_maybe_range") === "true";
+  });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -207,7 +223,7 @@ function PriorityTuningCard({ user, onSaved }) {
     },
   ];
 
-  const save = async (m) => {
+  const saveMode = async (m) => {
     setMode(m);
     setSaving(true);
     setMsg("");
@@ -215,7 +231,7 @@ function PriorityTuningCard({ user, onSaved }) {
     try {
       const res = await api.patch("/me", { scoring_mode: m });
       if (onSaved) onSaved(res.user);
-      setMsg(`Priority scoring tuned to "${presets.find((p) => p.id === m)?.title}".`);
+      setMsg(`Scoring profile updated to "${presets.find((p) => p.id === m)?.title}".`);
     } catch (e) {
       setErr(e.message);
     } finally {
@@ -223,46 +239,92 @@ function PriorityTuningCard({ user, onSaved }) {
     }
   };
 
+  const persistThresholds = async (newKeep, newSkip, newMaybe) => {
+    localStorage.setItem("eventure_threshold_keep", newKeep);
+    localStorage.setItem("eventure_threshold_skip", newSkip);
+    localStorage.setItem("eventure_use_maybe_range", newMaybe ? "true" : "false");
+    window.dispatchEvent(new Event("eventure_threshold_change"));
+    try {
+      await api.put("/auth/me", {
+        threshold_keep: newKeep,
+        threshold_skip: newSkip,
+        use_maybe_range: newMaybe,
+      });
+      setMsg("Saved.");
+    } catch {}
+  };
+
+  const handleKeepChange = (val) => {
+    const v = Math.max(0, Math.min(100, Number(val) || 0));
+    setKeepVal(v);
+    const effectiveSkip = useMaybe && v < skipVal ? v : skipVal;
+    if (useMaybe && v < skipVal) setSkipVal(v);
+    persistThresholds(v, effectiveSkip, useMaybe);
+  };
+
+  const handleSkipChange = (val) => {
+    const v = Math.max(0, Math.min(100, Number(val) || 0));
+    setSkipVal(v);
+    const effectiveKeep = v > keepVal ? v : keepVal;
+    if (v > keepVal) setKeepVal(v);
+    persistThresholds(effectiveKeep, v, useMaybe);
+  };
+
+  const toggleMaybe = (e) => {
+    const checked = e.target.checked;
+    setUseMaybe(checked);
+    persistThresholds(keepVal, skipVal, checked);
+  };
+
+  const resetDefault = () => {
+    setKeepVal(55);
+    setSkipVal(40);
+    setUseMaybe(false);
+    persistThresholds(55, 40, false);
+    setMsg("Reset to default (55).");
+  };
+
+  // Dynamic preview evaluation against sample event scores
+  const sampleScores = [88, 82, 75, 68, 62, 55, 48, 42, 35, 20];
+  const keepCount = sampleScores.filter((s) => s >= keepVal).length;
+  const skipCount = useMaybe
+    ? sampleScores.filter((s) => s < skipVal).length
+    : sampleScores.filter((s) => s < keepVal).length;
+  const maybeCount = useMaybe
+    ? sampleScores.filter((s) => s >= skipVal && s < keepVal).length
+    : 0;
+
   return (
     <section className="card">
       <div className="card-head">
         <div>
-          <h2>Priority Fit Score System</h2>
+          <h2>Scoring Profiles</h2>
           <p className="muted small">Customize how Eventure ranks and scores hackathons on your timeline (0–100).</p>
         </div>
-        <span className="pill ok">Active: {presets.find((p) => p.id === mode)?.title || "Balanced"}</span>
+        <Status variant="active" label={`Active: ${presets.find((p) => p.id === mode)?.title || "Balanced"}`} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginTop: "1rem" }}>
+      <div className="profile-scoring-grid">
         {presets.map((p) => {
           const isSelected = mode === p.id;
           return (
             <div
               key={p.id}
-              onClick={() => save(p.id)}
-              style={{
-                border: isSelected ? "2px solid var(--thread)" : "1px solid var(--line)",
-                borderRadius: "var(--radius, 10px)",
-                padding: "1rem",
-                background: isSelected ? "rgba(230, 126, 34, 0.05)" : "var(--surface)",
-                cursor: "pointer",
-                transition: "all 0.15s ease",
-              }}
+              className={`profile-scoring-card ${isSelected ? "selected" : ""}`}
+              onClick={() => saveMode(p.id)}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
-                <strong style={{ color: isSelected ? "var(--thread)" : "var(--ink)", fontSize: "0.92rem" }}>
-                  {isSelected ? "● " : "○ "} {p.title}
-                </strong>
-                {isSelected && <span className="pill" style={{ background: "var(--thread)", color: "#fff", fontSize: "0.68rem" }}>Active</span>}
+              <div className="profile-card-header">
+                <span className="custom-radio">
+                  {isSelected && <span className="custom-radio-dot" />}
+                </span>
+                <span className="profile-card-title">{p.title}</span>
               </div>
-              <p className="muted small" style={{ margin: "0 0 0.8rem", minHeight: "2.4rem" }}>
-                {p.desc}
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+              <p className="profile-card-desc">{p.desc}</p>
+              <div className="profile-points-list">
                 {Object.entries(p.weights).map(([k, w]) => (
-                  <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem" }}>
-                    <span className="muted">{k}</span>
-                    <span style={{ fontWeight: 600 }}>{w} pts</span>
+                  <div key={k} className="profile-point-row">
+                    <span className="profile-point-label">{k}</span>
+                    <span className="profile-point-value">{w} pts</span>
                   </div>
                 ))}
               </div>
@@ -271,7 +333,114 @@ function PriorityTuningCard({ user, onSaved }) {
         })}
       </div>
 
-      {msg && <p className="notice small" style={{ marginTop: "1rem" }}>{msg}</p>}
+      {/* Part E: Keep / Skip Decision Threshold Feature */}
+      <div className="threshold-container">
+        <div className="threshold-header-row">
+          <div>
+            <h3 className="threshold-title">Keep / Skip Decision Threshold</h3>
+            <p className="threshold-subtext">
+              Events scoring at or above this are marked <b>Keep</b>, below are marked <b>Skip</b>.
+            </p>
+          </div>
+          <button type="button" className="btn-tertiary" onClick={resetDefault}>
+            Reset to default (55)
+          </button>
+        </div>
+
+        <div className="threshold-slider-group">
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={keepVal}
+            onChange={(e) => handleKeepChange(e.target.value)}
+            className="threshold-slider"
+            aria-label="Keep threshold score"
+          />
+          <input
+            type="number"
+            min="0"
+            max="100"
+            value={keepVal}
+            onChange={(e) => handleKeepChange(e.target.value)}
+            className="threshold-number-input"
+            aria-label="Keep threshold value"
+          />
+        </div>
+
+        <div className="threshold-presets-row">
+          <span className="small muted">Quick presets:</span>
+          {[
+            { label: "Relaxed 45", val: 45 },
+            { label: "Default 55", val: 55 },
+            { label: "Strict 65", val: 65 },
+          ].map((pr) => (
+            <button
+              key={pr.val}
+              type="button"
+              className={`threshold-preset-btn ${keepVal === pr.val ? "active" : ""}`}
+              onClick={() => handleKeepChange(pr.val)}
+            >
+              {pr.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Optional Advanced "Use a Maybe range" Toggle */}
+        <div style={{ marginTop: "1rem", paddingTop: "0.85rem", borderTop: "1px solid var(--border)" }}>
+          <label style={{ display: "inline-flex", flexDirection: "row", alignItems: "center", gap: "0.5rem", cursor: "pointer", marginBottom: "0.5rem" }}>
+            <input
+              type="checkbox"
+              checked={useMaybe}
+              onChange={toggleMaybe}
+              style={{ width: "16px", height: "16px", cursor: "pointer", margin: 0 }}
+            />
+            <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--text)" }}>
+              Use a Maybe range
+            </span>
+          </label>
+
+          {useMaybe && (
+            <div style={{ marginTop: "0.5rem", padding: "0.75rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)" }}>
+              <p className="muted small" style={{ marginBottom: "0.6rem" }}>
+                Skip below <b>{skipVal}</b>, Keep at or above <b>{keepVal}</b>, Maybe in between ({skipVal}–{keepVal - 1}).
+              </p>
+              <div className="threshold-slider-group">
+                <span className="small muted" style={{ minWidth: "80px" }}>Skip below:</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={skipVal}
+                  onChange={(e) => handleSkipChange(e.target.value)}
+                  className="threshold-slider"
+                  aria-label="Skip threshold score"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={skipVal}
+                  onChange={(e) => handleSkipChange(e.target.value)}
+                  className="threshold-number-input"
+                  aria-label="Skip threshold value"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="threshold-preview-line">
+            <span>With this setting:</span>
+            <span style={{ color: "var(--accent)", fontWeight: 600 }}>{keepCount} Keep</span>
+            {useMaybe && <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>{maybeCount} Maybe</span>}
+            <span style={{ color: "var(--text-muted)", fontWeight: 500 }}>{skipCount} Skip</span>
+            {msg && <span style={{ color: "var(--accent)", marginLeft: "auto", fontSize: "0.8125rem" }}>{msg}</span>}
+          </div>
+        </div>
+      </div>
+
       {err && <p className="error small" style={{ marginTop: "1rem" }}>{err}</p>}
     </section>
   );
@@ -366,7 +535,7 @@ function PortalsCard() {
           <div key={p.id} className="portal-card">
             <div className="portal-card-header">
               <strong>{p.name}</strong>
-              <span className={`pill ${p.auto_sync ? "ok" : ""}`}>{p.auto_sync ? "Auto-Sync Active" : "Paused"}</span>
+              <Status variant={p.auto_sync ? "active" : "neutral"} label={p.auto_sync ? "Auto-Sync Active" : "Paused"} />
             </div>
             <div className="portal-card-body">
               <div><code>{p.domain_or_name}</code></div>
@@ -374,13 +543,13 @@ function PortalsCard() {
               {p.last_synced_at && <div className="small muted">Checked: {p.last_synced_at.replace("T", " ").slice(0, 16)}</div>}
             </div>
             <div className="portal-card-actions">
-              <button type="button" className="linklike small" disabled={busy} onClick={() => sync(p.id, p.name)}>
+              <button type="button" className="btn-tertiary" disabled={busy} onClick={() => sync(p.id, p.name)}>
                 Sync deadlines
               </button>
-              <button type="button" className="linklike small" onClick={() => toggle(p.id, p.auto_sync)}>
+              <button type="button" className="btn-tertiary" onClick={() => toggle(p.id, p.auto_sync)}>
                 {p.auto_sync ? "Pause" : "Enable"}
               </button>
-              <button type="button" className="linklike small" style={{ color: "var(--alert)" }} onClick={() => remove(p.id)}>
+              <button type="button" className="btn-tertiary danger" onClick={() => remove(p.id)}>
                 Remove
               </button>
             </div>
@@ -544,12 +713,14 @@ export default function Settings() {
           </select>
         </label>
 
-        <label>College / Institution Name<input value={p.college} onChange={(e) => setP({ ...p, college: e.target.value })} placeholder="e.g. IIIT Delhi, DTU" /></label>
+        <label>College / Institution Name<input value={p.college} onChange={(e) => setP({ ...p, college: e.target.value })} placeholder="e.g. State Tech University, City College" /></label>
         
         <div style={{ margin: "0.4rem 0 0.8rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
           <div>
             {p.college_lat && p.college_lng ? (
-              <span className="small ok">📍 Campus pinned for commute estimates ({p.college_lat}, {p.college_lng})</span>
+              <span className="small ok" style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem" }}>
+                <MapPin size={13} strokeWidth={1.75} /> Campus pinned for commute estimates ({p.college_lat}, {p.college_lng})
+              </span>
             ) : (
               <span className="small muted">Campus coordinates not pinned yet.</span>
             )}

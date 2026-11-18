@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
+import Badge from "../components/Badge.jsx";
 import { fmtDate, timeAgo } from "../utils";
 
 export default function Notifications() {
@@ -69,7 +70,10 @@ export default function Notifications() {
                 <span className="alert-message">{n.message}</span>
                 <span className="muted small" title={fmtDate(n.created_at)}>{timeAgo(n.created_at)}</span>
               </div>
-              <span className={`pill level-pill ${n.level}`}>{n.level}</span>
+              <Badge
+                variant={n.level === "urgent" || n.level === "critical" ? "danger" : n.level === "warning" ? "warning" : "info"}
+                label={n.level}
+              />
             </li>
           ))}
         </ul>

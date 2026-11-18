@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ExternalLink, Search, Zap } from "lucide-react";
 import { api } from "../api";
 import MapView from "../components/MapView.jsx";
+import Status from "../components/Status.jsx";
+import Chip from "../components/Chip.jsx";
 import { CATEGORIES, cap, fmtDuration, fmtRange } from "../utils";
 
 function Rating({ r }) {
@@ -84,53 +87,33 @@ export default function Discover() {
         </div>
       </div>
 
-      {/* Portal Tracker Strip */}
-      <div className="card" style={{ padding: "0.85rem 1.1rem", marginBottom: "1.2rem", background: "var(--card)", border: "1px solid var(--line)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.6rem", marginBottom: "0.5rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span style={{ fontSize: "1.1rem" }}>⚡</span>
-            <strong style={{ fontSize: "0.92rem" }}>Automated Portal Tracker</strong>
-            <span className="small muted">Auto-sync & deadline reminders across hackathon platforms</span>
+      {/* Portal Tracker Strip (Minimal, text + dot status, no green outline pills, no badge inside badge) */}
+      <div className="portal-tracker-bar">
+        <div className="portal-tracker-top">
+          <div className="portal-tracker-header">
+            <Zap size={16} strokeWidth={1.75} style={{ color: "var(--accent)" }} />
+            <strong className="portal-tracker-title">Automated Portal Tracker</strong>
+            <span className="portal-tracker-desc">Auto-sync & deadline reminders across hackathon platforms</span>
           </div>
-          <Link to="/settings" className="small linklike">Manage portals ↗</Link>
+          <Link to="/settings" className="btn-tertiary">Manage portals ↗</Link>
         </div>
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+        <div className="portal-tracker-list">
           {portals.length === 0 ? (
-            <div className="small muted">
-              Tracking default campus sources (Unstop, Devfolio, MLH). <Link to="/settings">Add custom portals</Link> to watch.
-            </div>
+            <span className="portal-tracker-desc">
+              Tracking default campus sources (Unstop, Devfolio, Hack2skill). <Link to="/settings">Add custom portals</Link> to watch.
+            </span>
           ) : (
             portals.map((p) => (
-              <div
-                key={p.id}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.45rem",
-                  padding: "0.25rem 0.65rem",
-                  borderRadius: "999px",
-                  border: `1px solid ${p.auto_sync ? "var(--teal)" : "var(--line)"}`,
-                  background: p.auto_sync ? "rgba(46, 204, 113, 0.08)" : "var(--surface)",
-                  fontSize: "0.8rem",
-                }}
-              >
-                <span style={{ fontWeight: 600, color: p.auto_sync ? "var(--ink)" : "var(--muted)" }}>{p.name}</span>
+              <div key={p.id} className="portal-tracker-item">
+                <span className="portal-tracker-item-name">{p.name}</span>
+                <Status variant={p.auto_sync ? "active" : "neutral"} label={p.auto_sync ? "Synced" : "Paused"} />
                 <button
                   type="button"
+                  className="btn-tertiary"
                   onClick={() => toggleSync(p)}
-                  style={{
-                    background: p.auto_sync ? "var(--teal)" : "var(--line)",
-                    color: p.auto_sync ? "#fff" : "var(--muted)",
-                    border: "none",
-                    borderRadius: "4px",
-                    padding: "0.1rem 0.4rem",
-                    fontSize: "0.68rem",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                  title={p.auto_sync ? "Auto-sync ON: Click to pause" : "Paused: Click to enable"}
+                  title={p.auto_sync ? "Click to pause sync" : "Click to enable sync"}
                 >
-                  {p.auto_sync ? "SYNC ON" : "PAUSED"}
+                  {p.auto_sync ? "Pause" : "Sync"}
                 </button>
               </div>
             ))
@@ -182,14 +165,18 @@ export default function Discover() {
               <article className="card event-card" key={ev.id}>
                 <div className="card-head">
                   <div>
-                    <h3><Link to={`/events/${ev.id}`}>{ev.title}</Link></h3>
+                    <h3>
+                      <Link to={`/events/${ev.id}`} className="event-title-link">
+                        {ev.title}
+                      </Link>
+                    </h3>
                     <p className="muted small">{fmtRange(ev.start_at, ev.end_at)}</p>
                     <p className="muted small">{ev.venue_name}{ev.club_name ? ` · ${ev.club_name}` : ""}</p>
                   </div>
                   <div className="pills">
-                    {ev.is_tracked_portal && <span className="pill ok">My Tracked Portal</span>}
-                    {ev.platform && <span className="pill">{ev.platform}</span>}
-                    <span className="pill alt">{cap(ev.category)}</span>
+                    {ev.is_tracked_portal && <Chip label="Tracked portal" />}
+                    {ev.platform && <Chip label={ev.platform} />}
+                    <Chip label={cap(ev.category)} />
                   </div>
                 </div>
 
@@ -200,9 +187,9 @@ export default function Discover() {
                   <Rating r={ev.rating} />
                 </div>
 
-                <div className="card-foot">
+                <div className="card-foot" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <label className="check small" style={{ margin: 0 }}>
+                    <label className="check small" style={{ margin: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
                       <input
                         type="checkbox"
                         checked={picked.includes(ev.id)}
@@ -216,9 +203,9 @@ export default function Discover() {
                         href={ev.url.startsWith("http") ? ev.url : `https://${ev.url}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="linklike small"
+                        className="btn-tertiary"
                       >
-                        Official Page ↗
+                        Open page <ExternalLink size={12} />
                       </a>
                     )}
                   </div>

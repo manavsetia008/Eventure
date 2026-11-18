@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import Badge from "../components/Badge.jsx";
 import { cap, clubAvatar, fmtDate, fmtRange, timeLeft } from "../utils";
 
 function Clubs() {
@@ -194,7 +195,7 @@ function Teams() {
                 onClick={() => navigator.clipboard.writeText(view.team.code).then(() => setCopiedCode(true))}
                 style={{ padding: ".15rem .6rem", fontSize: ".78rem" }}
               >
-                {copiedCode ? "Copied ✓" : "Copy"}
+                {copiedCode ? "Copied" : "Copy"}
               </button>
             </div>
           </div>
@@ -218,7 +219,7 @@ function Teams() {
                     <span className="avatar" style={{ width: "1.7rem", height: "1.7rem", fontSize: ".78rem" }}>
                       {m.name[0]}
                     </span>
-                    {m.name} <span className="pill">{cap(m.status)}</span>
+                    {m.name} <Badge variant="neutral">{cap(m.status)}</Badge>
                   </li>
                 ))}
               </ul>
