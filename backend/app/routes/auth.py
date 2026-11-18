@@ -22,12 +22,15 @@ def register():
     name = (d.get("name") or "").strip()
     email = (d.get("email") or "").strip().lower()
     password = d.get("password") or ""
+    confirm = d.get("confirm_password") or d.get("confirmPassword") or ""
     if not name:
         raise ApiError("Enter your name.")
     if not EMAIL_RE.match(email):
         raise ApiError("Enter a valid email address.")
     if len(password) < 6:
         raise ApiError("Use a password with at least 6 characters.")
+    if confirm and password != confirm:
+        raise ApiError("Passwords do not match.")
     if User.query.filter_by(email=email).first():
         raise ApiError("An account with this email already exists. Sign in instead.", 409)
     user = User(
@@ -48,8 +51,25 @@ def login():
     if limited and LOGIN_LIMIT.blocked(ip):
         raise ApiError("Too many failed sign-in attempts. Wait a few minutes and try again.", 429)
     d = request.get_json(silent=True) or {}
-    user = User.query.filter_by(email=(d.get("email") or "").strip().lower()).first()
-    if not user or not user.check_password(d.get("password") or ""):
+    email = (d.get("email") or "").strip().lower()
+    password = d.get("password") or ""
+    user = User.query.filter_by(email=email).first()
+
+    # Auto-provision demo account if it doesn't exist yet
+    if not user and email == "demo@eventure.app" and password == "demo1234":
+        user = User(
+            name="Demo Student",
+            email="demo@eventure.app",
+            college="State Tech University",
+            college_lat=28.5459,
+            college_lng=77.2732,
+            goals="hackathons, web development, open source",
+        )
+        user.set_password("demo1234")
+        db.session.add(user)
+        db.session.commit()
+
+    if not user or not user.check_password(password):
         if limited:
             LOGIN_LIMIT.hit(ip)
         raise ApiError("Email or password is incorrect.", 401)
@@ -84,6 +104,22 @@ def update_me():
         mode = (d["scoring_mode"] or "balanced").strip().lower()
         if mode in ("balanced", "interest_first", "deadline_first", "nearby_first"):
             u.scoring_mode = mode
+    if "threshold_keep" in d:
+        try:
+            val = int(d["threshold_keep"])
+            if 0 <= val <= 100:
+                u.threshold_keep = val
+        except (ValueError, TypeError):
+            pass
+    if "threshold_skip" in d:
+        try:
+            val = int(d["threshold_skip"])
+            if 0 <= val <= 100:
+                u.threshold_skip = val
+        except (ValueError, TypeError):
+            pass
+    if "use_maybe_range" in d:
+        u.use_maybe_range = bool(d["use_maybe_range"])
     db.session.commit()
     return jsonify(user=u.to_dict())
 

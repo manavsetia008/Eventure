@@ -21,6 +21,9 @@ class User(db.Model):
     college_lng = db.Column(db.Float)
     goals = db.Column(db.String(500), default="")  # comma separated, e.g. "hackathon, ai, internships"
     scoring_mode = db.Column(db.String(30), default="balanced")  # balanced, interest_first, deadline_first, nearby_first
+    threshold_keep = db.Column(db.Integer, default=55)
+    threshold_skip = db.Column(db.Integer, default=40)
+    use_maybe_range = db.Column(db.Boolean, default=False)
     inbox_token = db.Column(db.String(32), unique=True, nullable=False, default=lambda: secrets.token_hex(5))
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -44,6 +47,9 @@ class User(db.Model):
             "college_lng": self.college_lng,
             "goals": self.goals_list,
             "scoring_mode": self.scoring_mode or "balanced",
+            "threshold_keep": self.threshold_keep if self.threshold_keep is not None else 55,
+            "threshold_skip": self.threshold_skip if self.threshold_skip is not None else 40,
+            "use_maybe_range": bool(self.use_maybe_range),
         }
 
 

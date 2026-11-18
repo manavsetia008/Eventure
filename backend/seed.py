@@ -12,10 +12,10 @@ from app.models import (Club, ClubFollow, Event, ExamPeriod, InboxItem, Review, 
 from app.services.extraction import extract_with_rules
 
 COLLEGES = {
-    "IIIT Delhi": (28.5459, 77.2732),
-    "IIT Delhi": (28.5450, 77.1926),
-    "DTU": (28.7500, 77.1170),
-    "NSUT": (28.6090, 77.0370),
+    "Main Campus": (28.5459, 77.2732),
+    "City University": (28.5450, 77.1926),
+    "North Campus": (28.7500, 77.1170),
+    "West Institute": (28.6090, 77.0370),
 }
 
 
@@ -55,49 +55,49 @@ def main():
         sat = today + timedelta(days=(5 - today.weekday()) % 7 or 7)
         next_mon = sat + timedelta(days=2)
 
-        demo = user("Manav Setia (Demo)", "demo@eventure.app", "IIIT Delhi", "hackathon, ai, web")
-        student_b = user("Mayank Sharma (Design Profile)", "student2@eventure.app", "DTU", "design, ui, ux")
-        riya = user("Riya Verma", "riya@eventure.app", "DTU")
-        kabir = user("Kabir Singh", "kabir@eventure.app", "NSUT")
-        meera = user("Meera Nair", "meera@eventure.app", "IIT Delhi")
+        demo = user("Demo Student", "demo@eventure.app", "Main Campus", "hackathon, ai, web")
+        student_b = user("Alex Morgan (Design Profile)", "student2@eventure.app", "North Campus", "design, ui, ux")
+        riya = user("Riya Verma", "riya@eventure.app", "North Campus")
+        kabir = user("Kabir Singh", "kabir@eventure.app", "West Institute")
+        meera = user("Meera Nair", "meera@eventure.app", "City University")
         db.session.flush()
 
-        c1 = Club(name="Code Collective", college="IIIT Delhi", description="Hackathons, open source and weekly build nights.", created_by=demo.id)
-        c2 = Club(name="DTU Robotics Circle", college="DTU", description="Robotics workshops and the annual expo.", created_by=riya.id)
-        c3 = Club(name="NSUT AI Society", college="NSUT", description="Study groups, ML workshops and contests.", created_by=kabir.id)
-        c4 = Club(name="Delhi Open Source Guild", college="IIT Delhi", description="Cross-campus open source sprints.", created_by=meera.id)
+        c1 = Club(name="Code Collective", college="Main Campus", description="Hackathons, open source and weekly build nights.", created_by=demo.id)
+        c2 = Club(name="Robotics Circle", college="North Campus", description="Robotics workshops and the annual expo.", created_by=riya.id)
+        c3 = Club(name="AI Society", college="West Institute", description="Study groups, ML workshops and contests.", created_by=kabir.id)
+        c4 = Club(name="Open Source Guild", college="City University", description="Cross-campus open source sprints.", created_by=meera.id)
         db.session.add_all([c1, c2, c3, c4])
         db.session.flush()
         for u, c in [(demo, c1), (demo, c3), (riya, c2), (kabir, c3), (meera, c4), (riya, c1)]:
             db.session.add(ClubFollow(user_id=u.id, club_id=c.id))
 
         # Upcoming events: the clash demo
-        hack_x = event("Hackathon X", "Unstop", "hackathon", "IIIT Delhi, Okhla", "IIIT Delhi",
+        hack_x = event("Tech Fest Finale", "Unstop", "hackathon", "Main Campus, Hall A", "Main Campus",
                        at(sat, 10), at(sat, 18), "24-hour build on AI for campus life.", reg=at(today + timedelta(days=2), 23, 59), club=c1,
                        url="https://unstop.com", owner=demo)
-        work_y = event("Cloud Workshop Y", "Townscript", "workshop", "DTU, Rohini", "DTU",
+        work_y = event("Cloud Workshop", "Townscript", "workshop", "North Campus, Lab 3", "North Campus",
                        at(sat, 14), at(sat, 17), "Hands-on deployment workshop.", club=c2)
-        contest_z = event("Contest Z (Competitive Coding)", "Unstop", "contest", "NSUT, Dwarka", "NSUT",
+        contest_z = event("Competitive Coding Sprint", "Unstop", "contest", "West Institute, Hall B", "West Institute",
                           at(next_mon + timedelta(days=2), 11), at(next_mon + timedelta(days=2), 14), "Individual coding contest.",
                           reg=at(sat + timedelta(days=1), 23, 59), club=c3)
         # Events to discover
-        event("Web Build Day", "Devfolio", "hackathon", "IIT Delhi, Hauz Khas", "IIT Delhi", at(sat + timedelta(days=14), 9), at(sat + timedelta(days=14), 21),
+        event("Web Build Day", "Devfolio", "hackathon", "City University, Main Audi", "City University", at(sat + timedelta(days=14), 9), at(sat + timedelta(days=14), 21),
               "Build with the open web stack. Prizes for the best demos.", reg=at(sat + timedelta(days=10), 23, 59), club=c4)
-        event("ML Study Jam", "Commudle", "workshop", "NSUT, Dwarka", "NSUT", at(sat + timedelta(days=9), 15), at(sat + timedelta(days=9), 18),
+        event("ML Study Jam", "Commudle", "workshop", "West Institute, Hall B", "West Institute", at(sat + timedelta(days=9), 15), at(sat + timedelta(days=9), 18),
               "Intro to applied machine learning.", club=c3)
-        event("Product Case Contest", "Unstop", "contest", "DTU, Rohini", "DTU", at(sat + timedelta(days=12), 10), at(sat + timedelta(days=12), 16),
+        event("Product Case Contest", "Unstop", "contest", "North Campus, Lab 3", "North Campus", at(sat + timedelta(days=12), 10), at(sat + timedelta(days=12), 16),
               "Solve a real product case in teams of 3.", reg=at(sat + timedelta(days=8), 23, 59), club=c2)
-        event("Open Source Sprint", "Luma", "workshop", "IIIT Delhi, Okhla", "IIIT Delhi", at(sat + timedelta(days=20), 10), at(sat + timedelta(days=20), 17),
+        event("Open Source Sprint", "Luma", "workshop", "Main Campus, Hall A", "Main Campus", at(sat + timedelta(days=20), 10), at(sat + timedelta(days=20), 17),
               "Fix issues, learn git workflows, ship your first PR.", club=c1, owner=demo)
-        event("Campus Tech Summit", "Eventbrite", "conference", "IIT Delhi, Hauz Khas", "IIT Delhi", at(sat + timedelta(days=27), 9), at(sat + timedelta(days=27), 17),
+        event("Campus Tech Summit", "Eventbrite", "conference", "City University, Main Audi", "City University", at(sat + timedelta(days=27), 9), at(sat + timedelta(days=27), 17),
               "Talks from engineers and founders.", club=c4)
 
         # Past events with verified reviews
-        past1 = event("DevSprint 2026", "Devfolio", "hackathon", "IIIT Delhi, Okhla", "IIIT Delhi", at(today - timedelta(days=21), 10), at(today - timedelta(days=21), 20),
+        past1 = event("DevSprint 2026", "Devfolio", "hackathon", "Main Campus, Hall A", "Main Campus", at(today - timedelta(days=21), 10), at(today - timedelta(days=21), 20),
                       "A one-day build sprint.", club=c1, owner=demo)
-        past2 = event("AI Workshop Series", "Commudle", "workshop", "NSUT, Dwarka", "NSUT", at(today - timedelta(days=14), 14), at(today - timedelta(days=14), 17),
+        past2 = event("AI Workshop Series", "Commudle", "workshop", "West Institute, Hall B", "West Institute", at(today - timedelta(days=14), 14), at(today - timedelta(days=14), 17),
                       "Three-hour hands-on session.", club=c3)
-        past3 = event("Robotics Expo", "Townscript", "fest", "DTU, Rohini", "DTU", at(today - timedelta(days=9), 10), at(today - timedelta(days=9), 17),
+        past3 = event("Robotics Expo", "Townscript", "fest", "North Campus, Lab 3", "North Campus", at(today - timedelta(days=9), 10), at(today - timedelta(days=9), 17),
                       "Project showcase and demos.", club=c2)
 
         def journey(u, ev, status, stages=()):
@@ -108,7 +108,7 @@ def main():
                 db.session.add(Stage(user_event_id=ue.id, name=name, due_at=due, done=done))
             return ue
 
-        # Demo student's timeline (Student A: AI profile -> Score 82)
+        # Demo student's timeline
         journey(demo, hack_x, "registered", [
             ("Register", at(today - timedelta(days=3), 23, 59), True),
             ("Submit", at(today + timedelta(days=5), 18), False),
@@ -116,13 +116,13 @@ def main():
         ])
         journey(demo, work_y, "interested")
         journey(demo, contest_z, "interested", [("Register", contest_z.registration_deadline, False)])
-        journey(demo, past1, "attended")  # can leave a verified review
+        journey(demo, past1, "attended")
         db.session.add(ExamPeriod(user_id=demo.id, label="sessionals", start_date=next_mon + timedelta(days=7), end_date=next_mon + timedelta(days=11)))
 
-        # Student B's timeline (Design profile -> Score 20 on Hackathon X)
+        # Student B's timeline
         journey(student_b, hack_x, "interested", [("Submit", at(today + timedelta(days=5), 18), False)])
 
-        # Verified reviews from other students
+        # Verified reviews
         def review(u, ev, org, learn, val, text):
             journey(u, ev, "attended")
             db.session.add(Review(event_id=ev.id, user_id=u.id, organisation=org, learning=learn, value=val,
@@ -135,7 +135,7 @@ def main():
         review(kabir, past2, 4, 4, 4, "Solid intro. Bring a laptop.")
         review(meera, past3, 3, 3, 2, "Mostly stalls, not much to learn.")
 
-        team = Team(name="Team Quanta", code="QUANTA", owner_id=demo.id)
+        team = Team(name="Team Nexus", code="NEXUS", owner_id=demo.id)
         db.session.add(team)
         db.session.flush()
         for u in (demo, riya, kabir):
@@ -146,11 +146,11 @@ def main():
         for u in (riya, kabir):
             journey(u, hack_x, "registered", [("Submit", at(today + timedelta(days=2), 18), False)]).team_id = team.id
 
-        # A forwarded email waiting in the demo student's Inbox
+        # Forwarded email waiting in demo student's Inbox
         fwd_day = sat + timedelta(days=16)
-        mail_text = (f"AI for Good Hackathon\nVenue: IIT Delhi, Hauz Khas\n{fwd_day.day} {fwd_day:%b %Y}, 10:00 AM to 6:00 PM\n"
-                     f"Registrations close {(fwd_day - timedelta(days=5)).day} {(fwd_day - timedelta(days=5)):%b %Y}\nRegister on https://devfolio.co/ai-for-good")
-        db.session.add(InboxItem(user_id=demo.id, message_id="seed-1", sender="events@iitd.example", subject="Fwd: AI for Good Hackathon",
+        mail_text = (f"AI Innovation Challenge\nVenue: Main Campus, Hall A\n{fwd_day.day} {fwd_day:%b %Y}, 10:00 AM to 6:00 PM\n"
+                     f"Registrations close {(fwd_day - timedelta(days=5)).day} {(fwd_day - timedelta(days=5)):%b %Y}\nRegister on https://devfolio.co/ai-innovation")
+        db.session.add(InboxItem(user_id=demo.id, message_id="seed-1", sender="events@campus.example", subject="Fwd: AI Innovation Challenge",
                                  body=mail_text, parsed=json.dumps(extract_with_rules(mail_text, datetime.now())), status="pending"))
 
         db.session.commit()

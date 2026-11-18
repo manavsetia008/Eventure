@@ -11,3 +11,7 @@ dist/
 *.pptx
 *.docx
 *.pdf
+
+.vscode/
+backend/try_sarvam.py
+
