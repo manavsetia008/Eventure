@@ -184,7 +184,7 @@ expect a `Bearer <token>` from `POST /api/auth/login`.
 | Push | `/api/push` | `GET /key`, `POST /subscribe`, `POST /unsubscribe` |
 | Integrations | `/api/integrations` | `GET /status`, `POST /test/:service` |
 
-Health check: `GET /api/health` → `{"status": "ok"}`.
+Health check: `GET /api/health` verifies the database connection and returns `database: true` only when it is reachable.
 
 ---
 
@@ -192,7 +192,7 @@ Health check: `GET /api/health` → `{"status": "ok"}`.
 
 ```powershell
 cd backend
-python -m pytest tests -q          # 92 tests
+python -m unittest discover -s tests -v
 
 cd ..\frontend
 npm test                           # 18 tests
@@ -213,14 +213,14 @@ can run on a single service.
 **Build step:** `cd frontend && npm install && npm run build`
 
 **Render / Railway / any VM**
-- Start command: `cd backend && python run.py` (or `gunicorn "app:create_app()"`).
+- Use the repository-root Dockerfile. It builds the React frontend and runs Flask under Gunicorn; do not use Flask's debug server in production.
 - Set the env vars from the table above. `SECRET_KEY` is required in production; set `TRUST_PROXY=1` behind a proxy.
 - Set `APP_ENV=production`, a unique `SECRET_KEY`, and point `DATABASE_URL` at Supabase Postgres (Transaction pooler, `sslmode=require`). Production startup refuses to use SQLite or a weak/missing secret.
-- Optional one-time setup: `python seed.py --reset`.
+- The application creates its schema on first production boot. Do not run the demo seed script with `--reset` against a production database.
 
 **Vercel (frontend) + Render/Railway (backend)**
-- Deploy `frontend` to Vercel with build command `npm run build` and output directory `dist`, and set `VITE_API_URL` to your backend URL plus `/api`.
-- Deploy `backend` as above, then set `CORS_ORIGINS` and `FRONTEND_URL` to the Vercel URL.
+- Connect the GitHub repository to Vercel with project root `frontend`, framework Vite, build command `npm run build`, and output directory `dist`. The existing `frontend/vercel.json` rewrites API and Google callback requests to the Render backend, so leave `VITE_API_URL` unset unless you intentionally switch to direct cross-origin API requests.
+- Deploy the backend from the repository-root Dockerfile on Render. Set `CORS_ORIGINS`, `FRONTEND_URL`, and `APP_BASE_URL` to the production Vercel origin.
 
 **Docker**
 
