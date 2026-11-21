@@ -2,7 +2,6 @@
 import logging
 from functools import lru_cache
 from math import asin, cos, radians, sin, sqrt
-
 import requests
 
 AVG_SPEED_KMH = 25.0   # city traffic, mix of metro, cab and bus

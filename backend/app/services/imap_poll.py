@@ -4,7 +4,6 @@ import logging
 
 from .inbox import ingest_email, parse_raw_email
 
-
 def poll_inbox(app):
     """Read unseen mails and create inbox items. Returns how many were created."""
     cfg = app.config

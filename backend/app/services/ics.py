@@ -9,7 +9,6 @@ def _fmt(dt):
 def _esc(text):
     return (text or "").replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\r", "").replace("\n", "\\n")
 
-
 def _fold(line):
     out, raw = [], line.encode("utf-8")
     while len(raw) > 74:

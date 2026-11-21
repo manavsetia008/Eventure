@@ -93,7 +93,11 @@ def ingest_email(config, token, subject, body, sender, message_id):
     mid = message_id or "h:" + hashlib.sha1(f"{sender}|{subject}|{(body or '')[:500]}".encode("utf-8")).hexdigest()
     if InboxItem.query.filter_by(user_id=user.id, message_id=mid).first():
         return None
-    parsed = extract_event(build_text(subject, body), now(), config.get("ANTHROPIC_API_KEY") or None, config.get("ANTHROPIC_MODEL"))
+    parsed = extract_event(
+        build_text(subject, body), now(),
+        sarvam_key=config.get("SARVAM_API_KEY") or None,
+        sarvam_model=config.get("SARVAM_MODEL") or "sarvam-105b-conversations",
+    )
     item = InboxItem(user_id=user.id, message_id=mid[:300], sender=(sender or "")[:300], subject=(subject or "")[:500],
                      body=(body or "")[:20000], parsed=json.dumps(parsed))
     db.session.add(item)

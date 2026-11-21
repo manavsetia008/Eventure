@@ -8,7 +8,6 @@ Pre-processing pipeline (improves accuracy on colourful event flyers):
 """
 import io
 
-
 class OCRUnavailable(Exception):
     pass
 

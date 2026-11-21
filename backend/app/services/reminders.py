@@ -6,7 +6,6 @@ from email.message import EmailMessage
 
 LEVEL_ORDER = ["warning", "urgent", "critical"]
 
-
 def level_for(hours_left):
     if hours_left < -24:
         return None

@@ -3,7 +3,6 @@ and on Android and iOS when the PWA is installed. No Firebase account needed."""
 import json
 import logging
 
-
 def push_configured(config):
     return bool(config.get("VAPID_PUBLIC_KEY") and config.get("VAPID_PRIVATE_KEY"))
 

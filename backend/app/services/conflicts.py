@@ -5,7 +5,6 @@ An event dict looks like:
    "lat": float|None, "lng": float|None, "venue": str|None}
 """
 from datetime import timedelta
-
 try:
     from ..utils import fmt_minutes
 except (ImportError, ValueError):

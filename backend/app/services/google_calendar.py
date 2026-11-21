@@ -24,7 +24,6 @@ SCOPE = "https://www.googleapis.com/auth/calendar.events"
 TAG = {"eventure": "1"}
 _CACHE = {}
 
-
 def configured(config):
     return bool(config.get("GOOGLE_CLIENT_ID") and config.get("GOOGLE_CLIENT_SECRET"))
 
