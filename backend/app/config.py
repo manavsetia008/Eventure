@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 
@@ -7,9 +8,34 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 
 def _database_url():
-    url = os.getenv("DATABASE_URL") or f"sqlite:///{os.path.join(BASE_DIR, 'eventure.db')}"
+    url = (os.getenv("DATABASE_URL") or f"sqlite:///{os.path.join(BASE_DIR, 'eventure.db')}").strip()
+
+    # A full PostgreSQL DSN is occasionally pasted with an HTTP(S) scheme by mistake.
+    # Repair only when it contains all the parts of a real database URI; never mistake
+    # a Supabase project/API URL for a database connection string.
+    if url.startswith(("https://", "http://")):
+        parsed = urlsplit(url)
+        has_database_credentials = bool(
+            parsed.username and parsed.password and parsed.hostname and parsed.port
+            and parsed.path.strip("/")
+        )
+        if not has_database_credentials:
+            raise RuntimeError(
+                "DATABASE_URL is an HTTP(S) URL, not a PostgreSQL connection string. "
+                "Use the URI shown by Supabase Connect > Session pooler "
+                "(postgresql://...:5432/postgres), not the Supabase API/project URL."
+            )
+        url = "postgresql+psycopg://" + url.split("://", 1)[1]
+
     if url.startswith("postgres://"):  # some hosts still hand out the old scheme
         url = "postgresql://" + url[len("postgres://"):]
+
+    scheme = url.split("://", 1)[0].lower() if "://" in url else ""
+    if scheme not in {"sqlite", "postgresql", "postgresql+psycopg", "postgresql+psycopg2"}:
+        raise RuntimeError(
+            "DATABASE_URL must use a PostgreSQL connection URI from Supabase "
+            "(postgresql:// or postgresql+psycopg://)."
+        )
     return url
 
 
