@@ -182,9 +182,9 @@ class _AnchorParser(HTMLParser):
 
 
 def _devfolio_card_context(source, start, end):
-    # The explore page is server-rendered. The status and schedule text appears
-    # alongside each event card, so inspect only a bounded slice around its link.
-    raw = source[max(0, start - 900):min(len(source), end + 1800)]
+    # The explore page is server-rendered. Read forward from this card's link so
+    # the status is taken from this listing, not the previous card's status.
+    raw = source[start:min(len(source), end + 2200)]
     visible = _text(raw)
     status_match = re.search(r"\b(Open|Upcoming|Ended|Past)\b", visible, re.IGNORECASE)
     status = status_match.group(1).lower() if status_match else ""
