@@ -8,10 +8,6 @@ const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>';
 
-function currentTheme() {
-  return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
-}
-
 export default function MapView({ college, events, onOpen }) {
   const el = useRef(null);
   const map = useRef(null);
