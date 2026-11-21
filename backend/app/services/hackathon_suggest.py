@@ -8,6 +8,7 @@ import os
 import re
 import urllib.parse
 import requests
+from datetime import datetime
 
 from .portal_search import PORTAL_CATALOG
 
@@ -174,5 +175,40 @@ def suggest_hackathons_for_user(user, config: dict = None) -> list:
             "reason": reason,
         })
 
-    scored.sort(key=lambda item: (-item["match_score"], item.get("start_at") or "9999"))
+    # The public adapters return datetime objects; a missing date sorts last.
+    # Keep this key type-consistent so suggestions never turn the endpoint into a 500.
+    def _sort_date(item):
+        value = item.get("start_at")
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
+            except ValueError:
+                pass
+        return datetime.max
+
+    # Show clearly labelled catalogue candidates only when both live providers are
+    # unavailable. These are prompts to verify on the organiser site, not live events.
+    if not scored:
+        for candidate in PORTAL_CATALOG:
+            fallback = {
+                **candidate,
+                "start_at": None,
+                "end_at": None,
+                "registration_deadline": None,
+                "source": "curated_unverified",
+                "verified": False,
+            }
+            item_tokens = set(_clean_query_words(
+                f"{fallback.get('title', '')} {fallback.get('description', '')} {fallback.get('platform', '')}"
+            ))
+            matched = sorted(user_tokens & item_tokens)
+            overlap = len(matched) / max(len(user_tokens), 1)
+            fallback["match_score"] = min(85.0, round(35.0 + overlap * 50.0, 1))
+            fallback["matched_skills"] = matched
+            fallback["reason"] = "Curated candidate only — verify that registration is currently open on the organiser's official page."
+            scored.append(fallback)
+
+    scored.sort(key=lambda item: (-item["match_score"], _sort_date(item)))
     return scored[:8]
