@@ -110,11 +110,30 @@ def _normalise_unstop(item):
     if not title or not url:
         return None
 
+    location_data = _pick(item, "location", "venue", "locations")
     locations = _pick(item, "locations", "location", "city", "venue")
     venue = _text(locations)
     mode = _text(_pick(item, "mode", "region", "workplace_type", "event_mode")).lower()
     if not venue:
         venue = "Online" if any(word in mode for word in ("online", "virtual", "remote")) else "Venue to be confirmed"
+
+    raw_lat = _pick(item, "lat", "latitude", "venue_lat", "location_lat")
+    raw_lng = _pick(item, "lng", "lon", "longitude", "venue_lng", "location_lng")
+    if isinstance(location_data, dict):
+        raw_lat = raw_lat or _pick(location_data, "lat", "latitude")
+        raw_lng = raw_lng or _pick(location_data, "lng", "lon", "longitude")
+    try:
+        lat = float(raw_lat) if raw_lat not in (None, "") else None
+        if lat is not None and not -90 <= lat <= 90:
+            lat = None
+    except (TypeError, ValueError):
+        lat = None
+    try:
+        lng = float(raw_lng) if raw_lng not in (None, "") else None
+        if lng is not None and not -180 <= lng <= 180:
+            lng = None
+    except (TypeError, ValueError):
+        lng = None
 
     return {
         "title": title[:250],
@@ -122,6 +141,8 @@ def _normalise_unstop(item):
         "category": "hackathon",
         "description": _text(_pick(item, "description", "snippet", "summary"))[:10000],
         "venue_name": venue[:250],
+        "lat": lat,
+        "lng": lng,
         "url": url[:500],
         "start_at": _parse_datetime(_pick(item, "start_date", "startDate", "start_at", "event_start_date", "eventStartDate", "event_start")),
         "end_at": _parse_datetime(_pick(item, "event_end_date", "eventEndDate", "end_at", "event_end")),
@@ -337,6 +358,9 @@ def sync_public_listings():
             row.end_at = item["end_at"]
         if item.get("registration_deadline"):
             row.registration_deadline = item["registration_deadline"]
+        if item.get("lat") is not None and item.get("lng") is not None:
+            row.lat = item["lat"]
+            row.lng = item["lng"]
         changed += 1
 
     if changed:
