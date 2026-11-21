@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { Privacy, Terms } from "./pages/Legal.jsx";
 import { api } from "./api";
 import { useAuth } from "./auth.jsx";
 import Logo from "./components/Logo.jsx";
@@ -27,17 +28,9 @@ import {
   Plus,
   Settings as SettingsIcon,
   Sun,
+  User,
   Users,
 } from "lucide-react";
-
-function getUserInitials(name) {
-  if (!name) return "EV";
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-  return parts[0].slice(0, 2).toUpperCase();
-}
 
 function Layout({ children, theme, toggleTheme }) {
   const { user, logout } = useAuth();
@@ -45,14 +38,6 @@ function Layout({ children, theme, toggleTheme }) {
   const [inbox, setInbox] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
-
-  const [lang, setLang] = useState(() => localStorage.getItem("eventure_lang") || "en");
-
-  const changeLang = (l) => {
-    setLang(l);
-    localStorage.setItem("eventure_lang", l);
-    window.dispatchEvent(new CustomEvent("eventure_lang_change", { detail: l }));
-  };
 
   useEffect(() => {
     let alive = true;
@@ -84,8 +69,6 @@ function Layout({ children, theme, toggleTheme }) {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [dropdownOpen]);
-
-  const initials = getUserInitials(user?.name);
 
   return (
     <>
@@ -150,7 +133,7 @@ function Layout({ children, theme, toggleTheme }) {
               aria-label="Open user profile menu"
               aria-expanded={dropdownOpen}
             >
-              {initials}
+              <User size={16} strokeWidth={1.75} />
             </button>
             {dropdownOpen && (
               <div className="user-dropdown-menu">
@@ -158,22 +141,6 @@ function Layout({ children, theme, toggleTheme }) {
                   <div className="dropdown-user-name">{user.name}</div>
                   <div className="dropdown-user-email">{user.email}</div>
                   {user.college && <div className="dropdown-user-college">{user.college}</div>}
-                </div>
-                <div className="dropdown-lang-row">
-                  <span className="dropdown-lang-label">Language</span>
-                  <select
-                    value={lang}
-                    onChange={(e) => changeLang(e.target.value)}
-                    className="dropdown-lang-select"
-                    aria-label="Select language"
-                  >
-                    <option value="en">English</option>
-                    <option value="hi">हिन्दी</option>
-                    <option value="bn">বাংলা</option>
-                    <option value="ta">தமிழ்</option>
-                    <option value="te">తెలుగు</option>
-                    <option value="mr">मराठी</option>
-                  </select>
                 </div>
                 <Link
                   to="/settings"
@@ -239,27 +206,65 @@ function Protected({ children, theme, toggleTheme }) {
   return <Layout theme={theme} toggleTheme={toggleTheme}>{children}</Layout>;
 }
 
+const PAGE_TITLES = [
+  [/^\/add/, "Add event"],
+  [/^\/discover/, "Discover"],
+  [/^\/inbox/, "Inbox"],
+  [/^\/community/, "Community"],
+  [/^\/organizer/, "Organizer"],
+  [/^\/notifications/, "Notifications"],
+  [/^\/settings/, "Settings"],
+  [/^\/events\//, "Event"],
+  [/^\/signup/, "Create account"],
+  [/^\/login/, "Sign in"],
+  [/^\/privacy/, "Privacy"],
+  [/^\/terms/, "Terms"],
+];
+
 export default function App() {
   const { user } = useAuth();
+  const location = useLocation();
+
+  useEffect(() => {
+    const match = PAGE_TITLES.find(([re]) => re.test(location.pathname));
+    const page = location.pathname === "/" ? (user ? "Timeline" : null) : match?.[1];
+    document.title = page ? `${page} | Eventure` : "Eventure";
+  }, [location.pathname, user]);
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem("eventure_theme");
-    if (saved) return saved;
+    if (saved === "light" || saved === "dark") return saved;
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("eventure_theme", theme);
   }, [theme]);
 
+  // Follow the OS preference until the student makes an explicit choice.
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = (e) => {
+      const saved = localStorage.getItem("eventure_theme");
+      if (saved !== "light" && saved !== "dark") setTheme(e.matches ? "dark" : "light");
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   const toggleTheme = () => {
-    setTheme((t) => (t === "dark" ? "light" : "dark"));
+    setTheme((t) => {
+      const next = t === "dark" ? "light" : "dark";
+      localStorage.setItem("eventure_theme", next);
+      return next;
+    });
   };
 
   return (
     <Routes>
       <Route path="/login" element={<Login initialMode="login" />} />
       <Route path="/signup" element={<Login initialMode="register" />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
       <Route
         path="/"
         element={
