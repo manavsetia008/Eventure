@@ -136,7 +136,8 @@ def create_app(config_object=None):
     if app.config.get("APP_ENV") == "production":
         try:
             from .services.discover_feed import sync_public_listings
-            imported = sync_public_listings()
+            with app.app_context():
+                imported = sync_public_listings()
             logging.info("[Discovery] Public feed sync completed; %d listings processed.", imported)
         except Exception:
             logging.exception("[Discovery] Initial public feed sync failed; API will remain available.")
