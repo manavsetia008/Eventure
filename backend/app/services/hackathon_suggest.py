@@ -10,7 +10,6 @@ import urllib.parse
 import requests
 from datetime import datetime
 
-from .portal_search import PORTAL_CATALOG
 
 
 def _clean_query_words(text: str) -> list:
@@ -188,26 +187,46 @@ def suggest_hackathons_for_user(user, config: dict = None) -> list:
                 pass
         return datetime.max
 
-    # Show clearly labelled catalogue candidates only when both live providers are
-    # unavailable. These are prompts to verify on the organiser site, not live events.
+    # If both live feeds are unavailable, show official portal discovery pages,
+    # not old or fabricated individual event cards.
     if not scored:
-        for candidate in PORTAL_CATALOG:
-            fallback = {
-                **candidate,
+        portal_directory = [
+            {
+                "title": "Browse current hackathons on Unstop",
+                "platform": "Unstop",
+                "category": "hackathon",
+                "venue_name": "Online and in-person listings",
+                "description": "Open Unstop's current hackathon directory and check each organiser's live registration status.",
+                "url": "https://unstop.com/hackathons",
+            },
+            {
+                "title": "Explore open hackathons on Devfolio",
+                "platform": "Devfolio",
+                "category": "hackathon",
+                "venue_name": "Online and in-person listings",
+                "description": "Browse Devfolio's public Explore page for current hackathon applications and project events.",
+                "url": "https://devfolio.co/explore",
+            },
+            {
+                "title": "Browse hackathons on Devpost",
+                "platform": "Devpost",
+                "category": "hackathon",
+                "venue_name": "Online listings",
+                "description": "Explore the public Devpost hackathon directory and review live project challenges.",
+                "url": "https://devpost.com/hackathons",
+            },
+        ]
+        for fallback in portal_directory:
+            fallback.update({
                 "start_at": None,
                 "end_at": None,
                 "registration_deadline": None,
-                "source": "curated_unverified",
+                "source": "portal_directory",
                 "verified": False,
-            }
-            item_tokens = set(_clean_query_words(
-                f"{fallback.get('title', '')} {fallback.get('description', '')} {fallback.get('platform', '')}"
-            ))
-            matched = sorted(user_tokens & item_tokens)
-            overlap = len(matched) / max(len(user_tokens), 1)
-            fallback["match_score"] = min(85.0, round(35.0 + overlap * 50.0, 1))
-            fallback["matched_skills"] = matched
-            fallback["reason"] = "Curated candidate only — verify that registration is currently open on the organiser's official page."
+                "match_score": 35.0,
+                "matched_skills": [],
+                "reason": "Live event feeds are temporarily unavailable. Open the portal to check current listings and registration status.",
+            })
             scored.append(fallback)
 
     scored.sort(key=lambda item: (-item["match_score"], _sort_date(item)))
