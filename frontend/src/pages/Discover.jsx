@@ -124,7 +124,7 @@ export default function Discover() {
                   <p className="small muted" style={{ margin: "0 0 0.5rem", lineHeight: "1.4" }}>{s.reason || s.description?.slice(0, 100)}</p>
                   {!s.start_at && (
                     <p className="small muted" style={{ margin: "0 0 0.5rem" }}>
-                      Event date not found in search result — verify the official page.
+                      Dates are not confirmed by this public listing — check the organiser's page.
                     </p>
                   )}
                   {s.matched_skills && s.matched_skills.length > 0 && (
