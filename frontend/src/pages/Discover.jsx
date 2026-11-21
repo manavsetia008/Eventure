@@ -107,10 +107,10 @@ export default function Discover() {
               <Sparkles size={18} color="var(--accent)" />
               <strong style={{ fontSize: "1rem" }}>Hackathon suggestions</strong>
             </div>
-            <span className="pill ok" style={{ fontSize: "0.75rem" }}>Live public listings</span>
+            <span className="pill ok" style={{ fontSize: "0.75rem" }}>Live listings + fallback candidates</span>
           </div>
           <p className="small muted" style={{ margin: "0 0 1rem 0" }}>
-            Ranked against your interests and goals. Confirm registration deadlines, eligibility and event details on the organiser&apos;s official page.
+            Ranked against your interests and goals. Fallback candidates are not verified as open; confirm dates, eligibility and registration on the organiser&apos;s official page.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
             {suggestions.map((s, idx) => (
@@ -143,23 +143,20 @@ export default function Discover() {
                       View Link <ExternalLink size={11} />
                     </a>
                   )}
-                  <button
-                    type="button"
-                    className="btn small"
-                    style={{ fontSize: "0.75rem", padding: "4px 10px" }}
-                    onClick={() => add({
-                      title: s.title,
-                      platform: s.platform,
-                      category: "hackathon",
-                      venue_name: s.venue_name || "Online",
-                      description: s.description || "",
-                      url: s.url || "",
-                      start_at: s.start_at,
-                      registration_deadline: s.registration_deadline,
-                    })}
-                  >
-                    + Add to Timeline
-                  </button>
+                  {s.id ? (
+                    <button
+                      type="button"
+                      className="btn small"
+                      style={{ fontSize: "0.75rem", padding: "4px 10px" }}
+                      onClick={() => add({ id: s.id, title: s.title })}
+                    >
+                      + Add to Timeline
+                    </button>
+                  ) : (
+                    <span className="small muted" title="This is a discovery candidate, not a verified live event">
+                      Verify listing before adding
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
