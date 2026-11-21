@@ -278,5 +278,4 @@ def get_hackathon_suggestions():
     for suggestion in suggestions:
         event = Event.query.filter_by(url=suggestion.get("url")).first()
         suggestion["id"] = event.id if event else None
-    suggestions = [item for item in suggestions if item.get("id") is not None]
     return jsonify(suggestions=suggestions)
