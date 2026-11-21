@@ -92,7 +92,7 @@ export default function PortalSearchModal({ isOpen, onClose, onEventAdded }) {
           <div>
             <h3 id="portal-search-title">Search Top Portals (&gt;70% Match Engine)</h3>
             <p className="muted small">
-              Searches Eventure's maintained portal index. Similarity scores are not verification; confirm details on the organiser's official page.
+              Searches Eventure&apos;s maintained portal index. Similarity scores are not verification; confirm details on the organiser&apos;s official page.
             </p>
           </div>
           <button className="btn-icon-subtle" onClick={onClose} aria-label="Close modal">
