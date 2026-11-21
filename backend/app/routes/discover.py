@@ -1,5 +1,5 @@
-from flask import Blueprint, g, jsonify, request
-from sqlalchemy import func
+from flask import Blueprint, current_app, g, jsonify, request
+from sqlalchemy import and_, func, or_
 
 from ..auth import login_required
 from ..extensions import db
@@ -63,7 +63,21 @@ def event_card(ev, user, ratings, in_timeline, portal_keys=None):
 @login_required
 def discover():
     user, now_ = g.user, now()
-    q = Event.query.filter(Event.is_public.is_(True), Event.start_at >= now_)
+    # Pull the latest public listings into the shared catalogue. Source failures are
+    # non-fatal: locally created events remain available when an upstream is offline.
+    try:
+        from ..services.discover_feed import sync_public_listings
+        sync_public_listings()
+    except Exception:
+        current_app.logger.exception("Public discovery feed sync failed.")
+
+    q = Event.query.filter(
+        Event.is_public.is_(True),
+        or_(
+            Event.start_at >= now_,
+            and_(Event.start_at.is_(None), Event.source == "public_feed"),
+        ),
+    )
     category = (request.args.get("category") or "").strip().lower()
     if category:
         q = q.filter(func.lower(Event.category) == category)
