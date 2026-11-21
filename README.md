@@ -215,7 +215,7 @@ can run on a single service.
 **Render / Railway / any VM**
 - Use the repository-root Dockerfile. It builds the React frontend and runs Flask under Gunicorn; do not use Flask's debug server in production.
 - Set the env vars from the table above. `SECRET_KEY` is required in production; set `TRUST_PROXY=1` behind a proxy.
-- Set `APP_ENV=production`, a unique `SECRET_KEY`, and point `DATABASE_URL` at Supabase Postgres (Transaction pooler, `sslmode=require`). Production startup refuses to use SQLite or a weak/missing secret.
+- Set `APP_ENV=production`, a unique `SECRET_KEY`, and point `DATABASE_URL` at Supabase Postgres (Shared Session pooler, port `5432`, `sslmode=require`). Production startup refuses to use SQLite or a weak/missing secret.
 - The application creates its schema on first production boot. Do not run the demo seed script with `--reset` against a production database.
 
 **Vercel (frontend) + Render/Railway (backend)**
