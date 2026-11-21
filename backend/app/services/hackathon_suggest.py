@@ -1,14 +1,12 @@
-"""Real-Time Hackathon Suggestion & Search Intelligence Engine.
+"""Hackathon suggestion engine backed by public web search and a curated seed catalogue.
 
-Reads user profile data (interests, skills, campus location, and experience)
-and discovers real-time hackathons matching their profile using Google Custom
-Search API or free live web search (DuckDuckGo & top portal indexes: Unstop, Devfolio, Hack2skill, Devpost).
+Search snippets are not authoritative event records. Missing schedules and deadlines
+remain unset until confirmed from an organiser's official listing.
 """
 import logging
 import os
 import re
 import urllib.parse
-from datetime import datetime, timedelta
 import requests
 
 from .portal_search import PORTAL_CATALOG
