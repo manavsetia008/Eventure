@@ -47,7 +47,6 @@ export default function Login({ initialMode }) {
   });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [demoBusy, setDemoBusy] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -107,24 +106,6 @@ export default function Login({ initialMode }) {
     if (error) setError("");
   };
 
-  async function handleDemoLogin() {
-    setError("");
-    setDemoBusy(true);
-    try {
-      setForm((f) => ({
-        ...f,
-        email: "demo@eventure.app",
-        password: "demo1234",
-      }));
-      await login("demo@eventure.app", "demo1234");
-      navigate(from, { replace: true });
-    } catch (err) {
-      setError(err?.message || "Could not sign in with the demo account. Please try again.");
-    } finally {
-      setDemoBusy(false);
-    }
-  }
-
   async function submit(e) {
     e.preventDefault();
     setError("");
@@ -139,8 +120,12 @@ export default function Login({ initialMode }) {
         setError("Please enter a valid email address.");
         return;
       }
-      if (form.password.length < 6) {
-        setError("Password must be at least 6 characters.");
+      if (form.password.length < 8) {
+        setError("Password must be at least 8 characters.");
+        return;
+      }
+      if (!/[A-Za-z]/.test(form.password) || !/[0-9]/.test(form.password)) {
+        setError("Password must contain at least one letter and one number.");
         return;
       }
       if (form.password !== form.confirmPassword) {
@@ -206,7 +191,7 @@ export default function Login({ initialMode }) {
               type="button"
               className="btn google-signin-btn"
               onClick={handleGoogleSignIn}
-              disabled={googleBusy || busy || demoBusy}
+              disabled={googleBusy || busy}
             >
               {googleBusy ? (
                 <>
@@ -264,8 +249,8 @@ export default function Login({ initialMode }) {
                 type={showPassword ? "text" : "password"}
                 value={form.password}
                 onChange={setField("password")}
-                placeholder="At least 6 characters"
-                minLength={6}
+                placeholder="At least 8 characters"
+                minLength={8}
                 required
                 className="login-input"
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
@@ -290,7 +275,7 @@ export default function Login({ initialMode }) {
                   value={form.confirmPassword}
                   onChange={setField("confirmPassword")}
                   placeholder="Re-enter password"
-                  minLength={6}
+                  minLength={8}
                   required
                   className="login-input"
                   autoComplete="new-password"
@@ -310,7 +295,7 @@ export default function Login({ initialMode }) {
           <button
             type="submit"
             className="btn login-submit-btn"
-            disabled={busy || demoBusy}
+            disabled={busy}
           >
             {busy ? (
               <>
@@ -322,26 +307,6 @@ export default function Login({ initialMode }) {
             )}
           </button>
         </form>
-
-        {mode === "login" && (
-          <div className="login-demo-action">
-            <button
-              type="button"
-              className="btn ghost login-demo-btn"
-              onClick={handleDemoLogin}
-              disabled={busy || demoBusy}
-            >
-              {demoBusy ? (
-                <>
-                  <Loader2 size={16} className="btn-spinner" />
-                  <span>Signing in with demo...</span>
-                </>
-              ) : (
-                "Use demo account"
-              )}
-            </button>
-          </div>
-        )}
 
         <div className="login-toggle-row">
           {mode === "login" ? (

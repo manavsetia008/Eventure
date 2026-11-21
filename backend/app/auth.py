@@ -32,6 +32,24 @@ def _token_from_request():
     return request.args.get("token")
 
 
+_REVOKED_TOKENS = set()
+
+
+def revoke_token(token: str):
+    """Blacklist a JWT token upon sign out or account deletion."""
+    if token:
+        _REVOKED_TOKENS.add(token)
+
+
+def is_token_revoked(token: str) -> bool:
+    return bool(token and token in _REVOKED_TOKENS)
+
+
+def clear_revoked_tokens():
+    """Clear blacklist (used in testing)."""
+    _REVOKED_TOKENS.clear()
+
+
 def login_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -41,6 +59,8 @@ def login_required(fn):
         token = _token_from_request()
         if not token:
             raise ApiError("Sign in to continue.", 401)
+        if is_token_revoked(token):
+            raise ApiError("Your session was closed. Sign in again.", 401)
         try:
             payload = jwt.decode(token, current_app.config["SECRET_KEY"], algorithms=["HS256"])
             user = db.session.get(User, int(payload["sub"]))

@@ -121,3 +121,31 @@ export function urlBase64ToUint8Array(b64) {
   const raw = atob(padded);
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
+
+function cleanIsoForGCal(isoStr) {
+  if (!isoStr) return "";
+  return isoStr.replace(/[-:]/g, "").replace(/\.\d+/, "").replace(/Z$/, "");
+}
+
+/** Direct 1-click URL to add event into Google Calendar */
+export function getGoogleCalendarUrl(event) {
+  if (!event) return "";
+  const title = encodeURIComponent(event.title || "Event");
+  const desc = encodeURIComponent(`${event.category || "Event"} via Eventure. ${event.description || ""} ${event.url ? `Link: ${event.url}` : ""}`.trim());
+  const loc = encodeURIComponent(event.venue_name || "");
+  const start = cleanIsoForGCal(event.start_at);
+  const end = cleanIsoForGCal(event.end_at) || start;
+  const dates = start ? `${start}/${end || start}` : "";
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${desc}&location=${loc}${dates ? `&dates=${dates}` : ""}`;
+}
+
+/** Direct 1-click URL to add event into Microsoft Outlook / Office 365 Calendar */
+export function getMicrosoftCalendarUrl(event) {
+  if (!event) return "";
+  const subject = encodeURIComponent(event.title || "Event");
+  const body = encodeURIComponent(`${event.category || "Event"} via Eventure.\n\n${event.description || ""}\n${event.url ? `Official link: ${event.url}` : ""}`);
+  const location = encodeURIComponent(event.venue_name || "");
+  const start = event.start_at ? encodeURIComponent(event.start_at) : "";
+  const end = event.end_at ? encodeURIComponent(event.end_at) : start;
+  return `https://outlook.live.com/calendar/0/action/compose?subject=${subject}&body=${body}&location=${location}${start ? `&startdt=${start}` : ""}${end ? `&enddt=${end}` : ""}`;
+}

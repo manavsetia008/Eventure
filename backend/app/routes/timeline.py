@@ -4,7 +4,7 @@ from flask import Blueprint, Response, current_app, g, jsonify, request
 
 from ..auth import login_required
 from ..extensions import db
-from ..models import STATUSES, Event, ExamPeriod, InboxItem, Notification, Stage, TrackedPortal, UserEvent
+from ..models import STATUSES, Event, ExamPeriod, InboxItem, Notification, Stage, TopPriorityCall, TrackedPortal, UserEvent
 from ..services.conflicts import detect_external_clashes, detect_issues, effective_end
 from ..services.extraction import extract_event
 from ..services.google_calendar import get_external_events
@@ -579,3 +579,126 @@ def sync_portal_deadlines(portal_id):
         updated_events=count,
         message=f"Synced with {p.name}. {count} event(s) monitored for registration deadline changes."
     )
+
+
+# =========================================================================
+# Sarvam Top-Priority Voice Call Alert System
+# Exactly one event can be designated Top Priority at a time (replaceable).
+# Automatically schedules and places an Indic voice call 24 hours before
+# the latest listed deadline.
+# =========================================================================
+
+@bp.get("/top-priority")
+@login_required
+def get_top_priority():
+    call_rec = TopPriorityCall.query.filter_by(user_id=g.user.id).first()
+    if not call_rec:
+        return jsonify(top_priority=None)
+    return jsonify(top_priority=call_rec.to_dict())
+
+
+@bp.post("/top-priority/set")
+@login_required
+def set_top_priority():
+    d = request.get_json(silent=True) or {}
+    event_id = to_int(d.get("event_id"))
+    phone_number = (d.get("phone_number") or "").strip()
+    if not event_id:
+        raise ApiError("Select an event to designate as top priority.", 400)
+
+    ev = db.session.get(Event, event_id)
+    if not ev:
+        raise ApiError("Event not found.", 404)
+
+    ue = UserEvent.query.filter_by(user_id=g.user.id, event_id=event_id).first()
+    if not ue:
+        ue = UserEvent(user_id=g.user.id, event_id=event_id, status="registered")
+        db.session.add(ue)
+        db.session.flush()
+
+    # Find the latest deadline among event stages, registration deadline, and end_at
+    deadlines = []
+    if ev.registration_deadline:
+        deadlines.append(ev.registration_deadline)
+    if ev.end_at:
+        deadlines.append(ev.end_at)
+    if ev.start_at:
+        deadlines.append(ev.start_at)
+    for st in ue.stages:
+        if st.due_at:
+            deadlines.append(st.due_at)
+
+    now_dt = now()
+    future_deadlines = [dt for dt in deadlines if dt > now_dt]
+    latest_deadline = max(future_deadlines) if future_deadlines else (max(deadlines) if deadlines else (now_dt + timedelta(days=2)))
+
+    # Scheduled exactly 24 hours before the latest deadline
+    scheduled_call_at = latest_deadline - timedelta(hours=24)
+    # If deadline is less than 24 hours away, schedule call in 2 minutes
+    if scheduled_call_at <= now_dt:
+        scheduled_call_at = now_dt + timedelta(minutes=2)
+
+    # Replace existing top priority call if any (only one top priority permitted)
+    call_rec = TopPriorityCall.query.filter_by(user_id=g.user.id).first()
+    if not call_rec:
+        call_rec = TopPriorityCall(
+            user_id=g.user.id,
+            event_id=ev.id,
+            user_event_id=ue.id,
+            scheduled_call_at=scheduled_call_at,
+            phone_number=phone_number,
+            status="scheduled",
+            latest_deadline=latest_deadline,
+        )
+        db.session.add(call_rec)
+    else:
+        call_rec.event_id = ev.id
+        call_rec.user_event_id = ue.id
+        call_rec.scheduled_call_at = scheduled_call_at
+        call_rec.phone_number = phone_number or call_rec.phone_number
+        call_rec.status = "scheduled"
+        call_rec.latest_deadline = latest_deadline
+
+    # Mark custom high score on UserEvent
+    ue.custom_score = 99
+    db.session.commit()
+
+    return jsonify(
+        ok=True,
+        top_priority=call_rec.to_dict(),
+        message=f"'{ev.title}' is now your Top-Priority event. Sarvam voice call scheduled exactly 24 hours before deadline on {iso(scheduled_call_at)}."
+    )
+
+
+@bp.delete("/top-priority")
+@login_required
+def remove_top_priority():
+    call_rec = TopPriorityCall.query.filter_by(user_id=g.user.id).first()
+    if call_rec:
+        db.session.delete(call_rec)
+        db.session.commit()
+    return jsonify(ok=True, message="Top priority removed.")
+
+
+@bp.post("/top-priority/test-call")
+@login_required
+def test_top_priority_call():
+    """Trigger an immediate Sarvam voice reminder test call for the top priority event."""
+    call_rec = TopPriorityCall.query.filter_by(user_id=g.user.id).first()
+    if not call_rec:
+        raise ApiError("No top-priority event configured.", 400)
+
+    from ..services.sarvam_ai import trigger_sarvam_voice_call
+    api_key = current_app.config.get("SARVAM_API_KEY", "")
+    lang = getattr(g.user, "primary_language", "hi-IN") or "hi-IN"
+
+    res = trigger_sarvam_voice_call(
+        phone=call_rec.phone_number,
+        event_title=call_rec.event.title if call_rec.event else "Your event",
+        deadline_str=iso(call_rec.latest_deadline),
+        api_key=api_key,
+        lang=lang,
+    )
+    call_rec.call_log = f"Test call executed at {now().isoformat()}: status={res.get('status')}"
+    db.session.commit()
+    return jsonify(ok=True, call_result=res)

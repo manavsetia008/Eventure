@@ -79,7 +79,7 @@ def run_reminder_check(app, user_id=None):
     from sqlalchemy.exc import IntegrityError
 
     from ..extensions import db
-    from ..models import Notification, Stage, User, UserEvent
+    from ..models import Notification, Stage, TopPriorityCall, User, UserEvent
     from ..services.priority import score_item
     from ..utils import now as now_fn
 
@@ -145,4 +145,36 @@ def run_reminder_check(app, user_id=None):
                 from .push import push_to_user
 
                 push_to_user(app.config, user.id, "Eventure", r["message"], "/")
+
+        # ── 24-Hour Voice Call Check for Top-Priority Events ──
+        pending_calls = TopPriorityCall.query.filter(
+            TopPriorityCall.status == "scheduled",
+            TopPriorityCall.scheduled_call_at <= now,
+        ).all()
+        for call_rec in pending_calls:
+            try:
+                from .sarvam_ai import trigger_sarvam_voice_call
+                u = db.session.get(User, call_rec.user_id)
+                lang = getattr(u, "primary_language", "hi-IN") or "hi-IN"
+                call_res = trigger_sarvam_voice_call(
+                    phone=call_rec.phone_number,
+                    event_title=call_rec.event.title if call_rec.event else "Top Priority Event",
+                    deadline_str=str(call_rec.latest_deadline),
+                    api_key=app.config.get("SARVAM_API_KEY", ""),
+                    lang=lang,
+                )
+                call_rec.status = "completed"
+                call_rec.call_log = f"Automated voice call placed at {now.isoformat()}: {call_res.get('status')}"
+                alert_msg = f"📞 24h Sarvam Voice Alert placed for your top-priority event '{call_rec.event.title if call_rec.event else 'Event'}'. Deadline: {call_rec.latest_deadline}."
+                db.session.add(Notification(
+                    user_id=call_rec.user_id,
+                    message=alert_msg,
+                    level="urgent",
+                    dedupe_key=f"top-call:{call_rec.id}:{call_rec.latest_deadline}",
+                ))
+                created += 1
+            except Exception as e:
+                call_rec.status = "failed"
+                call_rec.call_log = f"Failed at {now.isoformat()}: {str(e)}"
+        db.session.commit()
     return created

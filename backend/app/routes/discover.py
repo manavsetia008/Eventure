@@ -238,3 +238,13 @@ def compare():
         rows.append(card)
     rows.sort(key=lambda c: ids.index(c["id"]) if c["id"] in ids else 0)
     return jsonify(events=rows)
+
+
+@bp.get("/discover/suggestions")
+@login_required
+def get_hackathon_suggestions():
+    """Real-time hackathon suggestions based on user profile and Google Search data."""
+    from flask import current_app
+    from ..services.hackathon_suggest import suggest_hackathons_for_user
+    suggestions = suggest_hackathons_for_user(g.user, current_app.config)
+    return jsonify(suggestions=suggestions)

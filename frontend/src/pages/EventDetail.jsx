@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ExternalLink, Languages, Volume2 } from "lucide-react";
+import { Calendar, CalendarPlus, ExternalLink, Languages, PhoneCall, Star, Volume2 } from "lucide-react";
 import { api, translateText, textToSpeech } from "../api";
-import { cap, fmtDuration, fmtRange } from "../utils";
+import { cap, fmtDuration, fmtRange, getGoogleCalendarUrl, getMicrosoftCalendarUrl } from "../utils";
 import HackathonVault from "../components/HackathonVault.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import Chip from "../components/Chip.jsx";
@@ -23,6 +23,10 @@ export default function EventDetail() {
   const [playingAudio, setPlayingAudio] = useState(false);
   const [confirmDeleteReview, setConfirmDeleteReview] = useState(false);
   const [sarvamReady, setSarvamReady] = useState(false);
+  const [topPriority, setTopPriority] = useState(null);
+  const [calling, setCalling] = useState(false);
+  const [phonePrompt, setPhonePrompt] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
 
   useEffect(() => {
     api.get("/health")
@@ -68,10 +72,15 @@ export default function EventDetail() {
     }
   }
 
-  const load = useCallback(() => api.get(`/events/${id}`).then((res) => {
-    setData(res);
-    setUrlInput(res.event.url || "");
-  }).catch((e) => setError(e.message)), [id]);
+  const load = useCallback(() => {
+    api.get(`/events/${id}`).then((res) => {
+      setData(res);
+      setUrlInput(res.event.url || "");
+    }).catch((e) => setError(e.message));
+    api.get("/top-priority").then((r) => {
+      setTopPriority(r?.top_priority || null);
+    }).catch(() => {});
+  }, [id]);
   useEffect(() => { load(); }, [load]);
 
   const run = async (fn) => {
@@ -193,6 +202,101 @@ export default function EventDetail() {
           </div>
         )}
 
+        {/* Top Priority 24h Voice Call Alert Banner */}
+        {topPriority && topPriority.event_id === ev.id && (
+          <div className="card" style={{ background: "rgba(99, 102, 241, 0.08)", border: "1px solid var(--accent)", padding: "1rem", margin: "1rem 0" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <Star size={18} color="gold" fill="gold" />
+                <strong>Top-Priority Event (Only 1 Allowed)</strong>
+              </div>
+              <span className="pill ok" style={{ fontSize: "0.75rem" }}>Voice Call Armed</span>
+            </div>
+            <p className="small muted" style={{ margin: "0.5rem 0" }}>
+              📞 An automated Sarvam Indic voice call is scheduled <b>exactly 24 hours</b> before the latest deadline: <b>{topPriority.scheduled_call_at?.replace("T", " ").slice(0, 16)}</b>.
+              {topPriority.phone_number ? ` Recipient: ${topPriority.phone_number}` : ""}
+            </p>
+            <div className="row small" style={{ marginTop: "0.5rem" }}>
+              <button
+                type="button"
+                className="btn secondary small"
+                disabled={calling}
+                onClick={async () => {
+                  setCalling(true);
+                  try {
+                    const res = await api.post("/top-priority/test-call");
+                    alert(`📞 Voice call test executed! Status: ${res.call_result?.status}. ${res.call_result?.message ? `Script: "${res.call_result.message.slice(0, 100)}..."` : ""}`);
+                    if (res.call_result?.audio) {
+                      const audio = new Audio(`data:audio/wav;base64,${res.call_result.audio}`);
+                      audio.play().catch(() => {});
+                    }
+                  } catch (e) {
+                    setError(e.message);
+                  } finally {
+                    setCalling(false);
+                  }
+                }}
+              >
+                <PhoneCall size={13} />
+                <span>{calling ? "Calling..." : "Test Sarvam Voice Call Now"}</span>
+              </button>
+              <button
+                type="button"
+                className="btn ghost small"
+                onClick={async () => {
+                  if (window.confirm("Remove this event from top priority?")) {
+                    await api.del("/top-priority");
+                    setTopPriority(null);
+                  }
+                }}
+              >
+                Remove Top Priority
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Set as Top Priority Prompt Modal / Form */}
+        {phonePrompt && (
+          <div className="card" style={{ background: "var(--surface)", border: "1px dashed var(--accent)", padding: "1rem", margin: "1rem 0" }}>
+            <h4 style={{ margin: "0 0 0.5rem 0" }}>⭐ Set as Your Top-Priority Event</h4>
+            <p className="small muted" style={{ margin: "0 0 0.8rem 0" }}>
+              Only one event can be top priority at a time (setting this will replace any existing one). You will receive an automated Sarvam Indic voice phone call exactly 24 hours before the latest deadline!
+            </p>
+            <div className="row small">
+              <input
+                type="tel"
+                placeholder="Enter 10-digit phone number (optional)"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                style={{ maxWidth: "280px" }}
+              />
+              <button
+                type="button"
+                className="btn small"
+                onClick={async () => {
+                  try {
+                    const res = await api.post("/top-priority/set", {
+                      event_id: ev.id,
+                      phone_number: phoneNumber,
+                    });
+                    setTopPriority(res.top_priority);
+                    setPhonePrompt(false);
+                    load();
+                  } catch (e) {
+                    setError(e.message);
+                  }
+                }}
+              >
+                Confirm & Schedule 24h Voice Call
+              </button>
+              <button type="button" className="btn ghost small" onClick={() => setPhonePrompt(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="row event-actions-row">
           {ev.url && (
             <a
@@ -204,6 +308,43 @@ export default function EventDetail() {
               Open page <ExternalLink size={12} />
             </a>
           )}
+          
+          {/* Direct 1-Click Calendar Add Redirect Links */}
+          <a
+            href={getGoogleCalendarUrl(ev)}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-tertiary"
+            title="Direct 1-click redirect to add to Google Calendar"
+          >
+            <Calendar size={13} />
+            <span>Add to Google Calendar</span>
+          </a>
+
+          <a
+            href={getMicrosoftCalendarUrl(ev)}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-tertiary"
+            title="Direct 1-click redirect to add to Microsoft Outlook Calendar"
+          >
+            <CalendarPlus size={13} />
+            <span>Add to Outlook</span>
+          </a>
+
+          {/* Top Priority Action Button */}
+          {(!topPriority || topPriority.event_id !== ev.id) && (
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => setPhonePrompt(true)}
+              title="Designate as your single top priority event with free 24-hour Sarvam voice call"
+            >
+              <Star size={14} color="gold" />
+              <span>{topPriority ? "Replace as Top Priority (24h Call)" : "⭐ Top Priority (Free 24h Call)"}</span>
+            </button>
+          )}
+
           {!mine.status && <button className="btn" onClick={() => run(() => api.post(`/events/${ev.id}/join`, { status: "registered" }))}>Add to timeline as registered</button>}
           {!mine.status && <button className="btn ghost" onClick={() => run(() => api.post(`/events/${ev.id}/join`, { status: "interested" }))}>Just interested</button>}
           {mine.status && mine.status !== "attended" && (

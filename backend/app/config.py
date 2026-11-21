@@ -21,6 +21,14 @@ class Config:
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173")
     MAX_CONTENT_LENGTH = int(os.getenv("UPLOAD_MAX_MB", "8")) * 1024 * 1024
 
+    # Gemini LLM Network (Chatbot & Hackathon Submission Box)
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+
+    # Real-Time Hackathon Suggestions (Google Custom Search Data)
+    GOOGLE_SEARCH_API_KEY = os.getenv("GOOGLE_SEARCH_API_KEY", "")
+    GOOGLE_SEARCH_CX = os.getenv("GOOGLE_SEARCH_CX", "")
+
     # Sarvam AI Indic Intelligence (Sarvam-105B & Sarvam Translate)
     SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
     SARVAM_MODEL = os.getenv("SARVAM_MODEL", "sarvam-105b-conversations")

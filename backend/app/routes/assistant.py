@@ -17,7 +17,7 @@ bp = Blueprint("assistant", __name__, url_prefix="/api")
 @bp.post("/assistant/chat")
 @login_required
 def assistant_chat():
-    """Floating AI assistant endpoint (Sarvam Saaras v4 + 105B)."""
+    """Floating AI assistant endpoint (Gemini LLM Network + Sarvam Saaras v4)."""
     d = request.get_json(silent=True) or {}
     message = (d.get("message") or "").strip()
     screen = (d.get("screen") or "/").strip()
@@ -26,6 +26,19 @@ def assistant_chat():
 
     resp = process_assistant_message(g.user, message, current_app.config, screen)
     return jsonify(resp)
+
+
+@bp.post("/assistant/review-submission")
+@login_required
+def review_submission():
+    """Gemini-powered evaluation for Hackathon Vault submissions (repo, deck, video, checklist)."""
+    d = request.get_json(silent=True) or {}
+    vault_data = d.get("vault") or {}
+    event_title = d.get("event_title") or "Hackathon"
+    from ..services.gemini import review_hackathon_submission
+    api_key = current_app.config.get("GEMINI_API_KEY")
+    result = review_hackathon_submission(vault_data, event_title, api_key)
+    return jsonify(result)
 
 
 @bp.post("/search-match")

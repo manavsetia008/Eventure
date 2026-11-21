@@ -117,9 +117,24 @@ def process_assistant_message(user: User, message: str, config: dict, screen: st
             action = {"type": "navigate", "target": "/discover"}
         return _format_response(reply_text, action, user.primary_language, config, suggested_chips)
 
-    # 5. Default General Conversational Response
+    # 5. Intelligent Conversational Response (Gemini LLM Network or Sarvam Default)
+    gemini_key = config.get("GEMINI_API_KEY")
+    if gemini_key:
+        try:
+            from .gemini import generate_with_gemini
+            system_prompt = (
+                f"You are the Eventure AI Assistant for student {user.name} ({user.college or 'Campus'}). "
+                f"The student's interests are {user.goals or 'hackathons, coding'}. "
+                "Be helpful, enthusiastic, and concise (2-3 sentences max). Recommend relevant hackathon preparation tips or campus guidance."
+            )
+            llm_reply = generate_with_gemini(msg, gemini_key, system_prompt, model=config.get("GEMINI_MODEL", "gemini-2.0-flash"))
+            if llm_reply:
+                return _format_response(llm_reply, None, user.primary_language, config, suggested_chips)
+        except Exception as exc:
+            logging.warning("Gemini conversational generation fallback: %s", exc)
+
     reply_text = (
-        f"Hi {user.name}! I am your Sarvam AI campus event assistant. "
+        f"Hi {user.name}! I am your Eventure AI campus assistant (powered by Gemini & Sarvam). "
         "Ask me to find hackathons, check for schedule clashes, or navigate anywhere across Eventure."
     )
     return _format_response(reply_text, None, user.primary_language, config, suggested_chips)

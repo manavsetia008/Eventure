@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Archive, Check, Copy } from "lucide-react";
+import { Archive, Check, Copy, Sparkles, Loader2 } from "lucide-react";
 import { api } from "../api";
 import Checkbox from "./Checkbox.jsx";
 
@@ -38,6 +38,8 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [msg, setMsg] = useState("");
+  const [aiReview, setAiReview] = useState(null);
+  const [reviewing, setReviewing] = useState(false);
 
   const updateField = (key, val) => {
     setVault((prev) => ({ ...prev, [key]: val }));
@@ -233,6 +235,58 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
               onChange={() => toggleCheck("team_tagged")}
               label="All teammates registered & tagged in submission form"
             />
+          </div>
+
+          {/* Gemini AI Submission Analysis */}
+          <div style={{ marginTop: "1rem", paddingTop: "0.8rem", borderTop: "1px dashed var(--border)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+              <div>
+                <strong>Gemini AI Submission Evaluator</strong>
+                <p className="muted small" style={{ margin: "0.2rem 0 0" }}>
+                  Runs judge rubric analysis on your links, tech stack, and pitch before final submission.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn small"
+                disabled={reviewing}
+                onClick={async () => {
+                  setReviewing(true);
+                  try {
+                    const res = await api.post("/assistant/review-submission", {
+                      vault,
+                      event_title: "Hackathon Project",
+                    });
+                    setAiReview(res);
+                  } catch (e) {
+                    setMsg("Evaluation error: " + e.message);
+                  } finally {
+                    setReviewing(false);
+                  }
+                }}
+              >
+                {reviewing ? <Loader2 size={13} className="btn-spinner" /> : <Sparkles size={13} />}
+                <span>{reviewing ? "Analyzing with Gemini..." : "Run AI Rubric Review"}</span>
+              </button>
+            </div>
+
+            {aiReview && (
+              <div
+                className="card"
+                style={{
+                  marginTop: "0.8rem",
+                  background: "rgba(99, 102, 241, 0.05)",
+                  border: "1px solid var(--accent)",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "0.9rem",
+                  fontSize: "0.85rem",
+                  lineHeight: "1.5",
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {aiReview.markdown}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -283,6 +283,44 @@ class PushSubscription(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
 
 
+class TopPriorityCall(db.Model):
+    """Voice call alert for student's single top-priority event.
+    
+    Exactly 1 top priority event per student at any time (replaceable).
+    A voice call is triggered exactly 24 hours before the latest deadline listed.
+    """
+    __tablename__ = "top_priority_calls"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), unique=True, nullable=False, index=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
+    user_event_id = db.Column(db.Integer, db.ForeignKey("user_events.id"), nullable=False)
+    scheduled_call_at = db.Column(db.DateTime, nullable=False, index=True)
+    phone_number = db.Column(db.String(20), default="")
+    status = db.Column(db.String(20), default="scheduled")  # scheduled, completed, failed, cancelled
+    latest_deadline = db.Column(db.DateTime, nullable=False)
+    call_log = db.Column(db.Text, default="")
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    user = db.relationship("User")
+    event = db.relationship("Event")
+    user_event = db.relationship("UserEvent")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "event_id": self.event_id,
+            "event_title": self.event.title if self.event else None,
+            "user_event_id": self.user_event_id,
+            "scheduled_call_at": iso(self.scheduled_call_at),
+            "phone_number": self.phone_number,
+            "status": self.status,
+            "latest_deadline": iso(self.latest_deadline),
+            "call_log": self.call_log,
+            "created_at": iso(self.created_at),
+        }
+
+
 class TrackedPortal(db.Model):
     """Event platform the student registered on, for deadline sync."""
     __tablename__ = "tracked_portals"

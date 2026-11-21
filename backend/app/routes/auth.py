@@ -2,10 +2,10 @@ import re
 
 from flask import Blueprint, current_app, g, jsonify, request
 
-from ..auth import login_required, make_token
+from ..auth import _token_from_request, login_required, make_token, revoke_token
 from ..extensions import db
 from ..models import (Club, ClubFollow, Event, ExamPeriod, GoogleAccount, InboxItem, Notification, PushSubscription,
-                      Review, SyncedItem, Team, TeamMember, User, UserEvent)
+                      Review, SyncedItem, Team, TeamMember, TopPriorityCall, User, UserEvent)
 from ..ratelimit import Limiter, rate_limited
 from ..utils import ApiError, clean_goals, to_float
 
@@ -61,20 +61,6 @@ def login():
     password = d.get("password") or ""
     user = User.query.filter_by(email=email).first()
 
-    # Auto-provision demo account if it doesn't exist yet
-    if not user and email == "demo@eventure.app" and password == "demo1234":
-        user = User(
-            name="Demo Student",
-            email="demo@eventure.app",
-            college="Main Campus",
-            college_lat=28.5459,
-            college_lng=77.2732,
-            goals="AI, Web Development, Design",
-        )
-        user.set_password("demo1234")
-        db.session.add(user)
-        db.session.commit()
-
     if user and not user.has_password:
         raise ApiError("This account uses Google sign-in.", 401)
     if not user or not user.check_password(password):
@@ -82,6 +68,15 @@ def login():
             LOGIN_LIMIT.hit(ip)
         raise ApiError("Email or password is incorrect.", 401)
     return jsonify(token=make_token(user), user=user.to_dict())
+
+
+@bp.post("/logout")
+@login_required
+def logout():
+    tok = _token_from_request()
+    if tok:
+        revoke_token(tok)
+    return jsonify(ok=True, message="Signed out successfully.")
 
 
 @bp.get("/me")
@@ -174,7 +169,7 @@ def delete_account():
     for ue in UserEvent.query.filter_by(user_id=uid).all():
         db.session.delete(ue)  # stages go with it
     db.session.flush()
-    for model in (Review, Notification, PushSubscription, InboxItem, ExamPeriod, ClubFollow, SyncedItem, GoogleAccount):
+    for model in (Review, Notification, PushSubscription, InboxItem, ExamPeriod, ClubFollow, SyncedItem, GoogleAccount, TopPriorityCall):
         model.query.filter_by(user_id=uid).delete()
 
     for ev in Event.query.filter_by(created_by=uid).all():
