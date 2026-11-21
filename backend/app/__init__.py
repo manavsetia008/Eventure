@@ -16,6 +16,15 @@ def create_app(config_object=None):
 
     app = Flask(__name__)
     app.config.from_object(config_object or Config)
+
+    # Production must never silently run with the development signing key or a local SQLite
+    # database. Supabase Postgres is supplied through DATABASE_URL at the hosting provider.
+    if app.config.get("APP_ENV") == "production":
+        secret = app.config.get("SECRET_KEY") or ""
+        if len(secret) < 32:
+            raise RuntimeError("Production requires a random SECRET_KEY of at least 32 characters.")
+        if str(app.config.get("SQLALCHEMY_DATABASE_URI", "")).startswith("sqlite:"):
+            raise RuntimeError("Production requires DATABASE_URL pointing to the managed Postgres database.")
     if os.getenv("TRUST_PROXY") == "1":  # behind nginx, Render, Railway, etc.
         from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -24,6 +33,8 @@ def create_app(config_object=None):
         logging.warning("Using the default SECRET_KEY. Set SECRET_KEY in backend/.env before deploying.")
 
     origins = [o.strip() for o in app.config["CORS_ORIGINS"].split(",") if o.strip()]
+    if app.config.get("APP_ENV") == "production" and "*" in origins:
+        raise RuntimeError("Production CORS_ORIGINS must list trusted origins, not '*'.")
     CORS(app, resources={r"/api/*": {"origins": origins}})
     db.init_app(app)
 
@@ -100,10 +111,18 @@ def create_app(config_object=None):
 
     @app.get("/api/health")
     def health():
+        from sqlalchemy import text
+
+        try:
+            db.session.execute(text("SELECT 1"))
+        except Exception:
+            app.logger.exception("Database health check failed.")
+            db.session.rollback()
+            return jsonify(status="unavailable", database=False), 503
         google = bool(app.config.get("GOOGLE_CLIENT_ID") and app.config.get("GOOGLE_CLIENT_SECRET"))
         sarvam = bool(app.config.get("SARVAM_API_KEY") and "your_" not in app.config.get("SARVAM_API_KEY", ""))
         gemini = bool(app.config.get("GEMINI_API_KEY") and "your_" not in app.config.get("GEMINI_API_KEY", ""))
-        return jsonify(status="ok", googleAuth=google, sarvamAuth=sarvam, geminiAuth=gemini)
+        return jsonify(status="ok", database=True, googleAuth=google, sarvamAuth=sarvam, geminiAuth=gemini)
 
     with app.app_context():
         from . import models  # noqa: F401  (registers tables)
