@@ -110,7 +110,12 @@ def discover():
     else:
         cards.sort(key=lambda c: -c["rank"])
     college = {"name": user.college, "lat": user.college_lat, "lng": user.college_lng}
-    return jsonify(events=cards, college=college, tracked_portals=[p.name for p in user_portals])
+    return jsonify(
+        events=cards,
+        college=college,
+        tracked_portals=[p.name for p in user_portals],
+        feed_sources=["Unstop", "Devfolio"],
+    )
 
 
 @bp.get("/events/<int:event_id>")
@@ -259,6 +264,19 @@ def compare():
 def get_hackathon_suggestions():
     """Real-time hackathon suggestions based on user profile and Google Search data."""
     from flask import current_app
+    from ..services.discover_feed import sync_public_listings
     from ..services.hackathon_suggest import suggest_hackathons_for_user
+
+    try:
+        sync_public_listings()
+    except Exception:
+        current_app.logger.exception("Public feed sync failed while loading suggestions.")
+
     suggestions = suggest_hackathons_for_user(g.user, current_app.config)
+    # Suggestions use the same persisted event records as Discover so the timeline
+    # action always receives a real numeric event id.
+    for suggestion in suggestions:
+        event = Event.query.filter_by(url=suggestion.get("url")).first()
+        suggestion["id"] = event.id if event else None
+    suggestions = [item for item in suggestions if item.get("id") is not None]
     return jsonify(suggestions=suggestions)
