@@ -12,3 +12,4 @@ Pillow>=10.0
 pytesseract>=0.3.10
 # Only needed when DATABASE_URL points to PostgreSQL:
 # psycopg2-binary>=2.9
+

@@ -140,11 +140,11 @@ class GeocodeTests(unittest.TestCase):
     def test_openstreetmap_lookup(self):
         with mock.patch("app.services.travel.requests.get") as get:
             get.return_value.json.return_value = [{"lat": "28.5459", "lon": "77.2732"}]
-            self.assertEqual(travel.geocode("IIIT Delhi, Okhla"), (28.5459, 77.2732))
+            self.assertEqual(travel.geocode("West Institute, Sector 14"), (28.5459, 77.2732))
 
     def test_osm_can_be_switched_off(self):
         with mock.patch("app.services.travel.requests.get") as get:
-            self.assertIsNone(travel.geocode("IIIT Delhi", allow_osm=False))
+            self.assertIsNone(travel.geocode("West Institute", allow_osm=False))
             get.assert_not_called()
 
     def test_google_used_when_key_present(self):
