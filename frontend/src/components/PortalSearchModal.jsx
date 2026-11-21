@@ -74,7 +74,9 @@ export default function PortalSearchModal({ isOpen, onClose, onEventAdded }) {
       className="modal-backdrop"
       role="presentation"
       tabIndex={-1}
-      onClick={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
       onKeyDown={(e) => {
         if (e.key === "Escape") onClose();
       }}
@@ -85,8 +87,6 @@ export default function PortalSearchModal({ isOpen, onClose, onEventAdded }) {
         aria-modal="true"
         aria-labelledby="portal-search-title"
         tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
           <div>
