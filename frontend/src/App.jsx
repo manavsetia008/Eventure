@@ -76,42 +76,43 @@ function Layout({ children, theme, toggleTheme }) {
 
   return (
     <>
-      <header className="topbar">
-        <Link to="/" className="topbar-brand" aria-label="Eventure Home">
-          <Logo size={24} />
-        </Link>
+      <div className="topbar-surround">
+        <header className="topbar">
+          <Link to="/" className="topbar-brand" aria-label="Eventure Home">
+            <Logo size={24} />
+          </Link>
 
-        <nav className="desktop-nav" aria-label="Main Navigation">
-          <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
-            <Calendar size={15} strokeWidth={1.75} />
-            <span>Timeline</span>
-          </NavLink>
-          <NavLink to="/discover" className={({ isActive }) => (isActive ? "active" : "")}>
-            <Compass size={15} strokeWidth={1.75} />
-            <span>Discover</span>
-          </NavLink>
-          <NavLink to="/add" className={({ isActive }) => (isActive ? "active" : "")}>
-            <Plus size={15} strokeWidth={1.75} />
-            <span>Add event</span>
-          </NavLink>
-          <NavLink to="/inbox" className={({ isActive }) => (isActive ? "active" : "")}>
-            <InboxIcon size={15} strokeWidth={1.75} />
-            <span>Inbox</span>
-            {inbox > 0 && <span className="nav-badge-count">{inbox}</span>}
-          </NavLink>
-          <NavLink to="/community" className={({ isActive }) => (isActive ? "active" : "")}>
-            <Users size={15} strokeWidth={1.75} />
-            <span>Community</span>
-          </NavLink>
-          <NavLink to="/organizer" className={({ isActive }) => (isActive ? "active" : "")}>
-            <ClipboardList size={15} strokeWidth={1.75} />
-            <span>Organizer</span>
-          </NavLink>
-          <NavLink to="/settings" className={({ isActive }) => (isActive ? "active" : "")}>
-            <SettingsIcon size={15} strokeWidth={1.75} />
-            <span>Settings</span>
-          </NavLink>
-        </nav>
+          <nav className="desktop-nav" aria-label="Main Navigation">
+            <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
+              <Calendar size={15} strokeWidth={1.75} />
+              <span>Timeline</span>
+            </NavLink>
+            <NavLink to="/discover" className={({ isActive }) => (isActive ? "active" : "")}>
+              <Compass size={15} strokeWidth={1.75} />
+              <span>Discover</span>
+            </NavLink>
+            <NavLink to="/add" className={({ isActive }) => (isActive ? "active" : "")}>
+              <Plus size={15} strokeWidth={1.75} />
+              <span>Add event</span>
+            </NavLink>
+            <NavLink to="/inbox" className={({ isActive }) => (isActive ? "active" : "")}>
+              <InboxIcon size={15} strokeWidth={1.75} />
+              <span>Inbox</span>
+              {inbox > 0 && <span className="nav-badge-count">{inbox}</span>}
+            </NavLink>
+            <NavLink to="/community" className={({ isActive }) => (isActive ? "active" : "")}>
+              <Users size={15} strokeWidth={1.75} />
+              <span>Community</span>
+            </NavLink>
+            <NavLink to="/organizer" className={({ isActive }) => (isActive ? "active" : "")}>
+              <ClipboardList size={15} strokeWidth={1.75} />
+              <span>Organizer</span>
+            </NavLink>
+            <NavLink to="/settings" className={({ isActive }) => (isActive ? "active" : "")}>
+              <SettingsIcon size={15} strokeWidth={1.75} />
+              <span>Settings</span>
+            </NavLink>
+          </nav>
 
         <div className="topbar-right">
           <button
@@ -193,6 +194,7 @@ function Layout({ children, theme, toggleTheme }) {
           </div>
         </div>
       </header>
+    </div>
 
       <main className="page-main-container">{children}</main>
 
