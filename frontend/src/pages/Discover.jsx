@@ -110,7 +110,7 @@ export default function Discover() {
             <span className="pill ok" style={{ fontSize: "0.75rem" }}>Web search + curated index</span>
           </div>
           <p className="small muted" style={{ margin: "0 0 1rem 0" }}>
-            Ranked against your interests and goals. Search results may not include dates; confirm deadlines, eligibility and event details on the organiser's official page.
+            Ranked against your interests and goals. Search results may not include dates; confirm deadlines, eligibility and event details on the organiser&apos;s official page.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
             {suggestions.map((s, idx) => (
