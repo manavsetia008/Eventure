@@ -102,7 +102,8 @@ def create_app(config_object=None):
     def health():
         google = bool(app.config.get("GOOGLE_CLIENT_ID") and app.config.get("GOOGLE_CLIENT_SECRET"))
         sarvam = bool(app.config.get("SARVAM_API_KEY") and "your_" not in app.config.get("SARVAM_API_KEY", ""))
-        return jsonify(status="ok", googleAuth=google, sarvamAuth=sarvam)
+        gemini = bool(app.config.get("GEMINI_API_KEY") and "your_" not in app.config.get("GEMINI_API_KEY", ""))
+        return jsonify(status="ok", googleAuth=google, sarvamAuth=sarvam, geminiAuth=gemini)
 
     with app.app_context():
         from . import models  # noqa: F401  (registers tables)
