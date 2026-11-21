@@ -95,22 +95,22 @@ export default function Discover() {
       <div className="page-head">
         <div>
           <h1>Discover events</h1>
-          <p className="muted small">Find verified campus events, view locations on map, and compare side by side.</p>
+          <p className="muted small">Find public campus event listings, view locations on the map, and compare side by side.</p>
         </div>
       </div>
 
-      {/* Real-Time Suggested Hackathons Section */}
+      {/* Personalized suggestions from web search and the maintained portal catalogue */}
       {suggestions.length > 0 && (
         <section className="card" style={{ background: "rgba(99, 102, 241, 0.05)", border: "1px solid var(--accent)", padding: "1.2rem", marginBottom: "1.5rem" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.8rem", flexWrap: "wrap", gap: "0.5rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Sparkles size={18} color="var(--accent)" />
-              <strong style={{ fontSize: "1rem" }}>Real-Time Hackathon Radar (Tailored to You)</strong>
+              <strong style={{ fontSize: "1rem" }}>Hackathon suggestions</strong>
             </div>
-            <span className="pill ok" style={{ fontSize: "0.75rem" }}>Live Web & Portal Matches</span>
+            <span className="pill ok" style={{ fontSize: "0.75rem" }}>Web search + curated index</span>
           </div>
           <p className="small muted" style={{ margin: "0 0 1rem 0" }}>
-            Suggested in real-time based on your skills, campus distance, and career goals.
+            Ranked against your interests and goals. Search results may not include dates; confirm deadlines, eligibility and event details on the organiser's official page.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
             {suggestions.map((s, idx) => (
@@ -118,10 +118,15 @@ export default function Discover() {
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.4rem" }}>
                     <span className="pill" style={{ fontSize: "0.7rem", background: "var(--accent-subtle)", color: "var(--accent)" }}>{s.platform || "Hackathon"}</span>
-                    <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--accent)" }}>{s.match_score}% Match</span>
+                    <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--accent)" }}>{s.match_score} Fit</span>
                   </div>
                   <h4 style={{ margin: "0.5rem 0 0.3rem", fontSize: "0.95rem" }}>{s.title}</h4>
                   <p className="small muted" style={{ margin: "0 0 0.5rem", lineHeight: "1.4" }}>{s.reason || s.description?.slice(0, 100)}</p>
+                  {!s.start_at && (
+                    <p className="small muted" style={{ margin: "0 0 0.5rem" }}>
+                      Event date not found in search result — verify the official page.
+                    </p>
+                  )}
                   {s.matched_skills && s.matched_skills.length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "0.6rem" }}>
                       {s.matched_skills.map((sk) => (
