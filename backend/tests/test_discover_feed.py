@@ -17,6 +17,8 @@ class PublicDiscoverFeedTests(unittest.TestCase):
             "title": "Campus AI Hackathon",
             "url": "/hackathons/campus-ai-hackathon-123",
             "mode": "online",
+            "latitude": 28.6139,
+            "longitude": 77.2090,
             "start_date": "2026-12-10T10:00:00",
             "registration_end_date": "2026-12-05T23:59:00",
         }
@@ -24,6 +26,8 @@ class PublicDiscoverFeedTests(unittest.TestCase):
         self.assertEqual(result["title"], "Campus AI Hackathon")
         self.assertEqual(result["platform"], "Unstop")
         self.assertEqual(result["venue_name"], "Online")
+        self.assertEqual(result["lat"], 28.6139)
+        self.assertEqual(result["lng"], 77.2090)
         self.assertEqual(result["url"], "https://unstop.com/hackathons/campus-ai-hackathon-123")
         self.assertEqual(result["start_at"].isoformat(), "2026-12-10T10:00:00")
         self.assertEqual(result["registration_deadline"].isoformat(), "2026-12-05T23:59:00")
