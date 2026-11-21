@@ -186,8 +186,13 @@ def _devfolio_card_context(source, start, end):
     # the status is taken from this listing, not the previous card's status.
     raw = source[start:min(len(source), end + 2200)]
     visible = _text(raw)
-    status_match = re.search(r"\b(Open|Upcoming|Ended|Past)\b", visible, re.IGNORECASE)
-    status = status_match.group(1).lower() if status_match else ""
+    # The title itself can contain words like "Past". Prefer an explicit
+    # terminal status if present, otherwise accept the first open/upcoming marker.
+    status = ""
+    for candidate in ("ended", "past", "upcoming", "open"):
+        if re.search(r"\b" + candidate + r"\b", visible, re.IGNORECASE):
+            status = candidate
+            break
     start_match = re.search(r"\bStarts\s+(\d{1,2}/\d{1,2}/\d{2,4})\b", visible, re.IGNORECASE)
     start_at = None
     if start_match:
