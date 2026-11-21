@@ -131,6 +131,16 @@ def create_app(config_object=None):
             _sync_columns()
             _enable_postgres_rls()
 
+    # Warm the public Discover catalogue on production startup. Network/source failures
+    # are non-fatal and the request path can retry later using its refresh cache.
+    if app.config.get("APP_ENV") == "production":
+        try:
+            from .services.discover_feed import sync_public_listings
+            imported = sync_public_listings()
+            logging.info("[Discovery] Public feed sync completed; %d listings processed.", imported)
+        except Exception:
+            logging.exception("[Discovery] Initial public feed sync failed; API will remain available.")
+
     _start_scheduler(app)
     return app
 
