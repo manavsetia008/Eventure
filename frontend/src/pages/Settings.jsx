@@ -148,8 +148,8 @@ function PushCard() {
             This browser does not support background push alerts in its current mode.
           </p>
           <ul style={{ margin: 0, paddingLeft: "1.2rem", color: "var(--muted)" }}>
-            <li><strong>Android:</strong> Open in Chrome or Edge, tap menu (⋮) and select <em>"Install App"</em> or <em>"Add to Home screen"</em>.</li>
-            <li><strong>iOS:</strong> Open in Safari, tap Share (⎋), then select <em>"Add to Home Screen"</em> to enable Web Push.</li>
+            <li><strong>Android:</strong> Open in Chrome or Edge, tap menu (⋮) and select <em>&quot;Install App&quot;</em> or <em>&quot;Add to Home screen&quot;</em>.</li>
+            <li><strong>iOS:</strong> Open in Safari, tap Share (⎋), then select <em>&quot;Add to Home Screen&quot;</em> to enable Web Push.</li>
             <li><strong>Desktop:</strong> Works directly in Chrome, Edge, and Firefox when notification permissions are granted.</li>
           </ul>
         </div>
@@ -228,6 +228,7 @@ function PriorityTuningCard({ user, onSaved }) {
     setSaving(true);
     setMsg("");
     setErr("");
+    if (saving) return;
     try {
       const res = await api.patch("/me", { scoring_mode: m });
       if (onSaved) onSaved(res.user);
@@ -251,7 +252,9 @@ function PriorityTuningCard({ user, onSaved }) {
         use_maybe_range: newMaybe,
       });
       setMsg("Saved.");
-    } catch {}
+    } catch {
+      setMsg("Could not save your thresholds. Please try again.");
+    }
   };
 
   const handleKeepChange = (val) => {
@@ -311,7 +314,17 @@ function PriorityTuningCard({ user, onSaved }) {
             <div
               key={p.id}
               className={`profile-scoring-card ${isSelected ? "selected" : ""}`}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isSelected}
+              aria-disabled={saving}
               onClick={() => saveMode(p.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  saveMode(p.id);
+                }
+              }}
             >
               <div className="profile-card-header">
                 <span className="custom-radio">
