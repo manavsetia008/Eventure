@@ -9,7 +9,6 @@ from ..utils import ApiError, iso, now, to_int
 
 bp = Blueprint("social", __name__, url_prefix="/api")
 
-
 def club_dict(club, following, followers):
     return {**club.to_dict(), "following": following, "followers": followers}
 

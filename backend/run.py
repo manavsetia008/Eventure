@@ -5,7 +5,6 @@ if __name__ == "__main__":
     os.environ.setdefault("EVENTURE_DEBUG", "1")
 
 from app import create_app
-
 app = create_app()
 
 if __name__ == "__main__":

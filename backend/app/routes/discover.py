@@ -195,21 +195,35 @@ def delete_my_review(event_id):
 @login_required
 def compare():
     try:
-        ids = [int(x) for x in (request.args.get("ids") or "").split(",") if x.strip()][:3]
+        ids = [int(x) for x in (request.args.get("ids") or "").split(",") if x.strip()][:4]
     except ValueError:
         raise ApiError("Pick events to compare.")
     if len(ids) < 2:
         raise ApiError("Pick at least two events to compare.")
-    events = Event.query.filter(Event.id.in_(ids), Event.is_public.is_(True)).all()
+    events = Event.query.filter(Event.id.in_(ids)).all()
     ratings = rating_table(ids)
     mine = {ue.event_id for ue in UserEvent.query.filter_by(user_id=g.user.id).all()}
     user, now_ = g.user, now()
+    keep_threshold = user.threshold_keep or 55
+    skip_threshold = user.threshold_skip or 40
+    use_maybe = bool(user.use_maybe_range)
+
     rows = []
     for ev in events:
         card = event_card(ev, user, ratings, mine)
         item = {"title": ev.title, "category": ev.category, "description": ev.description, "status": "interested",
                 "start": ev.start_at, "stages": [], "travel_minutes": card["travel_minutes"], "in_exam": False}
-        card["fit_score"] = score_item(item, user.goals_list, now_)["score"]
+        fit_score = score_item(item, user.goals_list, now_)["score"]
+        card["fit_score"] = fit_score
+        if use_maybe:
+            if fit_score >= keep_threshold:
+                card["verdict"] = "Keep"
+            elif fit_score < skip_threshold:
+                card["verdict"] = "Skip"
+            else:
+                card["verdict"] = "Maybe"
+        else:
+            card["verdict"] = "Keep" if fit_score >= keep_threshold else "Skip"
         rows.append(card)
-    rows.sort(key=lambda c: ids.index(c["id"]))
+    rows.sort(key=lambda c: ids.index(c["id"]) if c["id"] in ids else 0)
     return jsonify(events=rows)

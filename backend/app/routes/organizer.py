@@ -8,7 +8,6 @@ from ..utils import ApiError, now
 
 bp = Blueprint("organizer", __name__, url_prefix="/api/organizer")
 
-
 @bp.get("/events")
 @login_required
 def my_events():

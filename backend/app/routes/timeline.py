@@ -124,8 +124,30 @@ def translate():
 
     from ..services.sarvam_ai import translate_with_sarvam
     sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
-    translated = translate_with_sarvam(text, target_lang, sarvam_key)
+    translated = translate_with_sarvam(
+        text, target_lang, sarvam_key,
+        model=current_app.config.get("SARVAM_TRANSLATE_MODEL") or "sarvam-translate:v1",
+    )
     return jsonify(translated_text=translated, target_language_code=target_lang)
+
+
+@bp.post("/tts")
+def text_to_speech():
+    """Generate Indic voice audio from event text via Sarvam Bulbul TTS."""
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    target_lang = data.get("target_language_code") or "hi-IN"
+    speaker = data.get("speaker") or "aditya"
+    if not text:
+        return jsonify(audio="")
+
+    from ..services.sarvam_ai import speak_with_sarvam
+    sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
+    audio_b64 = speak_with_sarvam(
+        text, target_lang, sarvam_key, speaker,
+        model=current_app.config.get("SARVAM_TTS_MODEL") or "bulbul:v3",
+    )
+    return jsonify(audio=audio_b64, target_language_code=target_lang)
 
 
 @bp.post("/events")
@@ -153,7 +175,8 @@ def create_event():
     db.session.add(ev)
     db.session.flush()
     status = d.get("status") if d.get("status") in STATUSES else "registered"
-    ue = UserEvent(user_id=g.user.id, event_id=ev.id, status=status)
+    notes = (d.get("notes") or "").strip()
+    ue = UserEvent(user_id=g.user.id, event_id=ev.id, status=status, notes=notes)
     db.session.add(ue)
     db.session.flush()
 
@@ -181,7 +204,7 @@ def geocode_venue():
         raise ApiError("Type the venue first.")
     point = look_up(venue)
     if not point:
-        raise ApiError("Could not find that place. Try adding the city, or enter the coordinates by hand.", 404)
+        raise ApiError("Could not find that location. Try adding the campus or city name.", 404)
     return jsonify(lat=round(point[0], 5), lng=round(point[1], 5))
 
 
@@ -251,9 +274,16 @@ def timeline():
             a, b = items[ids[0]], items[ids[1]]
             between = estimate_minutes(a["lat"], a["lng"], b["lat"], b["lng"], key)
             issue["suggestion"] = suggest_between(a, scores[a["id"]], b, scores[b["id"]], between or None)
+            issue["event_times"] = [
+                {"title": a["title"], "start_at": iso(a.get("start")), "end_at": iso(effective_end(a))},
+                {"title": b["title"], "start_at": iso(b.get("start")), "end_at": iso(effective_end(b))},
+            ]
         elif issue["type"] == "exam_week":
             it = items[ids[0]]
             issue["suggestion"] = suggest_for_exam(it, scores[it["id"]], issue["meta"]["exam"])
+            issue["event_times"] = [
+                {"title": it["title"], "start_at": iso(it.get("start")), "end_at": iso(effective_end(it))},
+            ]
         issue["titles"] = [items[i]["title"] for i in ids]
 
     serialized = [serialize_user_event(ue, items[ue.id], scores[ue.id]["score"], now_, scores[ue.id].get("parts")) for ue in uevs]
@@ -427,6 +457,14 @@ def calendar_feed():
                     "alarm_minutes": 24 * 60,
                 })
     return Response(build_ics(entries, f"Eventure: {g.user.name}"), mimetype="text/calendar")
+
+
+@bp.post("/calendar/reset")
+@login_required
+def reset_calendar_token():
+    from ..auth import make_token
+    new_token = make_token(g.user.id)
+    return jsonify(ok=True, token=new_token)
 
 
 # =========================================================================

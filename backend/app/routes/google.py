@@ -10,7 +10,6 @@ from ..utils import ApiError
 
 bp = Blueprint("google", __name__, url_prefix="/api/google")
 
-
 def _settings_url(result):
     return f"{current_app.config['FRONTEND_URL']}/settings?google={result}"
 

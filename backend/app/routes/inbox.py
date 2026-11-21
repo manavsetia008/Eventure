@@ -10,7 +10,6 @@ from ..utils import ApiError
 
 bp = Blueprint("inbox", __name__, url_prefix="/api")
 
-
 @bp.get("/inbox")
 @login_required
 def list_inbox():

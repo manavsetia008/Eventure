@@ -8,7 +8,6 @@ from ..utils import ApiError
 
 bp = Blueprint("push", __name__, url_prefix="/api/push")
 
-
 @bp.get("/key")
 @login_required
 def key():
