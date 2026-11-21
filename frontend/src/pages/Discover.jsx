@@ -95,7 +95,7 @@ export default function Discover() {
       <div className="page-head">
         <div>
           <h1>Discover events</h1>
-          <p className="muted small">Find public campus event listings, view locations on the map, and compare side by side.</p>
+          <p className="muted small">Browse live public hackathons from Unstop and Devfolio. Dates that organisers do not publish stay marked as unconfirmed.</p>
         </div>
       </div>
 
@@ -107,10 +107,10 @@ export default function Discover() {
               <Sparkles size={18} color="var(--accent)" />
               <strong style={{ fontSize: "1rem" }}>Hackathon suggestions</strong>
             </div>
-            <span className="pill ok" style={{ fontSize: "0.75rem" }}>Web search + curated index</span>
+            <span className="pill ok" style={{ fontSize: "0.75rem" }}>Live public listings</span>
           </div>
           <p className="small muted" style={{ margin: "0 0 1rem 0" }}>
-            Ranked against your interests and goals. Search results may not include dates; confirm deadlines, eligibility and event details on the organiser&apos;s official page.
+            Ranked against your interests and goals. Confirm registration deadlines, eligibility and event details on the organiser&apos;s official page.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
             {suggestions.map((s, idx) => (
