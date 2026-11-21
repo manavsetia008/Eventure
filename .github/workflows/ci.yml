@@ -33,5 +33,9 @@ jobs:
         with:
           node-version: 20
       - run: npm install
+      - name: Unit tests
+        run: npm test
+      - name: Lint
+        run: npm run lint
       - name: Build
         run: npm run build
