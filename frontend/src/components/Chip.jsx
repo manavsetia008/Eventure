@@ -1,5 +1,3 @@
-import React from "react";
-
 /**
  * Minimal Chip component (Unstop, Hackathon, filters).
  * 1px border, transparent bg, radius 6px, height 26px, 13px text.

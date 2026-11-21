@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Archive, Check, Copy } from "lucide-react";
 import { api } from "../api";
+import Checkbox from "./Checkbox.jsx";
 
 export default function HackathonVault({ userEventId, initialNotes = "", onUpdate }) {
   const parseNotes = (raw) => {
@@ -8,7 +9,9 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
       if (typeof raw === "string" && raw.trim().startsWith("{")) {
         return JSON.parse(raw);
       }
-    } catch {}
+    } catch {
+      /* not JSON: fall through to the default shape below */
+    }
     return {
       github_url: "",
       demo_url: "",
@@ -72,7 +75,7 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
       `• GitHub Repository: ${vault.github_url || "N/A"}`,
       `• Presentation Slides: ${vault.deck_url || "N/A"}`,
       `• Demo Video URL: ${vault.video_url || "N/A"}`,
-      `• Tech Stack: ${vault.tech_stack || "React, Flask, Sarvam AI, SQLite"}`,
+      `• Tech Stack: ${vault.tech_stack || "N/A"}`,
     ].join("\n");
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
@@ -83,35 +86,34 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
   if (!open) {
     const hasAny = vault.demo_url || vault.github_url || vault.deck_url || vault.table_no;
     return (
-      <div style={{ marginTop: "0.85rem" }}>
+      <div className="vault-open-wrap">
         <button
           type="button"
-          className="btn ghost small"
+          className="btn ghost small vault-open-btn"
           onClick={() => setOpen(true)}
-          style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem" }}
         >
           <Archive size={15} strokeWidth={1.75} />
           <span>Hackathon Toolkit & Submission Vault</span>
-          {hasAny && <span className="pill ok" style={{ fontSize: "0.72rem" }}>Ready</span>}
+          {hasAny && <span className="pill ok vault-ready-pill">Ready</span>}
         </button>
       </div>
     );
   }
 
   return (
-    <div className="vault-section card" style={{ marginTop: "1rem", border: "1px solid var(--line-strong)" }}>
+    <div className="vault-section card vault-section-open">
       <div className="vault-card-head">
         <div>
-          <h3 style={{ margin: 0, fontSize: "1.05rem", display: "inline-flex", alignItems: "center", gap: "0.45rem" }}>
-            <Archive size={18} strokeWidth={1.75} style={{ color: "var(--thread)" }} />
+          <h3 className="vault-title">
+            <Archive size={18} strokeWidth={1.75} className="vault-title-icon" />
             <span>Hackathon Submission Vault & Venue Toolkit</span>
           </h3>
-          <p className="muted small" style={{ margin: "0.2rem 0 0" }}>
+          <p className="muted small vault-subtitle">
             Store your repo, demo link, slides, table number, and mentor feedback so you never scramble at deadline.
           </p>
         </div>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button type="button" className="btn small" onClick={copyAllLinks} style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+        <div className="vault-head-actions">
+          <button type="button" className="btn small vault-copy-btn" onClick={copyAllLinks}>
             {copied ? <Check size={14} /> : <Copy size={14} />}
             <span>{copied ? "Copied Links!" : "Copy All Links"}</span>
           </button>
@@ -124,7 +126,7 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
       {msg && <p className="notice small">{msg}</p>}
 
       {/* Tabs */}
-      <div className="tabs" style={{ marginBottom: "1rem" }}>
+      <div className="tabs vault-tabs">
         <button
           type="button"
           className={`tab ${activeTab === "submission" ? "on" : ""}`}
@@ -153,8 +155,9 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
         <div>
           <div className="vault-grid">
             <div className="vault-field">
-              <label>Live Working Prototype URL</label>
+              <label htmlFor={`vault-${userEventId}-demo-url`}>Live Working Prototype URL</label>
               <input
+                id={`vault-${userEventId}-demo-url`}
                 type="url"
                 value={vault.demo_url || ""}
                 onChange={(e) => updateField("demo_url", e.target.value)}
@@ -162,8 +165,9 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
               />
             </div>
             <div className="vault-field">
-              <label>GitHub Repository URL</label>
+              <label htmlFor={`vault-${userEventId}-github-url`}>GitHub Repository URL</label>
               <input
+                id={`vault-${userEventId}-github-url`}
                 type="url"
                 value={vault.github_url || ""}
                 onChange={(e) => updateField("github_url", e.target.value)}
@@ -171,8 +175,9 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
               />
             </div>
             <div className="vault-field">
-              <label>Pitch Deck / Slides Link</label>
+              <label htmlFor={`vault-${userEventId}-deck-url`}>Pitch Deck / Slides Link</label>
               <input
+                id={`vault-${userEventId}-deck-url`}
                 type="url"
                 value={vault.deck_url || ""}
                 onChange={(e) => updateField("deck_url", e.target.value)}
@@ -180,67 +185,54 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
               />
             </div>
             <div className="vault-field">
-              <label>Demo Video (YouTube / Loom)</label>
+              <label htmlFor={`vault-${userEventId}-video-url`}>Demo Video (YouTube / Loom)</label>
               <input
+                id={`vault-${userEventId}-video-url`}
                 type="url"
                 value={vault.video_url || ""}
                 onChange={(e) => updateField("video_url", e.target.value)}
                 placeholder="https://youtu.be/... or Loom"
               />
             </div>
-            <div className="vault-field" style={{ gridColumn: "1 / -1" }}>
-              <label>Tech Stack Tags (Libraries, Frameworks, AI Models)</label>
+            <div className="vault-field vault-field-full">
+              <label htmlFor={`vault-${userEventId}-tech-stack`}>Tech Stack Tags (Libraries, Frameworks, AI Models)</label>
               <input
+                id={`vault-${userEventId}-tech-stack`}
                 type="text"
                 value={vault.tech_stack || ""}
                 onChange={(e) => updateField("tech_stack", e.target.value)}
-                placeholder="e.g. React 18, Flask 3, Sarvam-105B Indic LLM, Vite, Leaflet, SQLite"
+                placeholder="e.g. React, Node.js, PostgreSQL, Tailwind"
               />
             </div>
           </div>
 
           <div className="vault-checklist">
             <strong>Pre-Submission Sanity Checklist:</strong>
-            <label className="vault-check-item">
-              <input
-                type="checkbox"
-                checked={vault.checks?.repo_public || false}
-                onChange={() => toggleCheck("repo_public")}
-              />
-              <span>Public GitHub repo with clean README & LICENSE</span>
-            </label>
-            <label className="vault-check-item">
-              <input
-                type="checkbox"
-                checked={vault.checks?.live_working || false}
-                onChange={() => toggleCheck("live_working")}
-              />
-              <span>Working live deployment URL tested in incognito mode</span>
-            </label>
-            <label className="vault-check-item">
-              <input
-                type="checkbox"
-                checked={vault.checks?.deck_accessible || false}
-                onChange={() => toggleCheck("deck_accessible")}
-              />
-              <span>Google Slides / Figma link set to "Anyone with the link can view"</span>
-            </label>
-            <label className="vault-check-item">
-              <input
-                type="checkbox"
-                checked={vault.checks?.video_recorded || false}
-                onChange={() => toggleCheck("video_recorded")}
-              />
-              <span>Demo video recorded and strictly under time limit (e.g. 2 min)</span>
-            </label>
-            <label className="vault-check-item">
-              <input
-                type="checkbox"
-                checked={vault.checks?.team_tagged || false}
-                onChange={() => toggleCheck("team_tagged")}
-              />
-              <span>All teammates registered & tagged in submission form</span>
-            </label>
+            <Checkbox
+              checked={vault.checks?.repo_public || false}
+              onChange={() => toggleCheck("repo_public")}
+              label="Public GitHub repo with clean README & LICENSE"
+            />
+            <Checkbox
+              checked={vault.checks?.live_working || false}
+              onChange={() => toggleCheck("live_working")}
+              label="Working live deployment URL tested in incognito mode"
+            />
+            <Checkbox
+              checked={vault.checks?.deck_accessible || false}
+              onChange={() => toggleCheck("deck_accessible")}
+              label='Google Slides / Figma link set to "Anyone with the link can view"'
+            />
+            <Checkbox
+              checked={vault.checks?.video_recorded || false}
+              onChange={() => toggleCheck("video_recorded")}
+              label="Demo video recorded and strictly under time limit (e.g. 2 min)"
+            />
+            <Checkbox
+              checked={vault.checks?.team_tagged || false}
+              onChange={() => toggleCheck("team_tagged")}
+              label="All teammates registered & tagged in submission form"
+            />
           </div>
         </div>
       )}
@@ -250,24 +242,27 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
         <div>
           <div className="vault-grid">
             <div className="vault-field">
-              <label>Team Table / Seat Number</label>
+              <label htmlFor={`vault-${userEventId}-table-no`}>Team Table / Seat Number</label>
               <input
+                id={`vault-${userEventId}-table-no`}
                 value={vault.table_no || ""}
                 onChange={(e) => updateField("table_no", e.target.value)}
                 placeholder="e.g. Table 24 (Audi Block B)"
               />
             </div>
             <div className="vault-field">
-              <label>Venue Wi-Fi Network (SSID)</label>
+              <label htmlFor={`vault-${userEventId}-wifi-ssid`}>Venue Wi-Fi Network (SSID)</label>
               <input
+                id={`vault-${userEventId}-wifi-ssid`}
                 value={vault.wifi_ssid || ""}
                 onChange={(e) => updateField("wifi_ssid", e.target.value)}
                 placeholder="e.g. Campus-Guest / HackFest-5G"
               />
             </div>
             <div className="vault-field">
-              <label>Wi-Fi Password / Portal Code</label>
+              <label htmlFor={`vault-${userEventId}-wifi-pass`}>Wi-Fi Password / Portal Code</label>
               <input
+                id={`vault-${userEventId}-wifi-pass`}
                 value={vault.wifi_pass || ""}
                 onChange={(e) => updateField("wifi_pass", e.target.value)}
                 placeholder="e.g. Hack@2026"
@@ -276,7 +271,7 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
           </div>
           <div className="vault-checklist">
             <strong>Offline Survival Checklist (Carry to venue):</strong>
-            <p className="muted small" style={{ margin: "0.2rem 0" }}>
+            <p className="muted small vault-checklist-note">
               Make sure your team carries: Physical College IDs, Laptop Chargers, 1 Spike Buster/Extension Board, HDMI Adapter, and Cash for late-night food.
             </p>
           </div>
@@ -286,8 +281,9 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
       {/* Tab 3: Mentor Notes */}
       {activeTab === "mentor" && (
         <div className="vault-field">
-          <label>Mentor Feedback & Questions Across Rounds</label>
+          <label htmlFor={`vault-${userEventId}-mentor-notes`}>Mentor Feedback & Questions Across Rounds</label>
           <textarea
+            id={`vault-${userEventId}-mentor-notes`}
             rows={5}
             value={vault.mentor_notes || ""}
             onChange={(e) => updateField("mentor_notes", e.target.value)}
@@ -296,7 +292,7 @@ export default function HackathonVault({ userEventId, initialNotes = "", onUpdat
         </div>
       )}
 
-      <div className="row" style={{ marginTop: "1rem" }}>
+      <div className="row vault-footer-actions">
         <button type="button" className="btn small" onClick={save} disabled={saving}>
           {saving ? "Saving..." : "Save changes"}
         </button>

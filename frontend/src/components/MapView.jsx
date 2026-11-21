@@ -2,20 +2,46 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef } from "react";
 
+const TILES = {
+  light: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+};
+
+const ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+function currentTheme() {
+  return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+}
+
 export default function MapView({ college, events, onOpen }) {
   const el = useRef(null);
   const map = useRef(null);
   const layer = useRef(null);
+  const tiles = useRef(null);
 
   useEffect(() => {
-    map.current = L.map(el.current).setView([28.6139, 77.209], 10);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      maxZoom: 18,
-      subdomains: "abcd",
-    }).addTo(map.current);
+    map.current = L.map(el.current, { scrollWheelZoom: false }).setView([28.6139, 77.209], 10);
+
+    const applyTiles = (theme) => {
+      if (!map.current) return;
+      if (tiles.current) map.current.removeLayer(tiles.current);
+      tiles.current = L.tileLayer(TILES[theme], {
+        attribution: ATTRIBUTION,
+        maxZoom: 18,
+        subdomains: "abcd",
+      }).addTo(map.current);
+    };
+
+    applyTiles(currentTheme());
     layer.current = L.layerGroup().addTo(map.current);
+
+    // Swap the basemap when the app theme changes so marker contrast stays correct.
+    const observer = new MutationObserver(() => applyTiles(currentTheme()));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
     return () => {
+      observer.disconnect();
       map.current.remove();
       map.current = null;
     };
@@ -28,10 +54,9 @@ export default function MapView({ college, events, onOpen }) {
     if (college && college.lat != null) {
       L.circleMarker([college.lat, college.lng], {
         radius: 9,
-        color: "#0f172a",
-        fillColor: "#1e1b4b",
-        fillOpacity: 1,
+        className: "map-marker map-marker-college",
         weight: 2,
+        fillOpacity: 1,
       })
         .bindTooltip("Your college")
         .addTo(layer.current);
@@ -42,10 +67,9 @@ export default function MapView({ college, events, onOpen }) {
       .forEach((e) => {
         const marker = L.circleMarker([e.lat, e.lng], {
           radius: 8,
-          color: "#dc2626",
-          fillColor: "#ef4444",
-          fillOpacity: 0.9,
+          className: "map-marker map-marker-event",
           weight: 2,
+          fillOpacity: 0.9,
         });
         marker.bindTooltip(e.title);
         marker.on("click", () => onOpen(e.id));
