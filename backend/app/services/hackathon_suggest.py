@@ -131,74 +131,57 @@ def search_free_web_hackathons(query: str) -> list:
 
 
 def suggest_hackathons_for_user(user, config: dict = None) -> list:
-    """Generates personalized suggestions from web search plus a curated seed catalogue."""
+    """Rank live public listings against the student's goals and campus."""
     config = config or {}
     user_goals = user.goals_list if hasattr(user, "goals_list") else (user.get("goals") or [])
-    user_tokens = set()
-    for g in user_goals:
-        user_tokens.update(_clean_query_words(g))
-
     college_name = user.college if hasattr(user, "college") else (user.get("college") or "")
-    if college_name:
-        user_tokens.update(_clean_query_words(college_name))
 
-    search_key = config.get("GOOGLE_SEARCH_API_KEY") or os.getenv("GOOGLE_SEARCH_API_KEY", "")
-    search_cx = config.get("GOOGLE_SEARCH_CX") or os.getenv("GOOGLE_SEARCH_CX", "")
+    user_tokens = set()
+    for goal in user_goals:
+        user_tokens.update(_clean_query_words(goal))
+    user_tokens.update(_clean_query_words(college_name))
 
     pool = []
+    # These providers expose public browse pages; no paid search key is needed.
+    try:
+        from .discover_feed import fetch_public_listings
+        pool.extend(fetch_public_listings())
+    except Exception as exc:
+        logging.warning("Live hackathon feed unavailable for suggestions: %s", exc)
 
-    # 1. Fetch live search results: Google Custom Search if key provided, else Free Web Search fallback
-    search_query = " ".join(list(user_tokens)[:3]) or "engineering AI"
-    if search_key and search_cx and not search_key.startswith("http"):
-        google_results = search_google_hackathons(search_query, search_key, search_cx)
-        pool.extend(google_results)
-    else:
-        web_results = search_free_web_hackathons(search_query)
-        pool.extend(web_results)
+    # Optional Google Custom Search fallback when the owner has configured a CSE key.
+    search_key = config.get("GOOGLE_SEARCH_API_KEY") or os.getenv("GOOGLE_SEARCH_API_KEY", "")
+    search_cx = config.get("GOOGLE_SEARCH_CX") or os.getenv("GOOGLE_SEARCH_CX", "")
+    if not pool and search_key and search_cx:
+        search_query = " ".join(sorted(user_tokens)[:4]) or "software engineering"
+        pool.extend(search_google_hackathons(search_query, search_key, search_cx))
 
-    # 2. Add the maintained seed catalogue. These are candidates, not live-verified listings.
-    for cat_item in PORTAL_CATALOG:
-        pool.append({**cat_item, "source": "curated_portal_catalog"})
-
-    # 3. Compute personalized match score for each candidate
-    scored_candidates = []
-    seen_titles = set()
-
+    scored = []
+    seen_urls = set()
     for item in pool:
-        title = item.get("title", "")
-        if title in seen_titles:
+        title = _clean_query_words(item.get("title", ""))
+        url = item.get("url") or ""
+        if not title or not url or url in seen_urls:
             continue
-        seen_titles.add(title)
+        seen_urls.add(url)
 
-        desc = item.get("description", "")
-        combined_text = f"{title} {desc} {item.get('platform', '')}".lower()
-        candidate_tokens = set(_clean_query_words(combined_text))
-
-        # Skill overlap
-        matched_skills = user_tokens & candidate_tokens
-        overlap_score = (len(matched_skills) / max(len(user_tokens), 1)) * 60.0
-
-        # Base category / platform score
-        base_score = 30.0
-        if "hackathon" in combined_text:
-            base_score += 10.0
-
-        total_score = min(98.0, round(base_score + overlap_score, 1))
-
-        matched_list = list(matched_skills)
+        item_tokens = set(_clean_query_words(
+            f"{item.get('title', '')} {item.get('description', '')} {item.get('platform', '')}"
+        ))
+        matched = sorted(user_tokens & item_tokens)
+        overlap = len(matched) / max(len(user_tokens), 1)
+        score = min(98.0, round(40.0 + overlap * 58.0, 1))
+        platform = item.get("platform") or "Public listing"
         reason = (
-            f"Matches your target skills in {', '.join(matched_list[:2])}."
-            if matched_list
-            else "Trending flagship campus hackathon open for all branches."
+            f"Matches your interests in {', '.join(matched[:3])}."
+            if matched else f"Currently listed on {platform}. Check the organiser page for the latest details."
         )
-
-        scored_candidates.append({
+        scored.append({
             **item,
-            "match_score": total_score,
-            "matched_skills": matched_list,
+            "match_score": score,
+            "matched_skills": matched,
             "reason": reason,
         })
 
-    # Sort descending by match score
-    scored_candidates.sort(key=lambda x: -x["match_score"])
-    return scored_candidates[:6]
+    scored.sort(key=lambda item: (-item["match_score"], item.get("start_at") or "9999"))
+    return scored[:8]
