@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ExternalLink, Search, Zap } from "lucide-react";
+import { ExternalLink, Rss, Search, X } from "lucide-react";
 import { api } from "../api";
 import MapView from "../components/MapView.jsx";
 import Status from "../components/Status.jsx";
 import Chip from "../components/Chip.jsx";
-import { CATEGORIES, cap, fmtDuration, fmtRange } from "../utils";
+import Checkbox from "../components/Checkbox.jsx";
+import { CATEGORIES, cap, fmtDate, fmtDuration, fmtRange } from "../utils";
+
+const EMPTY_FILTERS = { q: "", category: "", radius_km: "", portals_only: "", sort: "rank" };
 
 function Rating({ r }) {
   if (!r.count) return <span className="muted small">No reviews yet</span>;
@@ -18,7 +21,7 @@ function Rating({ r }) {
 
 export default function Discover() {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState({ q: "", category: "", radius_km: "", portals_only: "", sort: "rank" });
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [picked, setPicked] = useState([]);
@@ -37,7 +40,9 @@ export default function Discover() {
     try {
       await api.patch(`/portals/${p.id}`, { auto_sync: !p.auto_sync });
       loadPortals();
-    } catch {}
+    } catch {
+      /* keep the previous portal state if the toggle fails */
+    }
   };
 
   useEffect(() => {
@@ -64,7 +69,7 @@ export default function Discover() {
 
   function toggle(id) {
     setCompare(null);
-    setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length < 3 ? [...p, id] : p));
+    setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length < 4 ? [...p, id] : p));
   }
 
   async function runCompare() {
@@ -87,20 +92,20 @@ export default function Discover() {
         </div>
       </div>
 
-      {/* Portal Tracker Strip (Minimal, text + dot status, no green outline pills, no badge inside badge) */}
+      {/* Tracked portals strip */}
       <div className="portal-tracker-bar">
         <div className="portal-tracker-top">
           <div className="portal-tracker-header">
-            <Zap size={16} strokeWidth={1.75} style={{ color: "var(--accent)" }} />
-            <strong className="portal-tracker-title">Automated Portal Tracker</strong>
-            <span className="portal-tracker-desc">Auto-sync & deadline reminders across hackathon platforms</span>
+            <Rss size={16} strokeWidth={1.75} className="discover-portal-icon" />
+            <strong className="portal-tracker-title">Tracked portals</strong>
+            <span className="portal-tracker-desc">Deadline reminders from the portals you follow</span>
           </div>
-          <Link to="/settings" className="btn-tertiary">Manage portals ↗</Link>
+          <Link to="/settings" className="btn-tertiary">Manage portals</Link>
         </div>
         <div className="portal-tracker-list">
           {portals.length === 0 ? (
             <span className="portal-tracker-desc">
-              Tracking default campus sources (Unstop, Devfolio, Hack2skill). <Link to="/settings">Add custom portals</Link> to watch.
+              Default sources are tracked (Unstop, Devfolio, Hack2skill). <Link to="/settings">Add portals</Link> you follow.
             </span>
           ) : (
             portals.map((p) => (
@@ -122,22 +127,25 @@ export default function Discover() {
       </div>
 
       <div className="filters">
-        <input value={filters.q} onChange={set("q")} placeholder="Search events, venues" aria-label="Search" />
-        <select value={filters.category} onChange={set("category")} aria-label="Category">
+        <div className="search-field">
+          <Search size={16} strokeWidth={1.75} aria-hidden="true" />
+          <input value={filters.q} onChange={set("q")} placeholder="Search events, venues" aria-label="Search" />
+        </div>
+        <select className="clean-select" value={filters.category} onChange={set("category")} aria-label="Category">
           <option value="">All types</option>
           {CATEGORIES.map((c) => <option key={c} value={c}>{cap(c)}</option>)}
         </select>
-        <select value={filters.radius_km} onChange={set("radius_km")} aria-label="Distance">
+        <select className="clean-select" value={filters.radius_km} onChange={set("radius_km")} aria-label="Distance">
           <option value="">Any distance</option>
           <option value="10">Within 10 km</option>
           <option value="25">Within 25 km</option>
           <option value="50">Within 50 km</option>
         </select>
-        <select value={filters.portals_only} onChange={set("portals_only")} aria-label="Portal Source">
-          <option value="">All Platforms</option>
-          <option value="true">My Tracked Portals Only</option>
+        <select className="clean-select" value={filters.portals_only} onChange={set("portals_only")} aria-label="Portal Source">
+          <option value="">All platforms</option>
+          <option value="true">Tracked portals only</option>
         </select>
-        <select value={filters.sort} onChange={set("sort")} aria-label="Sort">
+        <select className="clean-select" value={filters.sort} onChange={set("sort")} aria-label="Sort">
           <option value="rank">Best for me</option>
           <option value="date">Soonest</option>
           <option value="distance">Nearest</option>
@@ -155,104 +163,189 @@ export default function Discover() {
       <div className="discover">
         <div>
           {!data ? (
-            <p className="muted center">Finding events...</p>
+            <div className="discover-grid" aria-hidden="true">
+              {[0, 1, 2, 3].map((i) => <div key={i} className="skeleton skeleton-card" />)}
+            </div>
           ) : events.length === 0 ? (
             <div className="card empty">
-              <p>No events match the selected filters. Try broadening distance or selecting another category.</p>
+              <Search size={20} strokeWidth={1.75} aria-hidden="true" />
+              <p>No events match your filters</p>
+              <button type="button" className="btn secondary small" onClick={() => setFilters(EMPTY_FILTERS)}>
+                Clear filters
+              </button>
             </div>
           ) : (
-            events.map((ev) => (
-              <article className="card event-card" key={ev.id}>
-                <div className="card-head">
-                  <div>
+            <div className="discover-grid">
+              {events.map((ev) => (
+                <article className="card event-card" key={ev.id}>
+                  <div className="event-card-top">
                     <h3>
                       <Link to={`/events/${ev.id}`} className="event-title-link">
                         {ev.title}
                       </Link>
                     </h3>
-                    <p className="muted small">{fmtRange(ev.start_at, ev.end_at)}</p>
-                    <p className="muted small">{ev.venue_name}{ev.club_name ? ` · ${ev.club_name}` : ""}</p>
+                    <div className="pills">
+                      <Chip label={cap(ev.category)} />
+                      {ev.platform && <Chip label={ev.platform} />}
+                    </div>
                   </div>
-                  <div className="pills">
-                    {ev.is_tracked_portal && <Chip label="Tracked portal" />}
-                    {ev.platform && <Chip label={ev.platform} />}
-                    <Chip label={cap(ev.category)} />
-                  </div>
-                </div>
+                  <p className="muted small">{fmtRange(ev.start_at, ev.end_at)}</p>
+                  <p className="muted small">{ev.venue_name}{ev.club_name ? ` · ${ev.club_name}` : ""}</p>
 
-                <div className="row" style={{ margin: ".3rem 0" }}>
-                  <p className="small muted" style={{ margin: 0 }}>
-                    {ev.distance_km != null ? `${ev.distance_km} km away, about ${fmtDuration(ev.travel_minutes)} by road` : "Distance unknown"}
-                  </p>
-                  <Rating r={ev.rating} />
-                </div>
-
-                <div className="card-foot" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <label className="check small" style={{ margin: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
-                      <input
-                        type="checkbox"
-                        checked={picked.includes(ev.id)}
-                        onChange={() => toggle(ev.id)}
-                        disabled={!picked.includes(ev.id) && picked.length >= 3}
-                      />
-                      Compare
-                    </label>
-                    {ev.url && (
-                      <a
-                        href={ev.url.startsWith("http") ? ev.url : `https://${ev.url}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="btn-tertiary"
-                      >
-                        Open page <ExternalLink size={12} />
-                      </a>
-                    )}
+                  <div className="row discover-row">
+                    <p className="small muted discover-flush">
+                      {ev.distance_km != null ? `${ev.distance_km} km away, about ${fmtDuration(ev.travel_minutes)} by road` : "Travel time unavailable"}
+                    </p>
+                    <Rating r={ev.rating} />
                   </div>
-                  <button className="btn small" disabled={ev.in_timeline} onClick={() => add(ev)}>
-                    {ev.in_timeline ? "On timeline" : "Add to timeline"}
-                  </button>
-                </div>
-              </article>
-            ))
+
+                  {ev.fit_score != null && (
+                    <p className="event-score small discover-flush">
+                      <b className={ev.verdict === "Skip" ? "score-skip" : "score-keep"}>{ev.fit_score}</b>
+                      {ev.verdict ? ` · ${ev.verdict}` : ""}
+                    </p>
+                  )}
+
+                  <div className="card-foot">
+                    <Checkbox
+                      checked={picked.includes(ev.id)}
+                      onChange={() => toggle(ev.id)}
+                      disabled={!picked.includes(ev.id) && picked.length >= 4}
+                      label="Compare"
+                      aria-label={`Compare ${ev.title}`}
+                    />
+                    <div className="card-foot-actions">
+                      {ev.url && (
+                        <a
+                          href={ev.url.startsWith("http") ? ev.url : `https://${ev.url}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn-tertiary"
+                        >
+                          Open page <ExternalLink size={12} />
+                        </a>
+                      )}
+                      <button className="btn secondary small" disabled={ev.in_timeline} onClick={() => add(ev)}>
+                        {ev.in_timeline ? "On timeline" : "Add to timeline"}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
           )}
         </div>
 
         <aside className="map-wrap">
           <MapView college={data?.college} events={events} onOpen={open} />
-          <p className="small muted" style={{ marginTop: ".5rem" }}>
-            Dark dot indicates your college. Red dots are events; click any dot to view event details.
+          <p className="small muted discover-map-note">
+            The solid dot marks your college; the others are events. Select one to view details.
           </p>
         </aside>
       </div>
 
       {picked.length >= 2 && (
         <div className="compare-bar">
-          <span>{picked.length} selected</span>
-          <button className="btn small" onClick={runCompare}>Compare side by side</button>
-          <button className="linklike small" onClick={() => { setPicked([]); setCompare(null); }}>Clear</button>
+          <span className="compare-bar-count">{picked.length} selected</span>
+          <button type="button" className="btn small" onClick={runCompare}>
+            Compare
+          </button>
+          <button type="button" className="btn-tertiary" onClick={() => { setPicked([]); setCompare(null); }}>
+            Clear
+          </button>
         </div>
       )}
 
       {compare && (
-        <section className="card scroll-x">
-          <h2>Side by side comparison</h2>
-          <table>
+        <section className="card scroll-x discover-compare-section">
+          <div className="discover-compare-head">
+            <h2 className="discover-compare-title">Comparison</h2>
+            <div className="discover-compare-actions">
+              <button
+                type="button"
+                className="btn-tertiary"
+                onClick={() => { setPicked([]); setCompare(null); }}
+              >
+                Clear selection
+              </button>
+              <button
+                type="button"
+                className="btn secondary small"
+                onClick={() => setCompare(null)}
+              >
+                <X size={14} strokeWidth={1.75} /> Close
+              </button>
+            </div>
+          </div>
+          <table className="compare-table discover-compare-table">
             <thead>
-              <tr>
-                <th></th>
-                {compare.map((e) => <th key={e.id}><Link to={`/events/${e.id}`}>{e.title}</Link></th>)}
+              <tr className="discover-compare-headrow">
+                <th className="discover-compare-th discover-compare-th-metric">Metric</th>
+                {compare.map((e) => (
+                  <th key={e.id} className="discover-compare-th">
+                    <Link to={`/events/${e.id}`} className="discover-compare-link">{e.title}</Link>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              <tr><th>When</th>{compare.map((e) => <td key={e.id}>{fmtRange(e.start_at, e.end_at)}</td>)}</tr>
-              <tr><th>Where</th>{compare.map((e) => <td key={e.id}>{e.venue_name || "-"}</td>)}</tr>
-              <tr><th>From college</th>{compare.map((e) => <td key={e.id}>{e.distance_km != null ? `${e.distance_km} km, ${fmtDuration(e.travel_minutes)}` : "-"}</td>)}</tr>
-              <tr><th>Overall rating</th>{compare.map((e) => <td key={e.id}>{e.rating.count ? `${e.rating.avg} / 5 (${e.rating.count})` : "No reviews"}</td>)}</tr>
-              <tr><th>Organisation</th>{compare.map((e) => <td key={e.id}>{e.rating.organisation ?? "-"}</td>)}</tr>
-              <tr><th>Learning value</th>{compare.map((e) => <td key={e.id}>{e.rating.learning ?? "-"}</td>)}</tr>
-              <tr><th>Worth the trip</th>{compare.map((e) => <td key={e.id}>{e.rating.value ?? "-"}</td>)}</tr>
-              <tr><th>Fit for goals</th>{compare.map((e) => <td key={e.id}>{e.fit_score} / 100</td>)}</tr>
+              <tr>
+                <th className="discover-compare-th discover-compare-th-metric">Date</th>
+                {compare.map((e) => <td key={e.id} className="discover-compare-td">{fmtRange(e.start_at, e.end_at)}</td>)}
+              </tr>
+              <tr>
+                <th className="discover-compare-th discover-compare-th-metric">Venue</th>
+                {compare.map((e) => <td key={e.id} className="discover-compare-td">{e.venue_name || "-"}</td>)}
+              </tr>
+              <tr>
+                <th className="discover-compare-th discover-compare-th-metric">Travel time</th>
+                {compare.map((e) => (
+                  <td key={e.id} className="discover-compare-td">
+                    {e.travel_minutes != null ? `${fmtDuration(e.travel_minutes)} (${e.distance_km} km)` : "Travel time unavailable"}
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <th className="discover-compare-th discover-compare-th-metric">Deadline</th>
+                {compare.map((e) => (
+                  <td key={e.id} className="discover-compare-td">
+                    {e.registration_deadline ? fmtDate(e.registration_deadline) : "None listed"}
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <th className="discover-compare-th discover-compare-th-metric">Score</th>
+                {compare.map((e) => (
+                  <td key={e.id} className="discover-compare-td discover-compare-td-score">
+                    {e.fit_score != null ? `${e.fit_score} / 100` : "-"}
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <th className="discover-compare-th discover-compare-th-metric">Keep / Skip</th>
+                {compare.map((e) => (
+                  <td key={e.id} className="discover-compare-td">
+                    <span className={`discover-compare-verdict ${e.verdict === "Keep" ? "is-keep" : e.verdict === "Skip" ? "is-skip" : "is-default"}`}>
+                      {e.verdict || (e.fit_score >= 55 ? "Keep" : "Skip")}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <th className="discover-compare-th discover-compare-th-metric">Timeline</th>
+                {compare.map((e) => (
+                  <td key={e.id} className="discover-compare-td">
+                    <button
+                      type="button"
+                      className="btn small"
+                      disabled={e.in_timeline}
+                      onClick={() => add(e)}
+                    >
+                      {e.in_timeline ? "On timeline" : "Add to timeline"}
+                    </button>
+                  </td>
+                ))}
+              </tr>
             </tbody>
           </table>
         </section>
