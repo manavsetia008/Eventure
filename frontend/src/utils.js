@@ -1,5 +1,5 @@
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const pad = (n) => String(n).padStart(2, "0");
 
 // Server times are naive local ISO strings ("2026-10-17T10:00"); JS reads them as local time.
@@ -11,12 +11,16 @@ export const parse = (iso) => {
 
 export function fmtDay(iso) {
   const d = parse(iso);
-  return d ? `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}` : "";
+  return d ? `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}` : "";
 }
 
 export function fmtTime(iso) {
   const d = parse(iso);
-  return d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : "";
+  if (!d) return "";
+  const h24 = d.getHours();
+  const h12 = h24 % 12 || 12;
+  const suffix = h24 < 12 ? "AM" : "PM";
+  return `${h12}:${pad(d.getMinutes())} ${suffix}`;
 }
 
 export function fmtDate(iso) {
@@ -28,6 +32,21 @@ export function fmtRange(start, end) {
   if (!end || !parse(end)) return fmtDate(start);
   if (fmtDay(start) === fmtDay(end)) return `${fmtDay(start)}, ${fmtTime(start)} to ${fmtTime(end)}`;
   return `${fmtDate(start)} to ${fmtDate(end)}`;
+}
+
+export function fmtExamRange(start, end) {
+  const s = parse(start);
+  const e = parse(end);
+  if (!s && !e) return "Date to be confirmed";
+  if (s && !e) return `${s.getDate()} ${MONTHS[s.getMonth()]} ${s.getFullYear()}`;
+  if (!s && e) return `${e.getDate()} ${MONTHS[e.getMonth()]} ${e.getFullYear()}`;
+  if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) {
+    return `${s.getDate()} to ${e.getDate()} ${MONTHS[e.getMonth()]} ${s.getFullYear()}`;
+  }
+  if (s.getFullYear() === e.getFullYear()) {
+    return `${s.getDate()} ${MONTHS[s.getMonth()]} to ${e.getDate()} ${MONTHS[e.getMonth()]} ${s.getFullYear()}`;
+  }
+  return `${s.getDate()} ${MONTHS[s.getMonth()]} ${s.getFullYear()} to ${e.getDate()} ${MONTHS[e.getMonth()]} ${e.getFullYear()}`;
 }
 
 export function timeLeft(iso) {
@@ -58,7 +77,7 @@ export function timeAgo(dateString) {
   if (diffH < 24) return `${diffH}h ago`;
   const diffD = Math.floor(diffH / 24);
   if (diffD < 7) return `${diffD}d ago`;
-  return fmtDate(dateString);
+  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
 }
 
 export function fmtMinutes(m) {

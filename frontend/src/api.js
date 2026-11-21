@@ -19,7 +19,7 @@ async function request(path, { method = "GET", body, form } = {}) {
   try {
     res = await fetch(`${BASE}${path}`, { method, headers, body: payload });
   } catch {
-    throw new Error("Cannot reach the server. Check that the backend is running.");
+    throw new Error("Could not reach Eventure. Check your connection and try again.");
   }
   let data = null;
   try {
@@ -51,4 +51,12 @@ export const api = {
 export function calendarFeedUrl() {
   const base = BASE.startsWith("http") ? BASE : `${window.location.origin}${BASE}`;
   return `${base}/calendar.ics?token=${getToken()}`;
+}
+
+export async function translateText(text, targetLang = "hi-IN") {
+  return api.post("/translate", { text, target_language_code: targetLang });
+}
+
+export async function textToSpeech(text, targetLang = "hi-IN", speaker = "aditya") {
+  return api.post("/tts", { text, target_language_code: targetLang, speaker });
 }
