@@ -129,6 +129,7 @@ def create_app(config_object=None):
         if app.config["AUTO_CREATE_DB"]:
             db.create_all()
             _sync_columns()
+            _enable_postgres_rls()
 
     _start_scheduler(app)
     return app
@@ -154,6 +155,31 @@ def _sync_columns():
                 continue  # cannot backfill a required column on existing rows
             coltype = col.type.compile(dialect=dialect)
             db.session.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN "{col.name}" {coltype}'))
+    db.session.commit()
+
+
+def _enable_postgres_rls():
+    """Enable RLS on Eventure tables when using Postgres/Supabase.
+
+    The Flask API connects with the database owner credential and applies its own
+    per-user authorization. Enabling RLS ensures anon/authenticated Data API roles
+    cannot read or mutate these tables unless explicit policies are later added.
+    SQLite development databases are left unchanged.
+    """
+    from sqlalchemy import inspect, text
+
+    from .extensions import db
+
+    if db.engine.dialect.name != "postgresql":
+        return
+
+    inspector = inspect(db.engine)
+    existing = set(inspector.get_table_names(schema="public"))
+    quote = db.engine.dialect.identifier_preparer.quote
+    for table in db.metadata.sorted_tables:
+        if table.name in existing:
+            table_name = quote(table.name)
+            db.session.execute(text(f"ALTER TABLE public.{table_name} ENABLE ROW LEVEL SECURITY"))
     db.session.commit()
 
 
