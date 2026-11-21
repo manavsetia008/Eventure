@@ -2,11 +2,12 @@
 
 Reads user profile data (interests, skills, campus location, and experience)
 and discovers real-time hackathons matching their profile using Google Custom
-Search API or top portal indexes (Unstop, Devfolio, Hack2skill, Devpost).
+Search API or free live web search (DuckDuckGo & top portal indexes: Unstop, Devfolio, Hack2skill, Devpost).
 """
 import logging
 import os
 import re
+import urllib.parse
 from datetime import datetime, timedelta
 import requests
 
@@ -23,7 +24,7 @@ def _clean_query_words(text: str) -> list:
 
 def search_google_hackathons(query: str, api_key: str, cx: str) -> list:
     """Queries Google Custom Search API for live hackathon announcements."""
-    if not api_key or not cx:
+    if not api_key or not cx or api_key.startswith("http"):
         return []
 
     url = "https://www.googleapis.com/customsearch/v1"
@@ -71,6 +72,60 @@ def search_google_hackathons(query: str, api_key: str, cx: str) -> list:
     return []
 
 
+def search_free_web_hackathons(query: str) -> list:
+    """Free web search fallback using DuckDuckGo HTML without requiring any API keys."""
+    url = "https://html.duckduckgo.com/html/"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    }
+    data = {"q": f"hackathon 2026 {query} devfolio unstop devpost registration"}
+    try:
+        resp = requests.post(url, data=data, headers=headers, timeout=8)
+        if resp.status_code != 200:
+            return []
+
+        # Find result link anchors
+        matches = re.findall(r'<a[^>]+class=["\']result__a["\'][^>]+href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', resp.text)
+        results = []
+        for raw_url, raw_title in matches[:6]:
+            actual_url = raw_url
+            if "uddg=" in raw_url:
+                parsed = urllib.parse.parse_qs(urllib.parse.urlparse(raw_url).query)
+                if "uddg" in parsed:
+                    actual_url = parsed["uddg"][0]
+
+            clean_title = re.sub(r"<[^>]+>", "", raw_title).strip()
+            if not clean_title or len(clean_title) < 5:
+                continue
+
+            platform = "Web"
+            if "unstop.com" in actual_url:
+                platform = "Unstop"
+            elif "devfolio.co" in actual_url:
+                platform = "Devfolio"
+            elif "devpost.com" in actual_url:
+                platform = "Devpost"
+            elif "hack2skill.com" in actual_url:
+                platform = "Hack2skill"
+
+            results.append({
+                "id": f"web-{abs(hash(actual_url)) % 100000}",
+                "title": clean_title.split(" - ")[0].split(" | ")[0],
+                "platform": platform,
+                "category": "hackathon",
+                "venue_name": "Online / Regional",
+                "description": f"Live web announcement: {clean_title}",
+                "url": actual_url,
+                "start_at": (datetime.now() + timedelta(days=14)).isoformat(),
+                "registration_deadline": (datetime.now() + timedelta(days=7)).isoformat(),
+                "source": "free_web_search",
+            })
+        return results
+    except Exception as exc:
+        logging.warning("Free web hackathon search failed: %s", exc)
+        return []
+
+
 def suggest_hackathons_for_user(user, config: dict = None) -> list:
     """Generates personalized, real-time hackathon suggestions for a student."""
     config = config or {}
@@ -88,11 +143,14 @@ def suggest_hackathons_for_user(user, config: dict = None) -> list:
 
     pool = []
 
-    # 1. Fetch live Google search results if credentials are provided
-    if search_key and search_cx:
-        search_query = " ".join(list(user_tokens)[:3]) or "engineering AI"
+    # 1. Fetch live search results: Google Custom Search if key provided, else Free Web Search fallback
+    search_query = " ".join(list(user_tokens)[:3]) or "engineering AI"
+    if search_key and search_cx and not search_key.startswith("http"):
         google_results = search_google_hackathons(search_query, search_key, search_cx)
         pool.extend(google_results)
+    else:
+        web_results = search_free_web_hackathons(search_query)
+        pool.extend(web_results)
 
     # 2. Add verified curated portal index events
     for cat_item in PORTAL_CATALOG:

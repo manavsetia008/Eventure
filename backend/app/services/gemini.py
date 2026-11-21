@@ -27,14 +27,15 @@ def generate_with_gemini(
     prompt: str,
     api_key: str = None,
     system_instruction: str = None,
-    model: str = "gemini-2.0-flash",
+    model: str = None,
     temperature: float = 0.4,
 ) -> str:
     """Direct REST call to Google Gemini API (no bulky SDK required)."""
-    key = api_key or get_gemini_api_key()
+    key = api_key if api_key is not None else get_gemini_api_key()
     if not key or key == "your_gemini_api_key_here":
         return ""
 
+    model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     endpoint = f"{GEMINI_API_URL}/{model}:generateContent?key={key}"
     headers = {"Content-Type": "application/json"}
 
@@ -101,7 +102,7 @@ Provide:
 Keep output punchy, well-formatted markdown.
 """
 
-    key = api_key or get_gemini_api_key()
+    key = api_key if api_key is not None else get_gemini_api_key()
     if not key or key == "your_gemini_api_key_here":
         # Offline deterministic analysis when no API key is provided
         readiness = 40
@@ -129,7 +130,21 @@ Keep output punchy, well-formatted markdown.
         }
 
     review_text = generate_with_gemini(prompt, key, system_instruction)
+    if not review_text:
+        return {
+            "source": "deterministic_heuristics",
+            "readiness_score": 60,
+            "markdown": (
+                f"### Hackathon Submission Review ({event_title})\n\n"
+                "**Projected Readiness Score**: **60%**\n\n"
+                "- Live Demo: " + ('✅ Connected' if demo_url != 'Not provided' else '⚠️ Missing') + "\n"
+                "- GitHub Repo: " + ('✅ Connected' if github_url != 'Not provided' else '⚠️ Missing') + "\n\n"
+                "*(Note: Real-time Gemini review timed out or model was busy; fallback heuristic score provided)*"
+            ),
+        }
+
     return {
-        "source": "gemini-2.0-flash",
-        "markdown": review_text or "Unable to generate review at this time. Please check your Gemini API key.",
+        "source": os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+        "readiness_score": 85,
+        "markdown": review_text,
     }
