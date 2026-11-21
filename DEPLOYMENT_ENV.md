@@ -32,6 +32,12 @@ For Supabase, use the **Transaction pooler** connection string for a Render depl
 `sslmode=require`. Keep the database password only in Render's encrypted environment variables.
 Do not use a service-role key or database password in frontend variables.
 
+Eventure connects to Postgres from the Flask server using SQLAlchemy; the browser talks only to
+the Flask API with Eventure JWTs. No Supabase browser key or `supabase-js` client is required.
+At startup, Eventure enables Row Level Security on its application tables when the database is
+Postgres. Do not add public/anon table policies unless you intentionally introduce a separate
+client-side data access design.
+
 Optional integrations (only add when you have configured the provider):
 
 - `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-2.5-flash` — AI assistant and enhanced event parsing.
