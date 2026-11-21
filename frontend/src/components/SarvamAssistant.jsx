@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Bot, Mic, MicOff, Send, Volume2, X, Sparkles, Navigation, Calendar, AlertTriangle } from "lucide-react";
+import { Bot, Mic, MicOff, Send, Volume2, X, Sparkles, Navigation, Calendar } from "lucide-react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 
