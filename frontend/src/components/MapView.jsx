@@ -30,7 +30,6 @@ export default function MapView({ college, events, onOpen }) {
       attribution: ATTRIBUTION,
       minZoom: 3,
       maxZoom: 19,
-      crossOrigin: true,
     }).addTo(map.current);
 
     layer.current = L.layerGroup().addTo(map.current);
