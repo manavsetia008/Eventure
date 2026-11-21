@@ -1,92 +1,67 @@
-# Eventure Deployment Environment Setup
+# Eventure — Production Deployment
 
-This document details the environment configuration for deploying **Eventure** to **Render** (Backend) and **Vercel** (Frontend).
+Eventure uses the Flask API with a React/Vite frontend. The recommended deployment is Vercel
+(frontend) + Render (backend) + Supabase Postgres (database).
 
----
+## Security note
 
-## 1. Architecture Overview
+The repository previously contained a fixed example signing key and an unrestricted CORS example.
+Treat any key ever used with that value as compromised and rotate it. Do not commit populated
+credentials, database passwords, OAuth secrets, VAPID private keys, or mail passwords.
 
-- **Backend Web Service**: Render (`https://eventure-gdx5.onrender.com`)
-- **Frontend SPA**: Vercel (`https://*.vercel.app` or custom domain)
-- **Vercel API Proxy**: Configured via `frontend/vercel.json` to proxy `/api/*` and `/auth/*` directly to `https://eventure-gdx5.onrender.com`.
+## Render — backend
 
----
-
-## 2. Render Environment Variables (Backend)
-
-In your **Render Dashboard** -> **eventure-gdx5** -> **Environment**, add the following key-value pairs (your actual populated keys are saved locally in your uncommitted `backend/.env` and `backend/.env.production` files):
+Use the Dockerfile at the repository root. Set the following values in the Render service's
+Environment page:
 
 ```bash
-SECRET_KEY=eventure-production-super-secret-key-32-bytes-long!
-CORS_ORIGINS=http://localhost:5173,https://eventure-gdx5.onrender.com,https://*.vercel.app,*
+APP_ENV=production
+SECRET_KEY=<generate-a-unique-random-secret-at-least-32-characters>
+DATABASE_URL=<supabase-transaction-pooler-uri-with-sslmode=require>
+CORS_ORIGINS=<your-vercel-production-domain>
 TRUST_PROXY=1
 TIMEZONE=Asia/Kolkata
-FRONTEND_URL=https://eventure-gdx5.onrender.com
-APP_BASE_URL=https://eventure-gdx5.onrender.com
-
-# Gemini LLM Architecture (Chatbot + Submission Box)
-GEMINI_API_KEY=<PASTE_YOUR_GEMINI_API_KEY>
-GEMINI_MODEL=gemini-2.5-flash
-
-# Sarvam AI Indic Engine (Voice Calls, Hinglish extraction & TTS)
-SARVAM_API_KEY=<PASTE_YOUR_SARVAM_API_KEY>
-SARVAM_MODEL=sarvam-105b-conversations
-SARVAM_TRANSLATE_MODEL=sarvam-translate:v1
-SARVAM_TTS_MODEL=bulbul:v3
-
-# OpenStreetMap Geocoding (100% Free - No Google Maps Key Needed)
-GEOCODE_OSM=1
-GOOGLE_MAPS_API_KEY=
-
-# Hackathon Suggestions (Google Custom Search or Free Web Engine)
-GOOGLE_SEARCH_API_KEY=
-GOOGLE_SEARCH_CX=
-
-# Neo4j Graph Database
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=eventure-graph-pass
-
-# Google Calendar sync / Google Sign-in
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=https://eventure-gdx5.onrender.com/api/google/callback
-
-# Web Push Notification VAPID Keys (Copy from backend/.env)
-VAPID_PUBLIC_KEY=BHWmvmgcfRafL9w56ZLAnxR7ZJG5AD6EGG9H0BAxOZwxQA20aniNzfa0A12D2zXAr8ye3zT22ZKAIiNqTKUHyWw
-VAPID_PRIVATE_KEY=<COPY_FROM_BACKEND_DOT_ENV>
-VAPID_SUBJECT=mailto:Raiaryaneng@gmail.com
-
-# Inbound Webhooks & Email Processing
-INBOX_ADDRESS=noil36l4m3cdsgo5@ethereal.email
-IMAP_HOST=imap.ethereal.email
-IMAP_PORT=993
-IMAP_USER=noil36l4m3cdsgo5@ethereal.email
-IMAP_PASSWORD=<COPY_FROM_BACKEND_DOT_ENV>
-IMAP_POLL_MINUTES=5
-INBOUND_SECRET=<COPY_FROM_BACKEND_DOT_ENV>
-
-# Database Auto-creation & Reminder Background Scheduler
+FRONTEND_URL=<your-vercel-production-domain>
+APP_BASE_URL=<your-vercel-production-domain>
 AUTO_CREATE_DB=1
 ENABLE_SCHEDULER=1
-REMINDER_INTERVAL_MINUTES=15
-
-# SMTP Email Configuration (Free Ethereal Email test mailbox at https://ethereal.email)
-SMTP_HOST=smtp.ethereal.email
-SMTP_PORT=587
-SMTP_USER=noil36l4m3cdsgo5@ethereal.email
-SMTP_PASSWORD=<COPY_FROM_BACKEND_DOT_ENV>
-SMTP_FROM=Raiaryaneng@gmail.com
+GEOCODE_OSM=1
 ```
 
----
+For Supabase, use the **Transaction pooler** connection string for a Render deployment. Include
+`sslmode=require`. Keep the database password only in Render's encrypted environment variables.
+Do not use a service-role key or database password in frontend variables.
 
-## 3. Vercel Environment Variables (Frontend)
+Optional integrations (only add when you have configured the provider):
 
-In your **Vercel Dashboard** -> Project -> **Settings** -> **Environment Variables**, add:
+- `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-2.5-flash` — AI assistant and enhanced event parsing.
+- `SARVAM_API_KEY`, `SARVAM_MODEL`, `SARVAM_TRANSLATE_MODEL`, `SARVAM_TTS_MODEL` — Indic extraction,
+  translation, and speech. The service has provider-specific free credits/limits.
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` — Google sign-in and Calendar.
+  Set the callback URL to `<your-public-domain>/api/google/callback` for Calendar and
+  `<your-public-domain>/auth/google/callback` for Google sign-in.
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` — browser push notifications. Generate
+  a fresh keypair with `python scripts/generate_vapid_keys.py`.
+- `IMAP_HOST`, `IMAP_PORT`, `IMAP_USER`, `IMAP_PASSWORD`, `INBOUND_SECRET` — inbound email parsing.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` — outgoing email alerts.
 
-```bash
-VITE_API_URL=https://eventure-gdx5.onrender.com/api
-```
+The OpenStreetMap geocoder and Haversine distance fallback work without a Google Maps API key.
+Do not enable aggressive geocoding or tile scraping; respect the public OSM service usage policy.
 
-Also, `frontend/vercel.json` is preconfigured to rewrite `/api/(.*)` requests directly to `https://eventure-gdx5.onrender.com/api/$1` and handle client-side routing.
+Set Render's health check path to `/api/health`. It verifies the database connection, not just
+that the web process is alive.
+
+## Vercel — frontend
+
+Set the project root to `frontend`, framework to Vite, build command to `npm run build`, and
+output directory to `dist`. The SPA uses a same-origin `/api/*` rewrite to the Render backend,
+so `VITE_API_URL` can remain unset. If you choose to call the backend directly instead, set
+`VITE_API_URL` to the backend's `/api` URL and allow the Vercel domain in `CORS_ORIGINS`.
+
+Set these Google OAuth authorized JavaScript origins and redirect URIs to the deployed public
+domain, plus localhost values for local development. Keep the Google client secret on Render only.
+
+## Local development
+
+Copy `backend/.env.example` to `backend/.env`, use `APP_ENV=development`, and leave
+`DATABASE_URL` blank to use SQLite. Never copy local secrets into Git.
