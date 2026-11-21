@@ -2,7 +2,8 @@ __pycache__/
 *.pyc
 .venv/
 venv/
-.env
+.env*
+!.env.example
 *.db
 node_modules/
 dist/
@@ -13,5 +14,7 @@ dist/
 *.pdf
 
 .vscode/
-backend/try_sarvam.py
-
+instance/
+*.sqlite
+*.sqlite3
+*.log

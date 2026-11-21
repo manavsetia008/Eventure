@@ -1,258 +1,224 @@
 # Eventure
 
-[![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://python.org)
-[![Flask](https://img.shields.io/badge/Flask-3.0-000000.svg)](https://flask.palletsprojects.com/)
-[![React](https://img.shields.io/badge/React-18.3-61DAFB.svg)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF.svg)](https://vitejs.dev/)
-[![Sarvam AI](https://img.shields.io/badge/Sarvam%20AI-105B%20Indic-blueviolet.svg)](https://sarvam.ai)
-[![Tests](https://img.shields.io/badge/Tests-110%20Passing-success.svg)](#-automated-testing--verification-110-tests)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+> **Every event, one thread.**
+> Turn scattered campus notices into one clear, trackable timeline.
 
-> **"Every event, one thread."**  
-> *One place to discover campus events, choose what matters, track every round and learn from the outcome.*
-
-Built with pride by **Team Quanta** for **hackFront India 2026** (Grand Finale · IIIT Delhi · Open Innovation):
-- **Manav Setia**
-- **Mayank Sharma**
-- **Milan Sharma**
-- **Arjun Singh**
-- **Aryan Rai**
+Eventure is a tracker for college students juggling events and hackathons. Paste a notice or a
+WhatsApp forward and it pulls out the title, venue, dates and deadlines. From there you track every
+stage, spot schedule and exam-week clashes, and decide what to keep.
 
 ---
 
-## 📌 Executive Summary
+## What it does
 
-> *“Students don’t miss opportunities due to lack of talent. They miss them because campus communication is broken.”*
-
-In a typical university week, opportunities are scattered across posters, WhatsApp group forwards, Discord servers, and portal listings. Critical registration deadlines expire silently, travel commute gaps make attending consecutive events impossible, and semester sessionals collide with hackathon finals.
-
-**A calendar sees one dot on one date. Eventure sees the whole connected chain.**
-
----
-
-## 📊 National Scale & Market Impact (AISHE Benchmark)
-
-Eventure is designed for the sheer scale of the Indian Higher Education ecosystem, benchmarked against official **AISHE (All India Survey on Higher Education)** findings:
-
-- **4.50 Crore (45 Million)** Enrolled Higher Education Students across India.
-- **1,289 Universities & Institutes of National Importance** (IITs, IIITs, NITs, Central & State Universities).
-- **48,246 Affiliated Colleges** hosting thousands of hackathons, symposiums, and cultural fests every semester.
-- **45 min → 3 min**: Drastic reduction in weekly student event-search and deadline-tracking overhead.
-- **3 Escalating Reminders**: 48 h, 24 h, and 6 h safety alerts before every submission gate.
-- **1-Click Submission**: Instant export of all project artifacts from the Submission Vault.
+- **Capture** — paste notice text or upload a poster; details are extracted for review and you can edit any field before saving.
+- **Timeline** — each event with its stages (registration, submission, shortlist, final), days-left and deadlines.
+- **Clash detection** — overlapping events, tight travel gaps between venues, and clashes with your saved exam dates.
+- **Keep / Skip** — a 0–100 fit score from your interests, deadlines and campus distance, with a threshold you control.
+- **Discover** — browse public events, filter and sort, and compare two to four side by side.
+- **Inbox** — forwarded event emails land here as ready-to-review drafts.
+- **Community & Organizer** — follow campus clubs, and create or manage the events you organise.
+- **Portals, exam dates, calendar** — track the platforms you register on, save your exam window, and subscribe to a private calendar feed.
 
 ---
 
-## 🎯 10 Features Across Five Stages
+## Stack
+
+| Layer | Choice |
+|---|---|
+| Backend | Flask 3, SQLAlchemy, PyJWT, APScheduler |
+| Database | SQLite by default (`backend/eventure.db`); PostgreSQL optional |
+| Frontend | React 18 + Vite 5, react-router-dom |
+| Styling | Plain CSS with a single set of CSS variables (`frontend/src/styles.css`) |
+| Icons / Map | lucide-react, Leaflet |
+| Tests | pytest (92 backend), Vitest (18 frontend) |
+
+---
+
+## Project layout
 
 ```
-   [01. DISCOVER]  ───>  [02. DECIDE]  ───>  [03. TRACK]  ───>  [04. CLASH CHECK]  ───>  [05. REVIEW]
-   • Smart Capture       • Keep or Skip      • Stage Timeline    • Clash Radar          • Verified Reviews
-   • Discover Map        • Clubs & Teams     • Smart Reminders   • Submission Vault     • Portal Tracker
+eventure/
+├─ backend/
+│  ├─ app/
+│  │  ├─ routes/        # auth, timeline, discover, social, inbox, organizer, google, push, integrations
+│  │  ├─ services/      # extraction, ocr, conflicts, priority, travel, inbox, reminders, push, calendar, ics
+│  │  ├─ models.py      # SQLAlchemy models
+│  │  ├─ config.py      # reads backend/.env
+│  │  └─ __init__.py    # app factory + /api/health
+│  ├─ tests/            # pytest suites
+│  ├─ seed.py           # demo data (dates are relative to today)
+│  └─ run.py            # entry point
+└─ frontend/
+   ├─ src/
+   │  ├─ pages/         # Landing, Timeline, Discover, AddEvent, Inbox, Community, Organizer, Settings...
+   │  ├─ components/    # Badge, Chip, Checkbox, Radio, EventForm, IssueCard...
+   │  ├─ styles.css     # theme tokens + all styles
+   │  └─ api.js         # fetch wrapper (attaches the JWT)
+   └─ index.html        # inline theme bootstrap (no flash on load)
 ```
 
-| # | Stage | Feature | Description |
-|---|---|---|---|
-| **01** | **Discover** | **Smart Capture** | Turn raw posters and Hinglish WhatsApp forwards into ready-to-review event drafts via Sarvam-105B & Document OCR. |
-| **02** | **Track** | **Stage Timeline** | Follow every round, stage deadline (Abstract, PPT, Prototype, Finals), and travel window in a unified thread. |
-| **03** | **Clash Check** | **Clash Radar** | Deterministic detection for overlapping hours, tight commute buffers, and university exam period shields. |
-| **04** | **Decide** | **Keep or Skip (0–100)** | Transparent algorithmic priority fit scoring with customizable Keep cut-off thresholds (50, 55, 62). |
-| **05** | **Discover** | **Discover Map** | Interactive Leaflet campus map showing nearby hackathons with Bayesian-smoothed ratings and travel distance. |
-| **06** | **Review** | **Verified Reviews** | Anti-tamper peer ratings and feedback restricted exclusively to students marked as `attended` on their timeline. |
-| **07** | **Track** | **Smart Reminders** | Escalating notifications firing at 48 h (Heads up), 24 h (Urgent), and 6 h (Critical) before cutoff gates. |
-| **08** | **Decide** | **Clubs & Teams** | Collaborative squad rosters with 6-character team join codes syncing timeline stages across squadmates. |
-| **09** | **Clash Check** | **Submission Vault** | Centralized pre-deadline hub storing GitHub repo, demo URL, presentation deck, video, and 1-click **"Copy All Links"**. |
-| **10** | **Review** | **Portal Tracker** | Live monitoring for major hackathon aggregators (Unstop, Devfolio, Hack2skill) with automated deadline sync. |
+Frontend routes: `/` (Timeline when signed in, otherwise the landing page), `/login`, `/signup`,
+`/add`, `/discover`, `/events/:id`, `/events/:id/edit`, `/inbox`, `/community`, `/organizer`,
+`/notifications`, `/settings`.
 
 ---
 
-## ⚡ Deterministic Clash Radar: Mathematical Spec
+## Getting started
 
-Rather than opaque heuristics, Eventure computes commute viability using hard arithmetic:
+Prerequisites: **Python 3.11+** and **Node.js 18+**.
 
-$$\text{Buffer} = \text{Commute Gap} - \text{Road Travel Time} - \text{15 min Safety Buffer}$$
-
-### Worked Example:
-- **Workshop Y**: Ends at 4:00 PM (Campus A)
-- **Hackathon X**: Starts at 4:45 PM (Campus B)
-- **Commute Gap**: 45 minutes
-- **Real Road Travel Time**: 40 minutes (offline Haversine / Google Distance Matrix)
-- **Safety Buffer**: 15 minutes
-
-$$\text{Buffer} = 45 - 40 - 15 = -10\text{ minutes}$$
-
-$$\text{Negative Buffer } (-10\text{ min}) \implies \mathbf{CRITICAL\ TRAVEL\ GAP\ WARNING}$$
-
-The student receives an actionable recommendation: *"Keep Hackathon X. Mark Workshop Y as skipped."*
-
----
-
-## 🎯 Priority Fit Scoring Engine (0–100)
-
-| Factor | Default Weight | Description |
-|---|---|---|
-| **Interest & Career Alignment** | **40 pts** | Keyword matching against student career goals (AI, Web3, Systems, Design). |
-| **Deadline Urgency** | **20 pts** | Proximity to the immediate submission gate or registration cutoff. |
-| **Commute Proximity** | **20 pts** | Road travel time from pinned college campus coordinates. |
-| **Registered Status** | **10 pts** | Bonus for events the student has already committed to. |
-| **Goal Track Fit** | **10 pts** | Match with specific track interests (e.g. Open Innovation, EdTech). |
-| **Exam Period Penalty** | **-25 pts** | Deducted automatically if the event overlaps semester exam dates. |
-
-### Keep / Skip Decision Threshold:
-- **Default Cut-off**: **55+**
-- **Student Controls**: Configurable in Settings between **50+**, **55+**, and **62+**.
-- **Student A (AI in profile)**: $40 + 12 + 20 + 0 + 10 = \mathbf{82} \implies \mathbf{KEEP}$
-- **Student B (Design profile)**: $0 + 12 + 8 + 0 + 0 = \mathbf{20} \implies \mathbf{SKIP}$
-
----
-
-## 🆚 Product Capability Comparison
-
-| Student Need | Unstop | Google Calendar | Tracathon | **Eventure (Team Quanta)** |
-|---|---|---|---|---|
-| **Find Opportunities** | Public listings + filters | Not its main purpose | Hackathon tracker; no broad feed | **Campus map + nearby events + portal watcher** |
-| **Track Each Stage** | Dates on listing page | Generic dated events | Stage-by-stage hackathon timeline | **One connected thread for all rounds & submissions** |
-| **Reminders** | Organiser updates | Custom notifications | In-app + email reminders | **Escalating 48 h, 24 h, and 6 h risk-based alerts** |
-| **Personal Fit & Clashes** | Manual listing comparison | Calendar availability | Priority dashboard for deadlines | **0–100 Fit score + Travel buffer radar + Exam shield** |
-| **Submission Toolkit** | Form inputs per listing | None | None | **Submission Vault with 1-click "Copy All Links"** |
-| **After-Event Learning** | Organiser feedback | Not a review product | Participation insights | **Verified Attendee-only peer reviews (Anti-spam)** |
-| **Indic Multilingual** | English only | Standard localization | English only | **Sarvam Translate across 22+ Scheduled Languages** |
-
----
-
-## 🏗️ System Architecture & Services
-
-```mermaid
-flowchart TD
-  subgraph Ingestion ["Ingestion & Capture"]
-    P["Poster / Flyer"] --> OCR["Sarvam Document OCR / Tesseract Fallback"]
-    W["WhatsApp Hinglish Message"] --> LLM["Sarvam-105B Indic Extraction"]
-    E["Forwarded Email"] --> IMAP["IMAP Inbox Watcher"]
-    T["Tracked Portals"] --> SCR["Portal Sync Worker"]
-  end
-
-  subgraph Core ["Eventure Engine (Flask 3.11 + SQLAlchemy)"]
-    OCR & LLM & IMAP & SCR --> DB[("16 Relational Tables")]
-    DB --> RADAR["Deterministic Clash Radar (Buffer = Gap - Travel - 15m)"]
-    DB --> SCORE["Priority Fit Engine (0-100 Score)"]
-    DB --> SHIELD["Semester Exam Academic Shield"]
-    DB --> REM["APScheduler Reminder Worker (48h/24h/6h)"]
-  end
-
-  subgraph Client ["Client Presentation (React 18 + Vite 5)"]
-    RADAR & SCORE & SHIELD --> UI["Calm Notion-Style UI (Clean Light / Charcoal-Slate Dark)"]
-    UI --> LANG["Sarvam Translate (22 Indic Languages)"]
-    UI --> MAP["Leaflet / OpenStreetMap Campus Discovery"]
-    UI --> VAULT["Hackathon Submission Vault"]
-  end
-
-  subgraph External ["External Integrations"]
-    DB --> GCAL["Two-Way Google Calendar Sync"]
-    DB --> ICS["Private .ics Subscription Feed"]
-    DB --> PUSH["Web Push (RFC 8291/8292 VAPID)"]
-  end
-```
-
-### 12 Backend Micro-Services:
-1. `extraction` — Normalization and stage breakdown for unstructured circulars.
-2. `ocr` — Image preprocessing (adaptive upscaling, greyscale, binarization) + Sarvam Vision OCR.
-3. `sarvam_ai` — Sarvam-105B chat completion client, Document OCR, and 22-language translation.
-4. `conflicts` — Deterministic clash radar (temporal overlaps, travel buffer gap calculations).
-5. `priority` — Algorithmic 0–100 score engine supporting customizable tuning modes.
-6. `travel` — Road distance computation with Google Distance Matrix & offline Haversine fallback.
-7. `inbox` — Forwarded email circular parsing and conversion into ready event drafts.
-8. `imap_poll` — Automated mailbox polling worker.
-9. `reminders` — Escalating notification scheduling (48 h, 24 h, 6 h).
-10. `push` — VAPID Web Push alert delivery.
-11. `google_calendar` — OAuth 2.0 two-way event synchronization.
-12. `ics` — RFC 5545 calendar feed generation for Apple Calendar, Outlook, and mobile devices.
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites:
-- **Python 3.11+**
-- **Node.js 18+**
-
----
-
-### 1. Backend Setup
+### 1. Backend
 
 ```powershell
 cd backend
 python -m venv .venv
-.venv\Scripts\activate
-# (On macOS/Linux: source .venv/bin/activate)
-
+.venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-copy .env.example .env
-# (On macOS/Linux: cp .env.example .env)
+copy .env.example .env            # macOS/Linux: cp .env.example .env
 
-# Seed realistic Delhi NCR campus demo data:
-python seed.py --reset
-
-# Start the Flask backend server:
-python run.py
+python seed.py --reset            # load demo data
+python run.py                     # http://localhost:5000
 ```
 
-Backend starts at: **`http://localhost:5000`**  
-*(Zero-API-key fallback: Eventure runs 100% locally with built-in deterministic rules and offline Haversine commute estimation even without external API keys).*
+The app starts with **no API keys**. Extraction, clash detection, travel time and the calendar feed
+all work offline; any key that is missing simply switches that one feature to a built-in fallback.
 
----
-
-### 2. Frontend Setup
+### 2. Frontend
 
 ```powershell
 cd frontend
 npm install
+npm run dev                       # http://localhost:5173
+```
 
-# Start development server with hot-reload:
-npm run dev
+### Demo account
 
-# Or build production bundle (Flask serves static assets):
+```
+demo@eventure.app  /  demo1234
+```
+
+`python seed.py --reset` wipes and re-creates demo data using `today + N days`, so deadlines,
+clashes and the exam overlap never go stale. It seeds events, hackathons with stages, a schedule
+clash, an exam-week clash, tracked portals, inbox items, clubs and notifications.
+
+---
+
+## Environment variables
+
+Copy `backend/.env.example` to `backend/.env` and fill in only what you need. **Everything is optional.**
+
+| Variable | Used for | Where to get it | Cost |
+|---|---|---|---|
+| `SECRET_KEY` | Signs auth tokens (required in production) | Any long random string | Free |
+| `DATABASE_URL` | Database connection (default: SQLite) | Your Postgres URL, or leave blank | Free / paid |
+| `CORS_ORIGINS` | Allowed frontend origins (default `http://localhost:5173`) | — | Free |
+| `TIMEZONE` | Calendar and push times (default `Asia/Kolkata`) | — | Free |
+| `FRONTEND_URL` | Redirect target after Google OAuth | — | Free |
+| `APP_BASE_URL` | Public origin used to build the Google sign-in callback | `http://localhost:5173` in dev, live domain in prod | Free |
+| `SARVAM_API_KEY` | Notice extraction from text, poster OCR, Indic translation | dashboard.sarvam.ai | Free credits, then paid |
+| `SARVAM_MODEL` | Sarvam model id (default `sarvam-105b-conversations`) | Sarvam docs | — |
+| `GOOGLE_MAPS_API_KEY` | Real traffic travel times | Google Cloud Console | Paid (free credit) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google Calendar sync | Google Cloud Console → OAuth client | Free |
+| `GOOGLE_REDIRECT_URI` | OAuth callback (must match the console) | — | Free |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Browser push reminders | Generate with `python scripts/generate_vapid_keys.py` | Free |
+| `INBOX_ADDRESS` | Address students forward event emails to | Your own mailbox plus a domain | Free |
+| `IMAP_HOST` / `IMAP_PORT` / `IMAP_USER` / `IMAP_PASSWORD` | Poll that mailbox for forwards | Your mail provider | Free |
+| `INBOUND_SECRET` | Protects the inbound-email webhook | Any random string | Free |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` | Optional email reminders | Your SMTP provider | Free / paid |
+| `ENABLE_SCHEDULER`, `REMINDER_INTERVAL_MINUTES`, `IMAP_POLL_MINUTES` | Background reminder and poll cadence | — | Free |
+| `AUTO_CREATE_DB` | Create tables on boot (set `0` when using Flask-Migrate) | — | Free |
+| `TRUST_PROXY` | Set to `1` behind nginx / Render / Railway | — | Free |
+
+**Behaviour when a key is missing** (the app never crashes):
+
+- **Extraction** falls back to the built-in rule-based parser, which still finds dates, venue, deadline and link. The UI offers "Fill in manually".
+- **Travel time** is estimated from straight-line distance when no maps key is set; if it cannot be estimated the row simply reads "Travel time unavailable".
+- **Google Calendar, push notifications and email forwarding** stay off; the rest of the app is unaffected.
+
+---
+
+## Google sign-in setup
+
+The "Continue with Google" button on `/login` and `/signup` uses the same OAuth client as the
+Calendar sync. It stays hidden until `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set, so the
+app keeps working without them.
+
+1. Create a project at [console.cloud.google.com](https://console.cloud.google.com).
+2. Fill in the **OAuth consent screen**: User type **External**, app name **Eventure**, a support
+   email, and only the `email` and `profile` scopes. Before a demo, click **Publish app** — while the
+   app is in "Testing" only listed test users can sign in.
+3. Go to **Credentials → Create credentials → OAuth client ID → Web application**.
+4. Under **Authorized JavaScript origins** add `http://localhost:5173` and, later, your live domain.
+5. Under **Authorized redirect URIs** add both:
+   - `http://localhost:5173/auth/google/callback`
+   - `https://YOUR_DOMAIN/auth/google/callback`
+6. Paste the client ID and secret into `backend/.env` and restart the app.
+7. Google does not accept a local IP (like `192.168.x.x`) as a redirect origin — open the app from
+   `localhost` while developing.
+
+If `APP_BASE_URL` points somewhere other than `http://localhost:5173`, use that origin in steps 4
+and 5 instead.
+
+---
+
+## API
+
+Everything lives under `/api`. Except for auth, the health check and the calendar feed, endpoints
+expect a `Bearer <token>` from `POST /api/auth/login`.
+
+| Group | Prefix | Examples |
+|---|---|---|
+| Auth | `/api/auth` | `POST /register`, `POST /login`, `GET|PUT|DELETE /me` |
+| Events & timeline | `/api` | `POST /extract`, `POST /events`, `PUT /events/:id`, `GET /timeline`, `PATCH /user-events/:id`, `POST /user-events/:id/stages` |
+| Exams, portals, notifications | `/api` | `GET|POST /exams`, `GET|POST|PATCH|DELETE /portals`, `POST /portals/:id/sync`, `GET /notifications`, `GET /calendar.ics` |
+| Discover & compare | `/api` | `GET /discover`, `GET /events/:id`, `POST /events/:id/join`, `POST /events/:id/reviews`, `GET /compare` |
+| Community | `/api` | `GET|POST /clubs`, `POST /clubs/:id/follow`, `GET|POST /teams`, `POST /teams/join` |
+| Inbox | `/api` | `GET /inbox`, `POST /inbox/:id/dismiss`, `POST /inbound/email` |
+| Organizer | `/api/organizer` | `GET /events`, `POST /events/:id/visibility` |
+| Google Calendar | `/api/google` | `GET /connect`, `GET /callback`, `POST /sync`, `POST /disconnect` |
+| Push | `/api/push` | `GET /key`, `POST /subscribe`, `POST /unsubscribe` |
+| Integrations | `/api/integrations` | `GET /status`, `POST /test/:service` |
+
+Health check: `GET /api/health` → `{"status": "ok"}`.
+
+---
+
+## Testing
+
+```powershell
+cd backend
+python -m pytest tests -q          # 92 tests
+
+cd ..\frontend
+npm test                           # 18 tests
+npm run lint
 npm run build
 ```
 
-Open: **`http://localhost:5173`** (or `http://localhost:5000` if serving via Flask).
-
-#### Demo Accounts:
-- **Student A (AI/Hackathon Focus → Score 82):**
-  - Email: `demo@eventure.app`
-  - Password: `demo1234`
-- **Student B (Design Profile → Score 20):**
-  - Email: `student2@eventure.app`
-  - Password: `demo1234`
+The suites cover clash detection (overlap, travel gap, exam week), the priority/threshold scoring,
+date and duration formatting, rate limiting, JWT lifecycle and the REST contract.
 
 ---
 
-## 🧪 Automated Testing & Verification (110 Tests)
+## Deploy
 
-### Backend Test Suite (92 Tests):
-```powershell
-cd backend
-python -m unittest discover -s tests -v
-# or using pytest:
-pytest tests -v
-```
+The backend serves the built frontend automatically when `frontend/dist` exists, so the whole app
+can run on a single service.
 
-### Frontend Test Suite (18 Tests):
-```powershell
-cd frontend
-npm test
-```
+**Build step:** `cd frontend && npm install && npm run build`
 
-**110 passing automated tests** verify:
-- Deterministic clash radar (direct overlaps, commute travel gaps, exam shields).
-- Mathematical priority fit scoring across all 4 tuning presets.
-- Tracked portal synchronization and platform affinity ranking boost.
-- Image OCR preprocessing pipeline and fallback resilience.
-- Security rate limiting, JWT token lifecycle, and REST API contract compliance.
-- Date, range, relative time, and duration formatting across devices.
+**Render / Railway / any VM**
+- Start command: `cd backend && python run.py` (or `gunicorn "app:create_app()"`).
+- Set the env vars from the table above. `SECRET_KEY` is required in production; set `TRUST_PROXY=1` behind a proxy.
+- Point `DATABASE_URL` at a managed Postgres instance for persistence (otherwise SQLite keeps a local file).
+- Optional one-time setup: `python seed.py --reset`.
 
----
+**Vercel (frontend) + Render/Railway (backend)**
+- Deploy `frontend` to Vercel with build command `npm run build` and output directory `dist`, and set `VITE_API_URL` to your backend URL plus `/api`.
+- Deploy `backend` as above, then set `CORS_ORIGINS` and `FRONTEND_URL` to the Vercel URL.
 
-## 🚢 Docker Deployment
+**Docker**
 
 ```bash
 docker compose up -d --build
@@ -260,7 +226,6 @@ docker compose up -d --build
 
 ---
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.  
-Built by **Team Quanta** for **hackFront India 2026** (Grand Finale · IIIT Delhi).
+MIT — see [LICENSE](LICENSE).
