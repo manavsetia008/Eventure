@@ -281,7 +281,9 @@ def fetch_public_listings(force=False):
                 deduped[url] = item
 
         _cached_items = list(deduped.values())
-        _last_refresh = time.monotonic()
+        # Retry sooner after a provider outage/empty response instead of caching an
+        # empty Discover feed for the full normal refresh window.
+        _last_refresh = time.monotonic() - (CACHE_TTL_SECONDS - 60) if not _cached_items else time.monotonic()
         logging.info("Public discovery refresh returned %d listings.", len(_cached_items))
         return list(_cached_items)
 
