@@ -28,9 +28,30 @@ ENABLE_SCHEDULER=1
 GEOCODE_OSM=1
 ```
 
-For Supabase, use the **Session pooler** connection string for this persistent Flask/Gunicorn service. Include
-`sslmode=require`. Keep the database password only in Render's encrypted environment variables.
-Do not use a service-role key or database password in frontend variables.
+For Supabase, use the **Shared Session pooler** for this persistent Flask/Gunicorn service.
+Include `sslmode=require`. The project is in Mumbai (`ap-south-1`), and the dedicated app role
+is `eventure_app`. Keep credentials only in Render's encrypted environment variables; never put
+the database password, `SECRET_KEY`, or a service-role key in frontend variables.
+
+The initial credentials are held in the project's private `eventure_private.provisioning_secret`
+schema, which is not exposed through the Data API and denies access to `anon`, `authenticated`,
+and the app role. To retrieve them yourself, open the Supabase SQL Editor and run:
+
+```sql
+SELECT db_password, app_secret
+FROM eventure_private.provisioning_secret
+WHERE id = true;
+```
+
+Set the returned `app_secret` as Render's `SECRET_KEY`. Set `DATABASE_URL` to the following
+template, replacing only `<db_password>` with the returned value:
+
+```text
+postgresql://eventure_app.hgtojfxftzsaekukdpzf:<db_password>@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require
+```
+
+Do not paste either returned value into chat or commit them to Git. After the Render service is
+healthy, the private provisioning schema can be removed.
 
 Eventure connects to Postgres from the Flask server using SQLAlchemy; the browser talks only to
 the Flask API with Eventure JWTs. No Supabase browser key or `supabase-js` client is required.
