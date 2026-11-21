@@ -100,6 +100,7 @@ class Event(db.Model):
     end_at = db.Column(db.DateTime)
     registration_deadline = db.Column(db.DateTime)
     url = db.Column(db.String(500))
+    source = db.Column(db.String(30), default="user")  # user or public_feed
     club_id = db.Column(db.Integer, db.ForeignKey("clubs.id"))
     is_public = db.Column(db.Boolean, default=False, index=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
@@ -121,6 +122,7 @@ class Event(db.Model):
             "end_at": iso(self.end_at),
             "registration_deadline": iso(self.registration_deadline),
             "url": self.url,
+            "source": self.source or "user",
             "club_id": self.club_id,
             "club_name": self.club.name if self.club else None,
             "is_public": bool(self.is_public),
