@@ -28,7 +28,7 @@ ENABLE_SCHEDULER=1
 GEOCODE_OSM=1
 ```
 
-For Supabase, use the **Transaction pooler** connection string for a Render deployment. Include
+For Supabase, use the **Session pooler** connection string for this persistent Flask/Gunicorn service. Include
 `sslmode=require`. Keep the database password only in Render's encrypted environment variables.
 Do not use a service-role key or database password in frontend variables.
 
