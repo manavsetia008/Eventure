@@ -83,15 +83,15 @@ class PublicDiscoverFeedTests(unittest.TestCase):
         self.assertIsInstance(suggestions[0]["start_at"], datetime)
         self.assertIsNone(suggestions[1]["start_at"])
 
-    def test_unverified_candidates_are_available_when_live_sources_are_empty(self):
+    def test_portal_directory_fallback_is_available_when_live_sources_are_empty(self):
         user = SimpleNamespace(goals_list=["AI", "software"], college="Delhi")
         with patch("app.services.discover_feed.fetch_public_listings", return_value=[]):
             suggestions = suggest_hackathons_for_user(user, {})
         self.assertGreater(len(suggestions), 0)
-        self.assertEqual(suggestions[0]["source"], "curated_unverified")
+        self.assertEqual(suggestions[0]["source"], "portal_directory")
         self.assertIsNone(suggestions[0]["start_at"])
         self.assertIsNone(suggestions[0]["registration_deadline"])
-        self.assertIn("verify", suggestions[0]["reason"].lower())
+        self.assertIn("portal", suggestions[0]["reason"].lower())
 
 
 if __name__ == "__main__":
