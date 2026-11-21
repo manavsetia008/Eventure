@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 
 function ScoreTooltip({ parts, total }) {
@@ -20,6 +20,11 @@ export default function PriorityEditor({ value, onChange, scoreParts }) {
   const [editing, setEditing] = useState(false);
   const [temp, setTemp] = useState(value ?? "");
   const [showTooltip, setShowTooltip] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
 
   const startEdit = (e) => {
     e.stopPropagation();
@@ -63,27 +68,25 @@ export default function PriorityEditor({ value, onChange, scoreParts }) {
   if (!editing) {
     return (
       <span
-        style={{ position: "relative", display: "inline-block" }}
+        className="priority-editor-wrap"
         onMouseEnter={() => scoreParts && setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
       >
         <span
-          className="score-text-clean"
+          role="button"
+          tabIndex={0}
+          className="score-text-clean priority-editor-trigger"
           onClick={startEdit}
-          title={`Priority Fit Score: ${value}/100. Click to edit manually.`}
-          style={{
-            cursor: "pointer",
-            fontSize: "13px",
-            fontWeight: 500,
-            color: "var(--text-secondary)",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "4px",
-            userSelect: "none",
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              startEdit(e);
+            }
           }}
+          title={`Priority Fit Score: ${value}/100. Click to edit manually.`}
         >
           <span>{labelText}</span>
-          <span style={{ color: numColor, fontWeight: 600 }}>{value}</span>
+          <span className={`priority-editor-num ${numColor === "var(--accent)" ? "is-keep" : numColor === "var(--text-secondary)" ? "is-maybe" : "is-skip"}`}>{value}</span>
         </span>
         {showTooltip && scoreParts && (
           <ScoreTooltip parts={scoreParts} total={value} />
@@ -93,41 +96,29 @@ export default function PriorityEditor({ value, onChange, scoreParts }) {
   }
 
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+    <span className="priority-editor-edit">
       <input
+        ref={inputRef}
         type="number"
         min="0"
         max="100"
         value={temp}
         onChange={(e) => setTemp(e.target.value)}
         onKeyDown={handleKey}
-        autoFocus
-        style={{
-          width: "3rem",
-          height: "24px",
-          padding: "0 0.25rem",
-          fontSize: "12px",
-          borderRadius: "4px",
-          border: "1px solid var(--border-strong)",
-          background: "var(--bg)",
-          color: "var(--text)",
-          textAlign: "center",
-        }}
+        className="priority-editor-input"
         aria-label="Edit priority score"
       />
       <button
         type="button"
-        className="btn small"
+        className="btn small priority-editor-save"
         onClick={save}
-        style={{ padding: "0.1rem 0.4rem", fontSize: "11px", height: "24px" }}
       >
         Save
       </button>
       <button
         type="button"
-        className="linklike small muted"
+        className="linklike small muted priority-editor-cancel"
         onClick={cancel}
-        style={{ padding: "0.1rem 0.3rem", display: "inline-flex", alignItems: "center" }}
       >
         <X size={12} strokeWidth={2} />
       </button>

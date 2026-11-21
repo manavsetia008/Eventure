@@ -1,5 +1,3 @@
-import React from "react";
-
 /**
  * Minimal Status indicator: Plain text + 6px dot.
  * Zero background, zero border, zero pill boxes.
@@ -12,9 +10,7 @@ export default function Status({ variant = "neutral", label, className = "" }) {
   const norm = (variant || "").toLowerCase().replace(/[\s-]+/g, "_");
 
   let statusType = "neutral";
-  if (["active", "on_schedule", "synced", "registered", "attended", "confirmed", "success"].includes(norm)) {
-    statusType = "active";
-  } else if (["due_soon", "warning", "soon", "closing_soon"].includes(norm)) {
+  if (["due_soon", "warning", "soon", "closing_soon"].includes(norm)) {
     statusType = "warning";
   } else if (["overdue", "clash", "time_overlap", "danger", "cancelled"].includes(norm)) {
     statusType = "danger";

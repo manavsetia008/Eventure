@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   ArrowRight,
   CalendarDays,
@@ -12,7 +12,6 @@ import {
 import Logo from "../components/Logo.jsx";
 import Status from "../components/Status.jsx";
 import Badge from "../components/Badge.jsx";
-import { useAuth } from "../auth.jsx";
 
 const HOW_STEPS = [
   {
@@ -47,16 +46,12 @@ const FAQS = [
   },
   {
     q: "How does travel time calculate departure times?",
-    a: "It estimates transit duration from your saved campus coordinates to the venue, adding a 15-minute buffer so you leave on time.",
+    a: "It estimates transit duration from your saved campus location to the venue, adding a 15-minute buffer so you leave on time.",
   },
 ];
 
 export default function Landing({ theme, toggleTheme }) {
-  const navigate = useNavigate();
-  const { login } = useAuth();
   const [openFaq, setOpenFaq] = useState(null);
-  const [busyDemo, setBusyDemo] = useState(false);
-  const [demoError, setDemoError] = useState("");
 
   const howRef = useRef(null);
   const featuresRef = useRef(null);
@@ -65,20 +60,6 @@ export default function Landing({ theme, toggleTheme }) {
   const scrollTo = (ref) => {
     ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
-
-  async function handleQuickDemo() {
-    setBusyDemo(true);
-    setDemoError("");
-    try {
-      await login("demo@eventure.app", "demo1234");
-      navigate("/");
-    } catch (err) {
-      setDemoError(err?.message || "Demo sign in failed. Please try signing in directly.");
-      navigate("/login");
-    } finally {
-      setBusyDemo(false);
-    }
-  }
 
   return (
     <div className="landing-page-wrap">
@@ -113,14 +94,9 @@ export default function Landing({ theme, toggleTheme }) {
             <Link to="/login" className="btn ghost small">
               Sign in
             </Link>
-            <button
-              type="button"
-              className="btn small"
-              onClick={handleQuickDemo}
-              disabled={busyDemo}
-            >
-              {busyDemo ? "Opening..." : "Get started"}
-            </button>
+            <Link to="/signup" className="btn small">
+              Get started
+            </Link>
           </div>
         </div>
       </header>
@@ -134,20 +110,15 @@ export default function Landing({ theme, toggleTheme }) {
             </h1>
 
             <p className="hero-desc">
-              The unified timeline for students. Track hackathon deadlines, calculate commute travel times,
-              and avoid exam date clashes in one place.
+              Eventure helps you track hackathons, workshops, fests, contests and exams in one
+              clear timeline — with deadlines, travel times and clash warnings.
             </p>
 
             <div className="hero-actions">
-              <button
-                type="button"
-                className="btn hero-cta-primary"
-                onClick={handleQuickDemo}
-                disabled={busyDemo}
-              >
-                <span>{busyDemo ? "Opening..." : "Open demo timeline"}</span>
+              <Link to="/signup" className="btn hero-cta-primary">
+                <span>Get started</span>
                 <ArrowRight size={15} strokeWidth={1.75} />
-              </button>
+              </Link>
               <button
                 type="button"
                 className="btn ghost hero-cta-secondary"
@@ -156,12 +127,6 @@ export default function Landing({ theme, toggleTheme }) {
                 See how it works
               </button>
             </div>
-
-            {demoError && (
-              <p className="hero-demo-error" role="alert">
-                {demoError}
-              </p>
-            )}
           </div>
 
           {/* Simple "Add event" preview card: Paste box + 4 extracted rows */}
@@ -172,7 +137,7 @@ export default function Landing({ theme, toggleTheme }) {
               {/* Paste preview mockup */}
               <div className="hero-mock-pastebox">
                 <span className="mock-paste-text">
-                  Campus Tech Fest 2026: Venue Main Campus Audi 2. Starts 21 Nov 10:00 AM, Abstract due 18 Nov...
+                  Campus Tech Fest 2026: Venue Central Campus Audi 2. Starts 21 Nov 10:00 AM, Abstract due 18 Nov...
                 </span>
                 <span className="mock-paste-badge">Extracted</span>
               </div>
@@ -189,13 +154,13 @@ export default function Landing({ theme, toggleTheme }) {
                 </div>
                 <div className="hero-extracted-row">
                   <span className="row-key">Venue</span>
-                  <span className="row-val">Main Campus, Hall A</span>
+                  <span className="row-val">Central Campus, Hall A</span>
                 </div>
                 <div className="hero-extracted-row">
                   <span className="row-key">Deadline</span>
                   <div className="row-val-status">
                     <span>18 Nov 11:59 PM</span>
-                    <Status variant="due_soon" label="Due soon" />
+                    <Status variant="neutral" label="Due soon" />
                   </div>
                 </div>
               </div>
@@ -248,7 +213,7 @@ export default function Landing({ theme, toggleTheme }) {
             <div className="feature-alt-visual">
               <div className="visual-mock-box">
                 <div className="visual-clash-header">
-                  <Badge variant="danger">Overlap detected</Badge>
+                  <Badge variant="neutral">Overlap</Badge>
                 </div>
                 <div className="visual-clash-names">
                   <span>Tech Fest Finale</span>
@@ -265,14 +230,14 @@ export default function Landing({ theme, toggleTheme }) {
             <div className="feature-alt-text">
               <h3 className="feature-alt-title">Know your commute transit time</h3>
               <p className="feature-alt-desc">
-                Pin your campus coordinates once. Eventure calculates estimated road travel time and
+                Set your campus location once. Eventure calculates estimated road travel time and
                 adds a realistic safety buffer so you leave on time.
               </p>
             </div>
             <div className="feature-alt-visual">
               <div className="visual-mock-box">
                 <div className="visual-transit-route">
-                  <span className="route-stop">Main Campus</span>
+                  <span className="route-stop">Central Campus</span>
                   <span className="route-arrow">→</span>
                   <span className="route-stop">Venue A</span>
                 </div>
@@ -288,11 +253,11 @@ export default function Landing({ theme, toggleTheme }) {
           <div className="features-mini-row">
             <div className="feature-mini-col">
               <h4>Milestone Stages</h4>
-              <p>Break hackathons into abstract submissions, slide decks, and prototype checkpoints.</p>
+              <p>Break any event into registration, submission, shortlist and final checkpoints.</p>
             </div>
             <div className="feature-mini-col">
-              <h4>Submission Vault</h4>
-              <p>Keep your GitHub repository, demo links, table number, and team Wi-Fi info in one spot.</p>
+              <h4>Event Vault</h4>
+              <p>Keep links, notes and checklists for each event in one spot.</p>
             </div>
             <div className="feature-mini-col">
               <h4>Verified Reviews</h4>
@@ -337,24 +302,19 @@ export default function Landing({ theme, toggleTheme }) {
               Track deadlines, avoid clashes, and keep all your campus events in one clear thread.
             </p>
             <div className="cta-clean-btn-row">
-              <button
-                type="button"
-                className="btn"
-                onClick={handleQuickDemo}
-                disabled={busyDemo}
-              >
-                <span>{busyDemo ? "Opening..." : "Open demo timeline"}</span>
+              <Link to="/signup" className="btn">
+                <span>Get started</span>
                 <ArrowRight size={15} strokeWidth={1.75} />
-              </button>
-              <Link to="/signup" className="btn ghost">
-                Create account
+              </Link>
+              <Link to="/login" className="btn ghost">
+                Sign in
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── 7. Separate Footer Block (Distinct background: #F0F3F8 Light / #010409 Dark) ── */}
+      {/* ── 7. Separate Footer Block (subtle background, distinct from page) ── */}
       <footer className="landing-main-footer">
         <div className="landing-container footer-simple-wrap">
           <div className="footer-col-brand">
@@ -376,15 +336,6 @@ export default function Landing({ theme, toggleTheme }) {
               <span className="footer-col-heading">Account</span>
               <Link to="/login" className="footer-nav-link">Sign in</Link>
               <Link to="/signup" className="footer-nav-link">Create account</Link>
-              <button
-                type="button"
-                className="footer-nav-link"
-                style={{ textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer" }}
-                onClick={handleQuickDemo}
-                disabled={busyDemo}
-              >
-                Demo account
-              </button>
             </div>
 
             <div className="footer-col">
@@ -392,7 +343,6 @@ export default function Landing({ theme, toggleTheme }) {
               <button
                 type="button"
                 className="footer-nav-link"
-                style={{ textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer" }}
                 onClick={() => faqRef.current?.scrollIntoView({ behavior: "smooth" })}
               >
                 FAQ
@@ -400,18 +350,19 @@ export default function Landing({ theme, toggleTheme }) {
               <button
                 type="button"
                 className="footer-nav-link"
-                style={{ textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer" }}
                 onClick={() => howRef.current?.scrollIntoView({ behavior: "smooth" })}
               >
                 How it works
               </button>
+              <Link to="/privacy" className="footer-nav-link">Privacy</Link>
+              <Link to="/terms" className="footer-nav-link">Terms</Link>
+              <a href="mailto:support@eventure.app" className="footer-nav-link">Contact</a>
             </div>
           </div>
         </div>
 
         <div className="landing-container footer-bottom-divider">
           <span>© 2026 Eventure</span>
-          <span style={{ fontSize: "12px", color: "var(--footer-muted)" }}>Built for campus events</span>
         </div>
       </footer>
     </div>

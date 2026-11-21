@@ -31,6 +31,13 @@ export function AuthProvider({ children }) {
   };
   const login = async (email, password) => finish(await api.post("/auth/login", { email, password }));
   const register = async (data) => finish(await api.post("/auth/register", data));
+  // Used after Google sign-in: the backend hands us a session token and we load the user with it.
+  const signInWithToken = async (token) => {
+    setToken(token);
+    const r = await api.get("/auth/me");
+    setUser(r.user);
+    return r.user;
+  };
   const logout = () => {
     setToken(null);
     setUser(null);
@@ -40,7 +47,7 @@ export function AuthProvider({ children }) {
     setUser(r.user);
   }, []);
 
-  return <Ctx.Provider value={{ user, loading, login, register, logout, refresh }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, loading, login, register, signInWithToken, logout, refresh }}>{children}</Ctx.Provider>;
 }
 
 export const useAuth = () => useContext(Ctx);

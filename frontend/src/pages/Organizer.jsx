@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { ClipboardList, MoreHorizontal } from "lucide-react";
 import { api } from "../api";
 import Badge from "../components/Badge.jsx";
 import { fmtRange } from "../utils";
@@ -12,21 +13,21 @@ function ShareBox({ id }) {
 
   return (
     <div className="share-box">
-      <label className="small">Direct link</label>
+      <label className="small" htmlFor={`share-link-${id}`}>Direct link</label>
       <div className="row">
-        <input readOnly value={link} onFocus={(e) => e.target.select()} aria-label="Event link" />
+        <input id={`share-link-${id}`} readOnly value={link} onFocus={(e) => e.target.select()} aria-label="Event link" />
         <button className="btn ghost small" onClick={() => copy(link, "link")}>
           {copied === "link" ? "Copied" : "Copy link"}
         </button>
       </div>
-      <label className="small" style={{ marginTop: ".4rem" }}>Embed button code</label>
+      <label className="small organizer-share-label" htmlFor={`share-embed-${id}`}>Embed button code</label>
       <div className="row">
-        <input readOnly className="mono" value={snippet} onFocus={(e) => e.target.select()} aria-label="Add to Eventure button code" />
+        <input id={`share-embed-${id}`} readOnly className="mono" value={snippet} onFocus={(e) => e.target.select()} aria-label="Add to Eventure button code" />
         <button className="btn ghost small" onClick={() => copy(snippet, "html")}>
           {copied === "html" ? "Copied" : "Copy code"}
         </button>
       </div>
-      <p className="muted small" style={{ marginTop: ".4rem", marginBottom: 0 }}>
+      <p className="muted small organizer-share-hint">
         Embed this button on your registration page so students can add your event to their timeline in one click.
       </p>
     </div>
@@ -60,75 +61,67 @@ export default function Organizer() {
             Events you listed, with turnout metrics, ratings, and timeline tracking.
           </p>
         </div>
-        <Link to="/add" className="btn">+ List a new event</Link>
+        <Link to="/add" className="btn">Create event</Link>
       </div>
 
       {error && <p className="error">{error}</p>}
 
       {!events ? (
-        <p className="muted center">Loading your listed events...</p>
+        <div className="page-loading-state">Loading your listed events...</div>
       ) : events.length === 0 ? (
         <div className="card empty">
+          <ClipboardList size={22} strokeWidth={1.75} />
           <p>You have not listed any events yet.</p>
-          <p><Link to="/add">List an event</Link> so peers can discover and track it.</p>
+          <p className="muted small">List an event so peers can discover and track it.</p>
         </div>
       ) : (
-        <div className="events-list">
+        <div className="list-panel">
           {events.map((ev) => (
-            <article className="card" key={ev.id}>
-              <div className="card-head">
-                <div>
-                  <h3>
-                    <Link to={`/events/${ev.id}`}>{ev.title}</Link>
-                  </h3>
-                  <p className="muted small">
-                    {fmtRange(ev.start_at, ev.end_at)}
-                    {ev.venue_name ? ` · ${ev.venue_name}` : ""}
-                  </p>
+            <div className="list-row organizer-row" key={ev.id}>
+              <div className="list-row-main">
+                <div className="list-row-title">
+                  <Link to={`/events/${ev.id}`}>{ev.title}</Link>
                 </div>
-                <div className="pills">
-                  <Badge variant={ev.is_public ? "success" : "neutral"}>{ev.is_public ? "Public" : "Private"}</Badge>
-                  {!ev.upcoming && <Badge variant="neutral">Past</Badge>}
+                <div className="list-row-sub muted small">
+                  {fmtRange(ev.start_at, ev.end_at)}
+                  {ev.venue_name ? ` · ${ev.venue_name}` : ""}
                 </div>
-              </div>
-
-              <div className="summary compact">
-                <div>
-                  <b>{ev.counts.interested}</b>
-                  <span>interested</span>
-                </div>
-                <div>
-                  <b>{ev.counts.registered}</b>
-                  <span>registered</span>
-                </div>
-                <div>
-                  <b>{ev.counts.attended}</b>
-                  <span>attended</span>
-                </div>
-                <div>
-                  <b>{ev.rating.avg ?? "-"}</b>
-                  <span>{ev.rating.count ? `rating (${ev.rating.count})` : "no reviews"}</span>
+                <div className="organizer-metrics">
+                  <span><b>{ev.counts.interested}</b> interested</span>
+                  <span><b>{ev.counts.registered}</b> registered</span>
+                  <span><b>{ev.counts.attended}</b> attended</span>
+                  <span>
+                    <b>{ev.rating.avg ?? "-"}</b> {ev.rating.count ? `rating (${ev.rating.count})` : "no reviews"}
+                  </span>
                 </div>
               </div>
-
-              <div className="card-foot" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div className="row" style={{ margin: 0, gap: "0.5rem" }}>
-                  <button className="btn ghost small" onClick={() => toggle(ev)}>
-                    {ev.is_public ? "Make private" : "Make public"}
-                  </button>
-                  {ev.is_public && (
-                    <button className="btn ghost small" onClick={() => setOpenShare(openShare === ev.id ? null : ev.id)}>
-                      {openShare === ev.id ? "Hide share" : "Share"}
-                    </button>
-                  )}
-                </div>
-                <Link to={`/events/${ev.id}/edit`} className="btn-tertiary">
+              <div className="list-row-actions">
+                <Badge variant={ev.is_public ? "success" : "neutral"}>{ev.is_public ? "Public" : "Private"}</Badge>
+                {!ev.upcoming && <Badge variant="neutral">Past</Badge>}
+                <Link to={`/events/${ev.id}/edit`} className="btn tertiary small">
                   Edit details
                 </Link>
+                <details className="menu">
+                  <summary className="menu-trigger" aria-label="More actions">
+                    <MoreHorizontal size={18} strokeWidth={1.75} />
+                  </summary>
+                  <div className="menu-list">
+                    <button className="dropdown-menu-item" onClick={() => toggle(ev)}>
+                      {ev.is_public ? "Make private" : "Make public"}
+                    </button>
+                    {ev.is_public && (
+                      <button
+                        className="dropdown-menu-item"
+                        onClick={() => setOpenShare(openShare === ev.id ? null : ev.id)}
+                      >
+                        {openShare === ev.id ? "Hide share link" : "Share"}
+                      </button>
+                    )}
+                  </div>
+                </details>
               </div>
-
               {openShare === ev.id && <ShareBox id={ev.id} />}
-            </article>
+            </div>
           ))}
         </div>
       )}

@@ -50,29 +50,29 @@ export default function EditEvent() {
 
   if (blocked) {
     return (
-      <div className="card" style={{ marginTop: "2rem", textAlign: "center" }}>
-        <p className="error" style={{ display: "inline-block" }}>{blocked}</p>
-        <p style={{ marginTop: "1rem" }}><Link to="/" className="btn">Back to Timeline</Link></p>
+      <div className="card edit-event-blocked-card">
+        <p className="error edit-event-blocked-msg">{blocked}</p>
+        <p className="edit-event-back-row"><Link to="/" className="btn">Back to Timeline</Link></p>
       </div>
     );
   }
 
-  if (!initial) return <p className="muted" style={{ marginTop: "2rem" }}>Loading event details...</p>;
+  if (!initial) return <p className="muted edit-event-loading">Loading event details...</p>;
 
   return (
     <>
-      <div style={{ marginBottom: "1rem" }}>
+      <div className="edit-event-back-link-row">
         <Link to={`/events/${id}`} className="linklike small">← Back to event page</Link>
       </div>
       <div className="page-head">
         <div>
           <h1>Edit Event Details</h1>
-          <p className="muted" style={{ margin: 0 }}>
+          <p className="muted edit-event-subnote">
             Updates apply to the public listing for everyone following this event.
           </p>
         </div>
       </div>
-      <div style={{ marginTop: "1.2rem" }}>
+      <div className="edit-event-form-wrap">
         <EventForm initial={initial} mode="edit" saving={saving} error={error} submitLabel="Save changes" onSubmit={save} />
       </div>
     </>

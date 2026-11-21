@@ -15,7 +15,10 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(200), unique=True, nullable=False, index=True)
-    password_hash = db.Column(db.String(300), nullable=False)
+    password_hash = db.Column(db.String(300))  # null for accounts that only use Google sign-in
+    google_id = db.Column(db.String(120), unique=True, index=True)  # Google account id, set on first Google sign-in
+    role = db.Column(db.String(20), default="student", server_default="student")  # student | organizer | admin
+    primary_language = db.Column(db.String(20), default="en", server_default="en")  # en, hi-IN, ta-IN, te-IN, bn-IN, mr-IN, etc.
     college = db.Column(db.String(200))
     college_lat = db.Column(db.Float)
     college_lng = db.Column(db.Float)
@@ -31,7 +34,13 @@ class User(db.Model):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
+        if not self.password_hash:
+            return False  # Google-only account has no password to check
         return check_password_hash(self.password_hash, password)
+
+    @property
+    def has_password(self):
+        return bool(self.password_hash)
 
     @property
     def goals_list(self):
@@ -42,11 +51,14 @@ class User(db.Model):
             "id": self.id,
             "name": self.name,
             "email": self.email,
+            "has_password": self.has_password,
             "college": self.college,
             "college_lat": self.college_lat,
             "college_lng": self.college_lng,
             "goals": self.goals_list,
             "scoring_mode": self.scoring_mode or "balanced",
+            "role": self.role or "student",
+            "primary_language": self.primary_language or "en",
             "threshold_keep": self.threshold_keep if self.threshold_keep is not None else 55,
             "threshold_skip": self.threshold_skip if self.threshold_skip is not None else 40,
             "use_maybe_range": bool(self.use_maybe_range),
@@ -57,6 +69,8 @@ class Club(db.Model):
     __tablename__ = "clubs"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
+    role = db.Column(db.String(20), default="student", server_default="student")  # student | organizer | admin
+    primary_language = db.Column(db.String(20), default="en", server_default="en")  # en, hi-IN, ta-IN, te-IN, bn-IN, mr-IN, etc.
     college = db.Column(db.String(200))
     description = db.Column(db.Text, default="")
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
@@ -270,7 +284,7 @@ class PushSubscription(db.Model):
 
 
 class TrackedPortal(db.Model):
-    """User-selected hackathon or competition platform for automatic registration & deadline sync."""
+    """Event platform the student registered on, for deadline sync."""
     __tablename__ = "tracked_portals"
     __table_args__ = (db.UniqueConstraint("user_id", "domain_or_name", name="uq_user_portal"),)
     id = db.Column(db.Integer, primary_key=True)

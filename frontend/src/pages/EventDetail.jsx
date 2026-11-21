@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ExternalLink } from "lucide-react";
-import { api } from "../api";
+import { ExternalLink, Languages, Volume2 } from "lucide-react";
+import { api, translateText, textToSpeech } from "../api";
 import { cap, fmtDuration, fmtRange } from "../utils";
 import HackathonVault from "../components/HackathonVault.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import Chip from "../components/Chip.jsx";
 import Badge from "../components/Badge.jsx";
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
 
 const SCALE = [1, 2, 3, 4, 5];
 
@@ -17,6 +18,55 @@ export default function EventDetail() {
   const [form, setForm] = useState({ organisation: 4, learning: 4, value: 4, comment: "" });
   const [editingUrl, setEditingUrl] = useState(false);
   const [urlInput, setUrlInput] = useState("");
+  const [translatedDesc, setTranslatedDesc] = useState("");
+  const [translating, setTranslating] = useState(false);
+  const [playingAudio, setPlayingAudio] = useState(false);
+  const [confirmDeleteReview, setConfirmDeleteReview] = useState(false);
+  const [sarvamReady, setSarvamReady] = useState(false);
+
+  useEffect(() => {
+    api.get("/health")
+      .then((r) => setSarvamReady(Boolean(r?.sarvamAuth)))
+      .catch(() => {});
+  }, []);
+
+  async function handleTranslate() {
+    if (!ev?.description) return;
+    if (translatedDesc) {
+      setTranslatedDesc(""); // toggle back to original
+      return;
+    }
+    setTranslating(true);
+    try {
+      const res = await translateText(ev.description, "hi-IN");
+      if (res?.translated_text) {
+        setTranslatedDesc(res.translated_text);
+      }
+    } catch (e) {
+      setError(e.message || "Translation failed");
+    } finally {
+      setTranslating(false);
+    }
+  }
+
+  async function handleTTS() {
+    const textToSpeak = translatedDesc || ev?.description || ev?.title;
+    if (!textToSpeak) return;
+    setPlayingAudio(true);
+    try {
+      const res = await textToSpeech(textToSpeak, "hi-IN");
+      if (res?.audio) {
+        const audio = new Audio(`data:audio/wav;base64,${res.audio}`);
+        audio.onended = () => setPlayingAudio(false);
+        audio.onerror = () => setPlayingAudio(false);
+        await audio.play();
+      } else {
+        setPlayingAudio(false);
+      }
+    } catch {
+      setPlayingAudio(false);
+    }
+  }
 
   const load = useCallback(() => api.get(`/events/${id}`).then((res) => {
     setData(res);
@@ -53,7 +103,35 @@ export default function EventDetail() {
       {error && <p className="error">{error}</p>}
 
       <section className="card">
-        {ev.description && <p>{ev.description}</p>}
+        {ev.description && (
+          <div className="event-desc-block">
+            <p className="event-desc-text">
+              {translatedDesc || ev.description}
+            </p>
+            {sarvamReady && (
+              <div className="event-desc-actions">
+                <button
+                  type="button"
+                  className="btn secondary small event-tool-btn"
+                  onClick={handleTranslate}
+                  disabled={translating}
+                >
+                  <Languages size={14} />
+                  <span>{translating ? "Translating..." : translatedDesc ? "Show English" : "Translate (Hindi)"}</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn secondary small event-tool-btn"
+                  onClick={handleTTS}
+                  disabled={playingAudio}
+                >
+                  <Volume2 size={14} />
+                  <span>{playingAudio ? "Playing audio..." : "Listen to summary"}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         <ul className="facts">
           {ev.club_name && <li><b>Organised by</b> {ev.club_name}</li>}
           {ev.distance_km != null && <li><b>From your college</b> {ev.distance_km} km, about {fmtDuration(ev.travel_minutes)} by road</li>}
@@ -67,8 +145,7 @@ export default function EventDetail() {
                 </a>
                 <button
                   type="button"
-                  className="linklike small muted"
-                  style={{ marginLeft: "0.6rem" }}
+                  className="linklike small muted event-change-link"
                   onClick={() => { setUrlInput(ev.url || ""); setEditingUrl(true); }}
                 >
                   Change link
@@ -88,13 +165,12 @@ export default function EventDetail() {
         </ul>
 
         {editingUrl && (
-          <div className="row small" style={{ margin: "0.6rem 0", padding: "0.6rem", background: "var(--surface)", borderRadius: "6px" }}>
+          <div className="row small event-url-edit">
             <input
               type="url"
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               placeholder="Paste official event URL (https://...)"
-              style={{ maxWidth: "360px" }}
               aria-label="Official event URL"
             />
             <button
@@ -117,7 +193,7 @@ export default function EventDetail() {
           </div>
         )}
 
-        <div className="row" style={{ marginTop: "1rem", alignItems: "center", gap: "0.5rem" }}>
+        <div className="row event-actions-row">
           {ev.url && (
             <a
               href={ev.url.startsWith("http") ? ev.url : `https://${ev.url}`}
@@ -137,7 +213,7 @@ export default function EventDetail() {
           {mine.is_owner && <Link className="btn ghost" to={`/events/${ev.id}/edit`}>Edit details</Link>}
         </div>
 
-        {mine.user_event_id && (
+        {mine.user_event_id && ev.category === "hackathon" && (
           <HackathonVault
             userEventId={mine.user_event_id}
             initialNotes={mine.notes || ""}
@@ -163,13 +239,13 @@ export default function EventDetail() {
         )}
         {reviews.map((r) => (
           <article className="card review" key={r.id}>
-            <p style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <p className="review-head">
               <b>{r.author}</b>{r.college ? `, ${r.college}` : ""}{" "}
               <StatusBadge variant="active" label="Verified Attendee" />
               <span className="muted small">{r.overall} / 5</span>
             </p>
             {r.comment && <p>{r.comment}</p>}
-            {r.mine && <button className="linklike small" onClick={() => window.confirm("Delete your review?") && run(() => api.del(`/events/${ev.id}/reviews/mine`))}>Delete my review</button>}
+            {r.mine && <button className="linklike small" onClick={() => setConfirmDeleteReview(true)}>Delete my review</button>}
           </article>
         ))}
 
@@ -179,7 +255,7 @@ export default function EventDetail() {
             <div className="grid3">
               {[["organisation", "Organisation"], ["learning", "Learning"], ["value", "Worth the trip"]].map(([k, label]) => (
                 <label key={k}>{label}
-                  <select value={form[k]} onChange={(e) => setForm({ ...form, [k]: Number(e.target.value) })}>{SCALE.map((n) => <option key={n} value={n}>{n}</option>)}</select>
+                  <select className="clean-select" value={form[k]} onChange={(e) => setForm({ ...form, [k]: Number(e.target.value) })}>{SCALE.map((n) => <option key={n} value={n}>{n}</option>)}</select>
                 </label>
               ))}
             </div>
@@ -190,6 +266,18 @@ export default function EventDetail() {
           mine.review_blocked_reason && <p className="notice">{mine.review_blocked_reason}</p>
         )}
       </section>
+
+      <ConfirmDialog
+        open={confirmDeleteReview}
+        title="Delete review"
+        message="Delete your review? This cannot be undone."
+        confirmLabel="Delete"
+        onCancel={() => setConfirmDeleteReview(false)}
+        onConfirm={() => {
+          setConfirmDeleteReview(false);
+          run(() => api.del(`/events/${ev.id}/reviews/mine`));
+        }}
+      />
     </>
   );
 }

@@ -1,7 +1,5 @@
 # Contributing to Eventure
 
-**Team Quanta (hackFront India 2026 · IIIT Delhi):**  
-Manav Setia · Mayank Sharma · Milan Sharma · Arjun Singh · Aryan Rai  
 **Repository:** [github.com/manavsetia008/Eventure](https://github.com/manavsetia008/Eventure)
 
 Thanks for helping. The short version:
@@ -17,4 +15,4 @@ Guidelines
 - Error messages are written for students: say what went wrong and what to do next.
 - Never commit `.env`, SQLite/PostgreSQL database files, or private API keys.
 
-Security issues: please do not open a public issue. Contact Team Quanta directly.
+Security issues: please do not open a public issue. Contact the maintainers directly.

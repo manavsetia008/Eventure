@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { FileText, MessageSquare, Upload, Zap } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { AlertCircle, FileText, MessageSquare, Upload } from "lucide-react";
 import { api } from "../api";
 import EventForm, { BLANK } from "../components/EventForm.jsx";
 import Badge from "../components/Badge.jsx";
@@ -25,7 +25,6 @@ function fromParsed(parsed) {
 }
 
 export default function AddEvent() {
-  const navigate = useNavigate();
   const location = useLocation();
   const fromInbox = location.state?.parsed || null;
   const inboxId = location.state?.inboxId || null;
@@ -34,6 +33,7 @@ export default function AddEvent() {
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [initial, setInitial] = useState(fromInbox ? fromParsed(fromInbox) : null);
   const [source, setSource] = useState(fromInbox ? fromInbox.source || "" : "");
@@ -81,9 +81,10 @@ export default function AddEvent() {
     setSaving(true);
     try {
       await api.post("/events", { ...payload, inbox_item_id: inboxId });
-      navigate("/");
+      setSaving(false);
+      setSaved(true);
     } catch (err) {
-      setError(err.message || "Failed to save event");
+      setError(err.message || "Could not save. Check your connection and try again.");
       setSaving(false);
     }
   }
@@ -108,10 +109,39 @@ export default function AddEvent() {
     );
   }
 
-  const notice = source ? (
-    <p className="notice">
-      <strong>Details Extracted:</strong> Review title, dates, venue, and deadlines below. You can also edit the registration link before confirming.
-    </p>
+  const detailFields = [
+    "title",
+    "platform",
+    "category",
+    "venue_name",
+    "start_at",
+    "end_at",
+    "registration_deadline",
+    "url",
+    "description",
+    "stages",
+  ];
+  const extractedCount = extracted
+    ? detailFields.filter((k) => {
+        const v = extracted[k];
+        return Array.isArray(v) ? v.length > 0 : Boolean(v);
+      }).length
+    : 0;
+
+  const notice = saved ? (
+    <div className="notice mb-4">
+      <strong>Saved</strong>
+      <p className="add-event-notice-line">
+        This event is now on your timeline.
+      </p>
+    </div>
+  ) : source ? (
+    <div className="notice mb-4">
+      <strong>{extractedCount > 0 ? `${extractedCount} details found` : "Details extracted"}</strong>
+      <p className="add-event-notice-line">
+        Review title, dates, venue, and deadlines below. You can edit any field before confirming.
+      </p>
+    </div>
   ) : null;
 
   if (initial) {
@@ -119,8 +149,10 @@ export default function AddEvent() {
       <div className="add-event-container">
         <div className="page-head">
           <div>
-            <h1>Review extracted details</h1>
-            <p className="muted small">Check everything below, then confirm to add to your timeline.</p>
+            <h1>{saved ? "Event saved" : "Review extracted details"}</h1>
+            <p className="muted small">
+              {saved ? "You can view it on your timeline." : "Check everything below, then confirm to add to your timeline."}
+            </p>
           </div>
         </div>
         <EventForm
@@ -128,15 +160,22 @@ export default function AddEvent() {
           mode="add"
           notice={notice}
           saving={saving}
+          saved={saved}
           error={error}
           submitLabel="Confirm and add"
           onSubmit={save}
           onBack={() => {
             setInitial(null);
             setExtracted(null);
+            setSaved(false);
             setError("");
           }}
         />
+        {saved && (
+          <div className="add-event-saved-row">
+            <Link to="/" className="btn small">View on timeline</Link>
+          </div>
+        )}
       </div>
     );
   }
@@ -157,20 +196,19 @@ export default function AddEvent() {
             <div className="add-event-card-header">
               <div>
                 <h2>Import from announcement or poster</h2>
-                <p className="muted small">We extract title, dates, venue, deadlines, and registration link.</p>
+                <p className="muted small">Title, dates, venue, deadlines and the registration link are filled in for you.</p>
               </div>
-              <Badge variant="info">Auto extract</Badge>
             </div>
 
             {/* Sample chips */}
             <div className="sample-chips-row">
               <button type="button" className="sample-chip-btn" onClick={loadHinglishSample}>
                 <FileText size={14} strokeWidth={1.75} />
-                <span>Formal notice</span>
+                <span>Paste formal notice</span>
               </button>
               <button type="button" className="sample-chip-btn" onClick={loadWhatsAppNotice}>
                 <MessageSquare size={14} strokeWidth={1.75} />
-                <span>WhatsApp forward</span>
+                <span>Paste Hinglish WhatsApp forward</span>
               </button>
             </div>
 
@@ -180,7 +218,7 @@ export default function AddEvent() {
                 rows={6}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder={"Hackathon X\nVenue: Campus Audi\n21 Nov 2026, 10:00 AM to 6:00 PM\nRegistrations close 18 Nov\nLink: https://unstop.com/..."}
+                placeholder={"Tech Fest 2026\nVenue: Main Campus Audi\n21 Nov 2026, 10:00 AM to 6:00 PM\nRegistrations close 18 Nov\nLink: https://unstop.com/..."}
                 className="clean-textarea"
               />
             </label>
@@ -234,7 +272,12 @@ export default function AddEvent() {
               onChange={(e) => setFile(e.target.files[0] || null)}
             />
 
-            {error && <div className="field-error-msg">{error}</div>}
+            {error && (
+              <div className="field-error-msg" role="alert">
+                <AlertCircle size={15} strokeWidth={2} className="field-error-icon" />
+                <span>{error}</span>
+              </div>
+            )}
 
             <div className="add-event-btn-row">
               <button
@@ -243,12 +286,12 @@ export default function AddEvent() {
                 onClick={read}
                 disabled={busy || (!text.trim() && !file)}
               >
-                <Zap size={15} strokeWidth={1.75} />
-                <span>{busy ? "Extracting details..." : "Read details"}</span>
+                <FileText size={15} strokeWidth={1.75} />
+                <span>{busy ? "Reading details..." : "Read details"}</span>
               </button>
               <button
                 type="button"
-                className="btn ghost"
+                className="btn secondary"
                 onClick={() => {
                   setInitial({ ...BLANK });
                   setSource("manual");
@@ -290,7 +333,7 @@ export default function AddEvent() {
         <div className="add-event-right">
           <div className="clean-preview-panel">
             <div className="preview-panel-head">
-              <span className="preview-panel-title">Extracted Preview</span>
+              <span className="preview-panel-title">Preview</span>
               {extracted && <Badge variant="success">Ready</Badge>}
             </div>
 
@@ -338,7 +381,7 @@ export default function AddEvent() {
                   </div>
                 )}
                 {extracted.stages?.length > 0 && (
-                  <div className="preview-meta-row" style={{ flexDirection: "column", gap: "0.4rem" }}>
+                  <div className="preview-meta-row add-event-preview-stages">
                     <span className="preview-meta-label">Milestone Stages ({extracted.stages.length})</span>
                     <div className="preview-stages-box">
                       {extracted.stages.map((stg, i) => (
@@ -361,11 +404,11 @@ export default function AddEvent() {
             ) : (
               <div className="preview-panel-empty">
                 <div className="preview-empty-icon">
-                  <Zap size={32} strokeWidth={1.75} />
+                  <FileText size={32} strokeWidth={1.75} />
                 </div>
                 <div className="preview-empty-title">Details will appear here</div>
                 <p className="preview-empty-sub">
-                  Paste notice text or drop a flyer image on the left, then click "Read details".
+                  Paste notice text or drop a flyer image on the left, then click &ldquo;Read details&rdquo;.
                 </p>
               </div>
             )}

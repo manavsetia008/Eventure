@@ -250,11 +250,11 @@ def _normalise(data, original_text):
         "registration_deadline": _valid_iso(data.get("registration_deadline")),
         "url": data.get("url"),
         "stages": stages,
-        "source": "llm",
+        "source": data.get("source") or "sarvam (sarvam-105b)",
     }
 
 
-def extract_event(text, now, api_key=None, model=None, sarvam_key=None, sarvam_model="sarvam-105b"):
+def extract_event(text, now, api_key=None, model=None, sarvam_key=None, sarvam_model="sarvam-105b-conversations"):
     """Extract structured event details.
     
     Exclusively powered by Sarvam AI Indic Intelligence (Sarvam-105B) with
@@ -264,7 +264,7 @@ def extract_event(text, now, api_key=None, model=None, sarvam_key=None, sarvam_m
     if effective_sarvam_key:
         try:
             from .sarvam_ai import extract_event_with_sarvam
-            res = extract_event_with_sarvam(text, effective_sarvam_key, sarvam_model or "sarvam-105b", now)
+            res = extract_event_with_sarvam(text, effective_sarvam_key, sarvam_model or "sarvam-105b-conversations", now)
             return _normalise(res, text)
         except Exception as exc:
             logging.warning("Sarvam AI extraction failed (%s), falling back to deterministic rules...", exc)

@@ -37,27 +37,27 @@ describe("Frontend utils - Date & Parsing", () => {
     expect(fmtTime("invalid")).toBe("");
 
     const iso = "2026-10-17T09:05";
-    expect(fmtDay(iso)).toBe("Sat 17 Oct");
-    expect(fmtTime(iso)).toBe("09:05");
+    expect(fmtDay(iso)).toBe("17 Oct");
+    expect(fmtTime(iso)).toBe("9:05 AM");
   });
 
   it("fmtDate formats date and time with fallback", () => {
     expect(fmtDate(null)).toBe("Date to be confirmed");
     expect(fmtDate("")).toBe("Date to be confirmed");
-    expect(fmtDate("2026-10-17T14:00")).toBe("Sat 17 Oct, 14:00");
+    expect(fmtDate("2026-10-17T14:00")).toBe("17 Oct, 2:00 PM");
   });
 
   it("fmtRange formats single-day vs multi-day ranges", () => {
     expect(fmtRange(null, null)).toBe("Date to be confirmed");
-    expect(fmtRange("2026-10-17T10:00", null)).toBe("Sat 17 Oct, 10:00");
+    expect(fmtRange("2026-10-17T10:00", null)).toBe("17 Oct, 10:00 AM");
 
     // Same day
     const sameDay = fmtRange("2026-10-17T10:00", "2026-10-17T18:00");
-    expect(sameDay).toBe("Sat 17 Oct, 10:00 to 18:00");
+    expect(sameDay).toBe("17 Oct, 10:00 AM to 6:00 PM");
 
     // Multi day
     const multiDay = fmtRange("2026-10-17T10:00", "2026-10-18T18:00");
-    expect(multiDay).toBe("Sat 17 Oct, 10:00 to Sun 18 Oct, 18:00");
+    expect(multiDay).toBe("17 Oct, 10:00 AM to 18 Oct, 6:00 PM");
   });
 
   it("toInput trims ISO string to 16 characters for datetime-local", () => {

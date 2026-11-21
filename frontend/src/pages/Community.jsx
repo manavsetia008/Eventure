@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Check, Users } from "lucide-react";
 import { api } from "../api";
 import Badge from "../components/Badge.jsx";
-import { cap, clubAvatar, fmtDate, fmtRange, timeLeft } from "../utils";
+import { cap, fmtDate, fmtRange, timeLeft } from "../utils";
 
 function Clubs() {
   const [clubs, setClubs] = useState(null);
@@ -36,52 +37,60 @@ function Clubs() {
     <>
       {error && <p className="error">{error}</p>}
       {!clubs ? (
-        <p className="muted">Loading clubs…</p>
+        <div className="page-loading-state">Loading clubs...</div>
+      ) : clubs.length === 0 ? (
+        <div className="card empty">
+          <Users size={22} strokeWidth={1.75} />
+          <p>No clubs yet</p>
+          <p className="muted small">Be the first to start one below.</p>
+        </div>
       ) : (
-        clubs.map((c) => (
-          <article className="card" key={c.id}>
-            <div className="card-head">
-              <div className="club-head">
-                <div className="avatar" aria-hidden="true">{clubAvatar(c.name)}</div>
-                <div>
-                  <h3 style={{ margin: 0 }}>{c.name}</h3>
-                  <p className="muted small" style={{ margin: 0 }}>
-                    {c.college || "Open community"}
-                    <span className="follower-badge" style={{ marginLeft: ".5rem" }}>
-                      {c.followers} follower{c.followers === 1 ? "" : "s"}
-                    </span>
-                  </p>
-                  {c.description && <p style={{ margin: ".2rem 0 0" }}>{c.description}</p>}
+        <div className="list-panel">
+          {clubs.map((c) => (
+            <div className="list-row" key={c.id}>
+              <div className="list-row-main">
+                <div className="list-row-title">{c.name}</div>
+                <div className="list-row-sub muted small">
+                  {c.college || "Open community"} · {c.followers} follower{c.followers === 1 ? "" : "s"}
                 </div>
+                {c.description && <p className="list-row-desc">{c.description}</p>}
               </div>
-              <div className="row" style={{ margin: 0 }}>
-                <button className="btn ghost small" onClick={() => toggleOpen(c.id)}>
+              <div className="list-row-actions">
+                <button className="btn tertiary small" onClick={() => toggleOpen(c.id)}>
                   {open?.club.id === c.id ? "Hide events" : "Events"}
                 </button>
                 <button
-                  className={`btn small ${c.following ? "ghost" : ""}`}
+                  className={"btn small" + (c.following ? " secondary" : "")}
                   onClick={() => run(() => api.post(`/clubs/${c.id}/follow`))}
                 >
-                  {c.following ? "Following" : "Follow"}
+                  {c.following ? (
+                    <>
+                      <Check size={14} strokeWidth={1.75} /> Following
+                    </>
+                  ) : (
+                    "Follow"
+                  )}
                 </button>
               </div>
+              {open?.club.id === c.id && (
+                <div className="list-row-events">
+                  {open.events.length === 0 ? (
+                    <p className="muted small community-flush">No upcoming events from this club.</p>
+                  ) : (
+                    <ul className="plain">
+                      {open.events.map((e) => (
+                        <li key={e.id}>
+                          <Link to={`/events/${e.id}`}>{e.title}</Link>{" "}
+                          <span className="muted small">{fmtRange(e.start_at, e.end_at)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
-            {open?.club.id === c.id && (
-              open.events.length === 0 ? (
-                <p className="muted small" style={{ marginTop: ".6rem" }}>No upcoming events from this club.</p>
-              ) : (
-                <ul className="plain" style={{ marginTop: ".6rem" }}>
-                  {open.events.map((e) => (
-                    <li key={e.id}>
-                      <Link to={`/events/${e.id}`}>{e.title}</Link>{" "}
-                      <span className="muted small">{fmtRange(e.start_at, e.end_at)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )
-            )}
-          </article>
-        ))
+          ))}
+        </div>
       )}
       <form
         className="card"
@@ -146,8 +155,8 @@ function Teams() {
             });
           }}
         >
-          <h3 style={{ marginBottom: ".2rem" }}>Create a team</h3>
-          <p className="muted small" style={{ marginBottom: ".8rem" }}>Start a squad for hackathons, case comps, or any event.</p>
+          <h3 className="community-card-title">Create a team</h3>
+          <p className="muted small community-card-sub">Start a squad for hackathons, case comps, or any event.</p>
           <label>Team name<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
           <button className="btn small">Create team</button>
         </form>
@@ -163,8 +172,8 @@ function Teams() {
             });
           }}
         >
-          <h3 style={{ marginBottom: ".2rem" }}>Join with a code</h3>
-          <p className="muted small" style={{ marginBottom: ".8rem" }}>Someone sent you a team code? Enter it below.</p>
+          <h3 className="community-card-title">Join with a code</h3>
+          <p className="muted small community-card-sub">Someone sent you a team code? Enter it below.</p>
           <label>Team code<input value={code} onChange={(e) => setCode(e.target.value)} required /></label>
           <button className="btn">Join team</button>
         </form>
@@ -186,14 +195,13 @@ function Teams() {
       {view && (
         <section>
           <h2>{view.team.name}</h2>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap", marginBottom: ".8rem" }}>
+          <div className="community-share-row">
             <span className="muted small">Share this code to invite teammates:</span>
             <div className="team-code-box">
               <code>{view.team.code}</code>
               <button
-                className="btn ghost small"
+                className="btn ghost small community-copy-btn"
                 onClick={() => navigator.clipboard.writeText(view.team.code).then(() => setCopiedCode(true))}
-                style={{ padding: ".15rem .6rem", fontSize: ".78rem" }}
               >
                 {copiedCode ? "Copied" : "Copy"}
               </button>
@@ -215,10 +223,7 @@ function Teams() {
               )}
               <ul className="plain">
                 {e.members.map((m) => (
-                  <li key={m.user_id} style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
-                    <span className="avatar" style={{ width: "1.7rem", height: "1.7rem", fontSize: ".78rem" }}>
-                      {m.name[0]}
-                    </span>
+                  <li key={m.user_id} className="community-member-row">
                     {m.name} <Badge variant="neutral">{cap(m.status)}</Badge>
                   </li>
                 ))}
@@ -236,7 +241,7 @@ function Teams() {
               });
             }}
           >
-            <select value={share} onChange={(e) => setShare(e.target.value)} aria-label="Event to share" required>
+            <select className="clean-select" value={share} onChange={(e) => setShare(e.target.value)} aria-label="Event to share" required>
               <option value="">Share an event from your timeline…</option>
               {mine.map((i) => <option key={i.id} value={i.event.id}>{i.event.title}</option>)}
             </select>
@@ -252,7 +257,12 @@ export default function Community() {
   const [tab, setTab] = useState("clubs");
   return (
     <>
-      <h1>Community</h1>
+      <div className="page-head">
+        <div>
+          <h1>Community</h1>
+          <p className="muted small">Clubs across campuses and the teams you build with.</p>
+        </div>
+      </div>
       <div className="row tabs">
         <button className={`tab ${tab === "clubs" ? "on" : ""}`} onClick={() => setTab("clubs")}>
           Clubs across campuses

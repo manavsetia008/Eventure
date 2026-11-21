@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
 import { AuthProvider } from "./auth.jsx";
+import Logo from "./components/Logo.jsx";
 import "./styles.css";
 
 class ErrorBoundary extends React.Component {
@@ -13,10 +14,14 @@ class ErrorBoundary extends React.Component {
   render() {
     if (!this.state.failed) return this.props.children;
     return (
-      <div className="center">
-        <h2>Something broke on this page.</h2>
-        <p className="muted">Reload to try again. Your data is safe.</p>
-        <button className="btn" onClick={() => window.location.reload()}>Reload</button>
+      <div className="center error-page">
+        <Logo size={28} />
+        <h2>Something went wrong</h2>
+        <p className="muted">An unexpected error occurred. Try again, or head back to your timeline.</p>
+        <div className="error-page-actions">
+          <a href="/" className="btn">Go to timeline</a>
+          <button className="btn ghost" onClick={() => window.location.reload()}>Reload</button>
+        </div>
       </div>
     );
   }

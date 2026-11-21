@@ -1,11 +1,27 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
+import { api } from "../api";
 import { useAuth } from "../auth.jsx";
 import Logo from "../components/Logo.jsx";
+import Notice from "../components/Notice.jsx";
+
+// Official multicolour Google mark.
+function GoogleMark({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true" className="google-mark">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
+  );
+}
+
+const GOOGLE_CANCELLED_NOTICE = "Google sign-in was cancelled. Try again.";
 
 export default function Login({ initialMode }) {
-  const { user, login, register } = useAuth();
+  const { user, login, register, signInWithToken } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from || "/";
@@ -32,9 +48,58 @@ export default function Login({ initialMode }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [demoBusy, setDemoBusy] = useState(false);
+  const [googleReady, setGoogleReady] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+
+  // Show the Google button only when the server has an OAuth client configured.
+  useEffect(() => {
+    let alive = true;
+    api
+      .get("/health")
+      .then((r) => {
+        if (alive) setGoogleReady(Boolean(r?.googleAuth));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // The callback either returns here with an error flag (?google=cancelled) or with the session
+  // token in the URL fragment (#google_token=...).
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("google") === "cancelled" || params.get("google") === "unavailable") {
+      setNotice(GOOGLE_CANCELLED_NOTICE);
+    }
+    const hash = location.hash.replace(/^#/, "");
+    if (hash) {
+      const token = new URLSearchParams(hash).get("google_token");
+      window.history.replaceState(null, "", location.pathname + location.search);
+      if (token) {
+        setGoogleBusy(true);
+        signInWithToken(token)
+          .then(() => navigate(from, { replace: true }))
+          .catch(() => {
+            setNotice(GOOGLE_CANCELLED_NOTICE);
+            setGoogleBusy(false);
+          });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (user) {
     return <Navigate to="/" replace />;
+  }
+
+  function handleGoogleSignIn() {
+    setError("");
+    setNotice("");
+    setGoogleBusy(true);
+    // Full-page navigation: the browser leaves for Google and comes back to /auth/google/callback.
+    window.location.assign("/auth/google");
   }
 
   const setField = (key) => (e) => {
@@ -54,7 +119,7 @@ export default function Login({ initialMode }) {
       await login("demo@eventure.app", "demo1234");
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err?.message || "Failed to sign in with demo account. Please check backend connection.");
+      setError(err?.message || "Could not sign in with the demo account. Please try again.");
     } finally {
       setDemoBusy(false);
     }
@@ -129,6 +194,38 @@ export default function Login({ initialMode }) {
           <div className="login-error-banner" role="alert">
             {error}
           </div>
+        )}
+
+        {notice && (
+          <Notice variant="info" message={notice} className="login-notice" />
+        )}
+
+        {googleReady && (
+          <>
+            <button
+              type="button"
+              className="btn google-signin-btn"
+              onClick={handleGoogleSignIn}
+              disabled={googleBusy || busy || demoBusy}
+            >
+              {googleBusy ? (
+                <>
+                  <Loader2 size={16} className="btn-spinner" />
+                  <span>Connecting to Google...</span>
+                </>
+              ) : (
+                <>
+                  <GoogleMark size={18} />
+                  <span>Continue with Google</span>
+                </>
+              )}
+            </button>
+            <div className="login-or-divider" aria-hidden="true">
+              <span className="login-or-line" />
+              <span className="login-or-text">or</span>
+              <span className="login-or-line" />
+            </div>
+          </>
         )}
 
         <form onSubmit={submit} className="login-form">
@@ -249,7 +346,7 @@ export default function Login({ initialMode }) {
         <div className="login-toggle-row">
           {mode === "login" ? (
             <p className="login-switch-text">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link
                 to="/signup"
                 className="login-switch-link"

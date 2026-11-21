@@ -82,7 +82,7 @@ class PriorityTests(unittest.TestCase):
 
 class ExtractionTests(unittest.TestCase):
     TEXT = """HackShift 2026 - Hackathon
-Venue: IIIT Delhi, Okhla
+Venue: West Institute, Sector 14
 17-18 Oct 2026, 10:00 AM to 6:00 PM
 Registrations close 12 Oct 2026
 Register on https://unstop.com/hackathons/hackshift
@@ -93,7 +93,7 @@ Results on 25 Oct 2026"""
         self.assertEqual(r["title"], "HackShift 2026 - Hackathon")
         self.assertEqual(r["category"], "hackathon")
         self.assertEqual(r["platform"], "Unstop")
-        self.assertEqual(r["venue_name"], "IIIT Delhi, Okhla")
+        self.assertEqual(r["venue_name"], "West Institute, Sector 14")
         self.assertEqual(r["start_at"], "2026-10-17T10:00")
         self.assertEqual(r["end_at"], "2026-10-18T18:00")
         self.assertEqual(r["registration_deadline"], "2026-10-12T23:59")
@@ -283,7 +283,7 @@ class TravelEdgeTests(unittest.TestCase):
         self.assertIsNone(estimate_minutes(None, 77.2, 28.7, 77.2))
 
     def test_delhi_to_gurgaon_reasonable(self):
-        # IIIT Delhi → Cyber Hub Gurgaon: ~20–50 km, should be 30–90 min
+        # Main Campus → City Center: ~20–50 km, should be 30–90 min
         mins = estimate_minutes(28.5459, 77.2732, 28.4950, 77.0890)
         self.assertIsNotNone(mins)
         self.assertGreater(mins, 20)

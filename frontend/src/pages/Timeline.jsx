@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, ChevronDown, ChevronUp, ExternalLink, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, CalendarPlus, ExternalLink, Plus, Trash2 } from "lucide-react";
 import { api } from "../api";
-import { useAuth } from "../auth.jsx";
 import IssueCard from "../components/IssueCard.jsx";
 import HackathonVault from "../components/HackathonVault.jsx";
 import PriorityEditor from "../components/PriorityEditor.jsx";
 import Chip from "../components/Chip.jsx";
 import Badge from "../components/Badge.jsx";
+import Checkbox from "../components/Checkbox.jsx";
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import { cap, fmtDate, fmtDuration, fmtRange, timeLeft } from "../utils";
 
 const STATUSES = ["interested", "registered", "attended", "skipped"];
@@ -50,6 +51,7 @@ function Node({ it, act }) {
   const [expanded, setExpanded] = useState(false);
   const [editingUrl, setEditingUrl] = useState(false);
   const [urlVal, setUrlVal] = useState(ev.url || "");
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   const fullUrl = ev.url ? (ev.url.startsWith("http") ? ev.url : `https://${ev.url}`) : "";
 
@@ -58,211 +60,203 @@ function Node({ it, act }) {
       ? "success"
       : it.status === "attended"
       ? "info"
-      : it.status === "skipped"
-      ? "neutral"
       : "neutral";
 
-  return (
-    <li className={`node risk-${it.risk || "none"} ${it.status === "skipped" ? "is-skipped" : ""}`}>
-      <article className="card" style={{ transition: "border-color 0.15s ease" }}>
-        {/* Clickable Header Row: Stripe/GitHub Table-Style */}
-        <div
-          className="card-head"
-          style={{ cursor: "pointer", userSelect: "none" }}
-          onClick={() => setExpanded(!expanded)}
-        >
-          <div style={{ minWidth: 0 }}>
-            <h3>
-              <Link
-                to={`/events/${ev.id}`}
-                className="event-title-link"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {ev.title}
-              </Link>
-            </h3>
-            <p className="muted small" style={{ margin: "0.2rem 0 0" }}>
-              {fmtRange(ev.start_at, ev.end_at)}
-              {ev.venue_name ? ` · ${ev.venue_name}` : ""}
-            </p>
-          </div>
-          <div className="pills" style={{ alignItems: "center", gap: "0.5rem" }}>
-            {ev.platform && <Chip label={ev.platform} />}
-            {ev.category && <Chip label={cap(ev.category)} />}
-            <Badge variant={statusVariant} label={cap(it.status)} />
-            {it.score != null && (
-              <span onClick={(e) => e.stopPropagation()}>
-                <PriorityEditor
-                  value={it.score}
-                  scoreParts={it.score_parts}
-                  onChange={(newScore) =>
-                    act(() => api.patch(`/user-events/${it.id}`, { score: newScore }))
-                  }
-                />
-              </span>
-            )}
-            <button
-              type="button"
-              className="btn-tertiary"
-              style={{ padding: "0.2rem 0.4rem", marginLeft: "0.25rem" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setExpanded(!expanded);
-              }}
-              aria-label={expanded ? "Collapse details" : "Expand stages & details"}
-              title={expanded ? "Collapse details" : "Expand stages & details"}
-            >
-              {it.stages.length > 0 && (
-                <span className="small muted" style={{ marginRight: "0.3rem" }}>
-                  {it.stages.filter((s) => s.done).length}/{it.stages.length}
-                </span>
-              )}
-              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
-          </div>
-        </div>
+  const doneStages = it.stages.filter((s) => s.done).length;
 
-        {/* Collapsible Details: Stages, Links, Submission Vault */}
-        {expanded && (
-          <div style={{ marginTop: "0.5rem", paddingTop: "0.65rem", borderTop: "1px solid var(--border)" }}>
-            {/* Official event link and actions */}
-            <div style={{ margin: "0.35rem 0 0.6rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-              {fullUrl && !editingUrl ? (
-                <>
-                  <a
-                    href={fullUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn-tertiary"
-                  >
-                    Open page <ExternalLink size={12} />
-                  </a>
-                  <button
-                    type="button"
-                    className="btn-tertiary"
-                    onClick={() => { setUrlVal(ev.url || ""); setEditingUrl(true); }}
-                  >
-                    Edit link
-                  </button>
-                </>
-              ) : !editingUrl ? (
+  return (
+    <li className={`timeline-item ${it.status === "skipped" ? "is-skipped" : ""}`}>
+      {/* Clickable row header; details stay collapsed by default */}
+      <div
+        className="timeline-row-head"
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onClick={() => setExpanded(!expanded)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setExpanded(!expanded);
+          }
+        }}
+      >
+        <div className="timeline-row-main">
+          <h3 className="timeline-row-title">
+            <Link
+              to={`/events/${ev.id}`}
+              className="event-title-link"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {ev.title}
+            </Link>
+          </h3>
+          <p className="timeline-row-meta">
+            {fmtRange(ev.start_at, ev.end_at)}
+            {ev.venue_name ? ` · ${ev.venue_name}` : ""}
+          </p>
+        </div>
+        <div className="timeline-row-aside">
+          {ev.platform && <Chip label={ev.platform} />}
+          {ev.category && <Chip label={cap(ev.category)} />}
+          <Badge variant={statusVariant} label={cap(it.status)} />
+          {it.score != null && (
+            <span role="presentation" onClick={(e) => e.stopPropagation()}>
+              <PriorityEditor
+                value={it.score}
+                scoreParts={it.score_parts}
+                onChange={(newScore) =>
+                  act(() => api.patch(`/user-events/${it.id}`, { score: newScore }))
+                }
+              />
+            </span>
+          )}
+          <span className="timeline-row-toggle">
+            {it.stages.length > 0 && (
+              <span className="small muted">{doneStages}/{it.stages.length}</span>
+            )}
+            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </span>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="timeline-details">
+          {/* Official event link and actions */}
+          <div className="timeline-link-row">
+            {fullUrl && !editingUrl ? (
+              <>
+                <a href={fullUrl} target="_blank" rel="noreferrer" className="btn-tertiary">
+                  Open page <ExternalLink size={12} />
+                </a>
                 <button
                   type="button"
                   className="btn-tertiary"
-                  onClick={() => { setUrlVal(""); setEditingUrl(true); }}
+                  onClick={() => { setUrlVal(ev.url || ""); setEditingUrl(true); }}
                 >
-                  + Add official link
+                  Edit link
                 </button>
-              ) : (
-                <div className="row small" style={{ width: "100%", margin: "0.2rem 0" }}>
-                  <input
-                    type="url"
-                    value={urlVal}
-                    onChange={(e) => setUrlVal(e.target.value)}
-                    placeholder="Paste official event URL (https://...)"
-                    style={{ maxWidth: "320px", padding: "0.3rem 0.5rem" }}
-                    aria-label="Official event URL"
-                  />
-                  <button
-                    type="button"
-                    className="btn small"
-                    onClick={() => {
-                      act(() => api.put(`/events/${ev.id}`, { url: urlVal.trim() }));
-                      setEditingUrl(false);
-                    }}
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    className="btn ghost small"
-                    onClick={() => setEditingUrl(false)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {it.travel_minutes ? (
-              <p className="small muted travel-note">About {fmtDuration(it.travel_minutes)} from your campus</p>
-            ) : null}
-
-            {it.stages.length > 0 && (
-              <ul className="timeline-stages-list">
-                {it.stages.map((s) => (
-                  <li key={s.id} className={`timeline-stage-item ${s.done ? "done" : ""}`}>
-                    <div className="timeline-stage-left">
-                      <label className="custom-stage-checkbox" aria-label={`Mark ${s.name} done`}>
-                        <input
-                          type="checkbox"
-                          checked={s.done}
-                          onChange={(e) => act(() => api.patch(`/stages/${s.id}`, { done: e.target.checked }))}
-                        />
-                        <span className="stage-checkbox-box">
-                          <Check size={11} strokeWidth={3} className="stage-checkbox-tick" />
-                        </span>
-                      </label>
-                      <span className="timeline-stage-name">{s.name}</span>
-                    </div>
-                    <div className="timeline-stage-right">
-                      <span className="timeline-stage-due">
-                        {s.due_at ? fmtDate(s.due_at) : "No deadline"}
-                        {s.due_at && !s.done ? ` · ${timeLeft(s.due_at)}` : ""}
-                      </span>
-                      <button
-                        type="button"
-                        className="timeline-stage-remove"
-                        aria-label={`Remove ${s.name}`}
-                        title="Remove stage"
-                        onClick={() => act(() => api.del(`/stages/${s.id}`))}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              </>
+            ) : !editingUrl ? (
+              <button
+                type="button"
+                className="btn-tertiary"
+                onClick={() => { setUrlVal(""); setEditingUrl(true); }}
+              >
+                + Add official link
+              </button>
+            ) : (
+              <div className="row small timeline-url-form">
+                <input
+                  type="url"
+                  value={urlVal}
+                  onChange={(e) => setUrlVal(e.target.value)}
+                  placeholder="Paste official event URL (https://...)"
+                  aria-label="Official event URL"
+                />
+                <button
+                  type="button"
+                  className="btn small"
+                  onClick={() => {
+                    act(() => api.put(`/events/${ev.id}`, { url: urlVal.trim() }));
+                    setEditingUrl(false);
+                  }}
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost small"
+                  onClick={() => setEditingUrl(false)}
+                >
+                  Cancel
+                </button>
+              </div>
             )}
+          </div>
 
+          {it.travel_minutes ? (
+            <p className="small muted travel-note">About {fmtDuration(it.travel_minutes)} from your campus</p>
+          ) : null}
+
+          {it.stages.length > 0 && (
+            <ul className="timeline-stages-list">
+              {it.stages.map((s) => (
+                <li key={s.id} className={`timeline-stage-item ${s.done ? "done" : ""}`}>
+                  <div className="timeline-stage-left">
+                    <Checkbox
+                      checked={s.done}
+                      onChange={(checked) => act(() => api.patch(`/stages/${s.id}`, { done: checked }))}
+                      aria-label={`Mark ${s.name} done`}
+                    />
+                    <span className="timeline-stage-name">{s.name}</span>
+                  </div>
+                  <div className="timeline-stage-right">
+                    <span className="timeline-stage-due">
+                      {s.due_at ? fmtDate(s.due_at) : "No deadline"}
+                      {s.due_at && !s.done ? ` · ${timeLeft(s.due_at)}` : ""}
+                    </span>
+                    <button
+                      type="button"
+                      className="timeline-stage-remove"
+                      aria-label={`Remove ${s.name}`}
+                      title="Remove stage"
+                      onClick={() => act(() => api.del(`/stages/${s.id}`))}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {ev.category === "hackathon" && (
             <HackathonVault
               userEventId={it.id}
               initialNotes={it.notes || ""}
-              onUpdate={() => load()}
+              onUpdate={() => act(async () => {})}
             />
+          )}
 
-            <div className="card-foot" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.85rem", paddingTop: "0.75rem", borderTop: "1px solid var(--border)" }}>
-              <AddStage onAdd={(name, due) => act(() => api.post(`/user-events/${it.id}/stages`, { name, due_at: due }))} />
-              <div className="row status-actions" style={{ alignItems: "center", gap: "0.5rem" }}>
-                <select
-                  value={it.status}
-                  onChange={(e) => act(() => api.patch(`/user-events/${it.id}`, { status: e.target.value }))}
-                  aria-label="Status"
-                  className="clean-select"
-                >
-                  {STATUSES.map((s) => <option key={s} value={s}>{cap(s)}</option>)}
-                </select>
-                <button
-                  type="button"
-                  className="btn-tertiary danger"
-                  onClick={() =>
-                    window.confirm(`Remove ${ev.title} from your timeline?`) &&
-                    act(() => api.del(`/user-events/${it.id}`))
-                  }
-                >
-                  Remove
-                </button>
-              </div>
+          <div className="timeline-foot">
+            <AddStage onAdd={(name, due) => act(() => api.post(`/user-events/${it.id}/stages`, { name, due_at: due }))} />
+            <div className="row status-actions">
+              <select
+                value={it.status}
+                onChange={(e) => act(() => api.patch(`/user-events/${it.id}`, { status: e.target.value }))}
+                aria-label="Status"
+                className="clean-select"
+              >
+                {STATUSES.map((s) => <option key={s} value={s}>{cap(s)}</option>)}
+              </select>
+              <button
+                type="button"
+                className="btn-tertiary danger"
+                onClick={() => setConfirmRemove(true)}
+              >
+                Remove
+              </button>
             </div>
           </div>
-        )}
-      </article>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={confirmRemove}
+        title="Remove from timeline"
+        message={`Remove ${ev.title} from your timeline?`}
+        confirmLabel="Remove"
+        onCancel={() => setConfirmRemove(false)}
+        onConfirm={() => {
+          setConfirmRemove(false);
+          act(() => api.del(`/user-events/${it.id}`));
+        }}
+      />
     </li>
   );
 }
 
 export default function Timeline() {
-  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [dismissed, setDismissed] = useState([]);
@@ -288,7 +282,17 @@ export default function Timeline() {
     }
   };
 
-  if (!data) return error ? <p className="error">{error}</p> : <p className="muted center">Loading your timeline...</p>;
+  if (!data)
+    return error ? (
+      <p className="error">{error}</p>
+    ) : (
+      <div className="timeline-skeleton" aria-hidden="true">
+        <div className="skeleton skeleton-stats" />
+        <div className="skeleton skeleton-row" />
+        <div className="skeleton skeleton-row" />
+        <div className="skeleton skeleton-row" />
+      </div>
+    );
 
   const key = (i) => `${i.type}:${i.events.join("-")}`;
   const issues = data.issues.filter((i) => !dismissed.includes(key(i)));
@@ -316,12 +320,6 @@ export default function Timeline() {
       </div>
 
       {error && <p className="error">{error}</p>}
-
-      {user.college_lat == null && (
-        <p className="notice">
-          Set your campus location in <Link to="/settings">Settings</Link> to calculate travel gaps and transit checks.
-        </p>
-      )}
 
       {/* Top Stats Row: 3 stats in one line, 24px/600 number, label beneath, 1px divider */}
       <div className="timeline-stats-row">
@@ -355,22 +353,24 @@ export default function Timeline() {
         </section>
       )}
 
-      <section aria-label="Coming up" className="timeline-section">
-        <h2>Coming up</h2>
+      <section aria-label="Upcoming" className="timeline-section">
+        <h2>Upcoming</h2>
         {live.length === 0 ? (
           <div className="card empty">
-            <p>Nothing on your timeline yet.</p>
-            <p><Link to="/add">Add an event from a poster or email</Link> or <Link to="/discover">discover events near your campus</Link>.</p>
+            <CalendarPlus size={22} strokeWidth={1.75} />
+            <p>No events yet</p>
+            <p className="muted small">Add an event from a poster or email, or discover events near your campus.</p>
+            <Link to="/add" className="btn small">Add your first event</Link>
           </div>
         ) : (
-          <ol className="thread">{live.map((it) => <Node key={it.id} it={it} act={act} />)}</ol>
+          <ol className="list-panel timeline-panel">{live.map((it) => <Node key={it.id} it={it} act={act} />)}</ol>
         )}
       </section>
 
       {past.length > 0 && (
         <section aria-label="Past events" className="timeline-section">
           <h2>Past events</h2>
-          <ol className="thread muted-thread">{past.map((it) => <Node key={it.id} it={it} act={act} />)}</ol>
+          <ol className="list-panel timeline-panel muted-thread">{past.map((it) => <Node key={it.id} it={it} act={act} />)}</ol>
         </section>
       )}
 
@@ -380,7 +380,7 @@ export default function Timeline() {
             {showSkipped ? "Hide" : "Show"} {skipped.length} skipped event{skipped.length > 1 ? "s" : ""}
           </button>
           {showSkipped && (
-            <ol className="thread muted-thread">{skipped.map((it) => <Node key={it.id} it={it} act={act} />)}</ol>
+            <ol className="list-panel timeline-panel muted-thread">{skipped.map((it) => <Node key={it.id} it={it} act={act} />)}</ol>
           )}
         </section>
       )}

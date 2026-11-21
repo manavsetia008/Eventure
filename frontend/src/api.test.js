@@ -66,7 +66,7 @@ describe("Frontend API client", () => {
       throw new Error("Network unreachable");
     }));
 
-    await expect(api.get("/timeline")).rejects.toThrow("Cannot reach the server. Check that the backend is running.");
+    await expect(api.get("/timeline")).rejects.toThrow("Could not reach Eventure. Check your connection and try again.");
   });
 
   it("handles JSON post and file upload payloads correctly", async () => {

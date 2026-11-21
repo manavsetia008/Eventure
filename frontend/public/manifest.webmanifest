@@ -1,12 +1,12 @@
 {
   "name": "Eventure",
   "short_name": "Eventure",
-  "description": "Every event, one thread.",
+  "description": "Track every campus event and deadline in one place.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#e9e9f0",
-  "theme_color": "#2e2963",
+  "background_color": "#EAF0F8",
+  "theme_color": "#22272e",
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },

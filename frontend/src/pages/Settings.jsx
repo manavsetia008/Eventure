@@ -632,11 +632,30 @@ function DeleteAccountCard() {
   );
 }
 
+const INDIC_LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "hi-IN", label: "Hindi (हिन्दी)" },
+  { code: "bn-IN", label: "Bengali (বাংলা)" },
+  { code: "ta-IN", label: "Tamil (தமிழ்)" },
+  { code: "te-IN", label: "Telugu (తెలుగు)" },
+  { code: "mr-IN", label: "Marathi (मराठी)" },
+  { code: "gu-IN", label: "Gujarati (ગુજરાતી)" },
+  { code: "kn-IN", label: "Kannada (ಕನ್ನಡ)" },
+  { code: "ml-IN", label: "Malayalam (മലയാളം)" },
+  { code: "pa-IN", label: "Punjabi (ਪੰਜਾਬੀ)" },
+  { code: "od-IN", label: "Odia (ଓଡ଼ିଆ)" },
+];
+
 export default function Settings() {
   const { user, refresh } = useAuth();
   const [p, setP] = useState({
-    name: user.name, college: user.college || "", college_lat: user.college_lat ?? "", college_lng: user.college_lng ?? "",
+    name: user.name,
+    college: user.college || "",
+    college_lat: user.college_lat ?? "",
+    college_lng: user.college_lng ?? "",
     goals: user.goals.join(", "),
+    primary_language: user.primary_language || "en",
+    role: user.role || "student",
   });
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
@@ -652,7 +671,11 @@ export default function Settings() {
     setError("");
     setMsg("");
     try {
-      await api.put("/auth/me", { ...p, college_lat: p.college_lat === "" ? null : p.college_lat, college_lng: p.college_lng === "" ? null : p.college_lng });
+      await api.put("/auth/me", {
+        ...p,
+        college_lat: p.college_lat === "" ? null : p.college_lat,
+        college_lng: p.college_lng === "" ? null : p.college_lng,
+      });
       await refresh();
       setMsg("Saved.");
     } catch (err) {
@@ -737,6 +760,30 @@ export default function Settings() {
         </details>
 
         <label>Goals and interests<input value={p.goals} onChange={(e) => setP({ ...p, goals: e.target.value })} placeholder="hackathon, ai, web" /></label>
+
+        <label>
+          Base Primary Language (Auto-Translates Posters, Portal Matches & Event Details)
+          <select
+            value={p.primary_language}
+            onChange={(e) => setP({ ...p, primary_language: e.target.value })}
+          >
+            {INDIC_LANGUAGES.map((l) => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          Account Role
+          <select
+            value={p.role}
+            onChange={(e) => setP({ ...p, role: e.target.value })}
+          >
+            <option value="student">Student (Track milestones & hackathons)</option>
+            <option value="organizer">Organizer (Host & manage club events)</option>
+          </select>
+        </label>
+
         <div className="row">
           <button className="btn small">Save</button>
           {msg && <span className="muted small">{msg}</span>}

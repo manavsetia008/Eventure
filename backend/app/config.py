@@ -23,7 +23,9 @@ class Config:
 
     # Sarvam AI Indic Intelligence (Sarvam-105B & Sarvam Translate)
     SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
-    SARVAM_MODEL = os.getenv("SARVAM_MODEL", "sarvam-105b")
+    SARVAM_MODEL = os.getenv("SARVAM_MODEL", "sarvam-105b-conversations")
+    SARVAM_TRANSLATE_MODEL = os.getenv("SARVAM_TRANSLATE_MODEL", "sarvam-translate:v1")
+    SARVAM_TTS_MODEL = os.getenv("SARVAM_TTS_MODEL", "bulbul:v3")
     GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
 
     ENABLE_SCHEDULER = os.getenv("ENABLE_SCHEDULER", "1") == "1"
@@ -34,6 +36,11 @@ class Config:
     AUTO_CREATE_DB = os.getenv("AUTO_CREATE_DB", "1") == "1"  # set 0 when you use Flask-Migrate
     TIMEZONE = os.getenv("TIMEZONE", "Asia/Kolkata")
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+
+    # Public origin of the app (frontend in dev, live domain in production). Google sign-in
+    # builds its redirect URI from this: APP_BASE_URL/auth/google/callback
+    APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5173").rstrip("/")
+    GOOGLE_LOGIN_REDIRECT_URI = APP_BASE_URL + "/auth/google/callback"
 
     # Google Calendar sync (OAuth)
     GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")

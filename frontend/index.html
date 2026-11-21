@@ -3,12 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#13151A" />
-    <meta name="description" content="Every campus event. One clear thread. The unified decision timeline for college students." />
+    <meta name="theme-color" content="#EAF0F8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#22272e" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="Eventure: track every campus event and deadline in one place." />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Eventure" />
+    <meta property="og:description" content="Eventure: track every campus event and deadline in one place." />
+    <meta name="twitter:card" content="summary" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" href="/icons/icon-192.png" />
-    <title>Eventure: every event, one thread</title>
+    <title>Eventure</title>
+    <script>
+      // Applied before first paint so there is no flash of the wrong theme.
+      (function () {
+        try {
+          var saved = localStorage.getItem("eventure_theme");
+          var theme =
+            saved === "light" || saved === "dark"
+              ? saved
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

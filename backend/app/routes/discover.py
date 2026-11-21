@@ -110,6 +110,15 @@ def event_detail(event_id):
     ue = UserEvent.query.filter_by(user_id=user.id, event_id=ev.id).first()
     mine = {ev.id} if ue else set()
     card = event_card(ev, user, ratings, mine)
+    user_lang = getattr(user, "primary_language", "en")
+    if user_lang and user_lang not in ("en", "en-IN"):
+        from flask import current_app
+        sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
+        if sarvam_key:
+            from ..services.sarvam_ai import translate_with_sarvam
+            card["title_localized"] = translate_with_sarvam(ev.title, user_lang, sarvam_key)
+            card["description_localized"] = translate_with_sarvam(ev.description or "", user_lang, sarvam_key)
+        card["primary_language"] = user_lang
     reviews = Review.query.filter_by(event_id=ev.id).order_by(Review.created_at.desc()).all()
     already = any(r.user_id == user.id for r in reviews)
 
@@ -173,8 +182,10 @@ def add_review(event_id):
         if not 1 <= v <= 5:
             raise ApiError(f"Rate {k} from 1 to 5.")
         dims[k] = v
+    from ..sanitizer import sanitize_text
     overall = round(sum(dims.values()) / 3, 1)
-    review = Review(event_id=ev.id, user_id=g.user.id, overall=overall, comment=(d.get("comment") or "").strip()[:1500], **dims)
+    clean_comment = sanitize_text((d.get("comment") or "").strip(), max_len=1500, strip_tags=True)
+    review = Review(event_id=ev.id, user_id=g.user.id, overall=overall, comment=clean_comment, **dims)
     db.session.add(review)
     db.session.commit()
     return jsonify(review=review.to_dict()), 201
@@ -195,21 +206,35 @@ def delete_my_review(event_id):
 @login_required
 def compare():
     try:
-        ids = [int(x) for x in (request.args.get("ids") or "").split(",") if x.strip()][:3]
+        ids = [int(x) for x in (request.args.get("ids") or "").split(",") if x.strip()][:4]
     except ValueError:
         raise ApiError("Pick events to compare.")
     if len(ids) < 2:
         raise ApiError("Pick at least two events to compare.")
-    events = Event.query.filter(Event.id.in_(ids), Event.is_public.is_(True)).all()
+    events = Event.query.filter(Event.id.in_(ids)).all()
     ratings = rating_table(ids)
     mine = {ue.event_id for ue in UserEvent.query.filter_by(user_id=g.user.id).all()}
     user, now_ = g.user, now()
+    keep_threshold = user.threshold_keep or 55
+    skip_threshold = user.threshold_skip or 40
+    use_maybe = bool(user.use_maybe_range)
+
     rows = []
     for ev in events:
         card = event_card(ev, user, ratings, mine)
         item = {"title": ev.title, "category": ev.category, "description": ev.description, "status": "interested",
                 "start": ev.start_at, "stages": [], "travel_minutes": card["travel_minutes"], "in_exam": False}
-        card["fit_score"] = score_item(item, user.goals_list, now_)["score"]
+        fit_score = score_item(item, user.goals_list, now_)["score"]
+        card["fit_score"] = fit_score
+        if use_maybe:
+            if fit_score >= keep_threshold:
+                card["verdict"] = "Keep"
+            elif fit_score < skip_threshold:
+                card["verdict"] = "Skip"
+            else:
+                card["verdict"] = "Maybe"
+        else:
+            card["verdict"] = "Keep" if fit_score >= keep_threshold else "Skip"
         rows.append(card)
-    rows.sort(key=lambda c: ids.index(c["id"]))
+    rows.sort(key=lambda c: ids.index(c["id"]) if c["id"] in ids else 0)
     return jsonify(events=rows)

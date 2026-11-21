@@ -6,6 +6,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    proxy: { "/api": "http://localhost:5000" },
+    proxy: {
+      "/api": "http://localhost:5000",
+      // Google sign-in redirects the browser to /auth/google/callback on the app origin,
+      // so in development that path has to reach the Flask server too.
+      "/auth": "http://localhost:5000",
+    },
   },
 });

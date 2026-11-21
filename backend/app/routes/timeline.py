@@ -110,6 +110,16 @@ def extract():
         sarvam_key=current_app.config.get("SARVAM_API_KEY") or None,
         sarvam_model=current_app.config.get("SARVAM_MODEL", "sarvam-105b"),
     )
+    user_lang = getattr(g.user, "primary_language", "en")
+    if user_lang and user_lang not in ("en", "en-IN"):
+        sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
+        if sarvam_key:
+            from ..services.sarvam_ai import translate_with_sarvam
+            if parsed.get("title"):
+                parsed["title_localized"] = translate_with_sarvam(parsed["title"], user_lang, sarvam_key)
+            if parsed.get("description"):
+                parsed["description_localized"] = translate_with_sarvam(parsed["description"], user_lang, sarvam_key)
+        parsed["primary_language"] = user_lang
     return jsonify(parsed=parsed, ocr_text=ocr_text)
 
 
@@ -124,36 +134,64 @@ def translate():
 
     from ..services.sarvam_ai import translate_with_sarvam
     sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
-    translated = translate_with_sarvam(text, target_lang, sarvam_key)
+    translated = translate_with_sarvam(
+        text, target_lang, sarvam_key,
+        model=current_app.config.get("SARVAM_TRANSLATE_MODEL") or "sarvam-translate:v1",
+    )
     return jsonify(translated_text=translated, target_language_code=target_lang)
+
+
+@bp.post("/tts")
+def text_to_speech():
+    """Generate Indic voice audio from event text via Sarvam Bulbul TTS."""
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    target_lang = data.get("target_language_code") or "hi-IN"
+    speaker = data.get("speaker") or "aditya"
+    if not text:
+        return jsonify(audio="")
+
+    from ..services.sarvam_ai import speak_with_sarvam
+    sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
+    audio_b64 = speak_with_sarvam(
+        text, target_lang, sarvam_key, speaker,
+        model=current_app.config.get("SARVAM_TTS_MODEL") or "bulbul:v3",
+    )
+    return jsonify(audio=audio_b64, target_language_code=target_lang)
 
 
 @bp.post("/events")
 @login_required
 def create_event():
+    from ..sanitizer import sanitize_text, sanitize_url
     d = request.get_json(silent=True) or {}
-    title = (d.get("title") or "").strip()
-    if not title:
+    raw_title = (d.get("title") or "").strip()
+    if not raw_title:
         raise ApiError("Add a title for the event.")
+    title = sanitize_text(raw_title, max_len=250)
     start, end = parse_dt(d.get("start_at")), parse_dt(d.get("end_at"))
     if start and end and end < start:
         raise ApiError("The end time is before the start time.")
     reg = parse_dt(d.get("registration_deadline"))
     lat, lng = to_float(d.get("lat")), to_float(d.get("lng"))
-    venue = (d.get("venue_name") or "").strip() or None
+    venue = sanitize_text((d.get("venue_name") or "").strip() or None, max_len=250)
     if (lat is None or lng is None) and venue:
         point = look_up(venue)
         if point:
             lat, lng = point
     ev = Event(
-        title=title[:250], platform=(d.get("platform") or None), category=(d.get("category") or "other").lower(),
-        description=d.get("description") or "", venue_name=venue, lat=lat, lng=lng, start_at=start, end_at=end,
-        registration_deadline=reg, url=d.get("url") or None, is_public=bool(d.get("is_public")), created_by=g.user.id,
+        title=title, platform=sanitize_text(d.get("platform") or None, max_len=80),
+        category=(d.get("category") or "other").lower(),
+        description=sanitize_text(d.get("description") or "", max_len=5000, strip_tags=False),
+        venue_name=venue, lat=lat, lng=lng, start_at=start, end_at=end,
+        registration_deadline=reg, url=sanitize_url(d.get("url") or "") or None,
+        is_public=bool(d.get("is_public")), created_by=g.user.id,
     )
     db.session.add(ev)
     db.session.flush()
     status = d.get("status") if d.get("status") in STATUSES else "registered"
-    ue = UserEvent(user_id=g.user.id, event_id=ev.id, status=status)
+    notes = sanitize_text((d.get("notes") or "").strip(), max_len=2000)
+    ue = UserEvent(user_id=g.user.id, event_id=ev.id, status=status, notes=notes)
     db.session.add(ue)
     db.session.flush()
 
@@ -181,7 +219,7 @@ def geocode_venue():
         raise ApiError("Type the venue first.")
     point = look_up(venue)
     if not point:
-        raise ApiError("Could not find that place. Try adding the city, or enter the coordinates by hand.", 404)
+        raise ApiError("Could not find that location. Try adding the campus or city name.", 404)
     return jsonify(lat=round(point[0], 5), lng=round(point[1], 5))
 
 
@@ -192,20 +230,22 @@ def update_event(event_id):
     if not ev or ev.created_by != g.user.id:
         raise ApiError("You can only edit events you added.", 404)
     d = request.get_json(silent=True) or {}
+    from ..sanitizer import sanitize_text, sanitize_url
     if "title" in d:
         title = (d["title"] or "").strip()
         if not title:
             raise ApiError("Add a title for the event.")
-        ev.title = title[:250]
+        ev.title = sanitize_text(title, max_len=250)
     if "category" in d:
         ev.category = (d["category"] or "other").lower()
-    for key in ("platform", "url"):
-        if key in d:
-            setattr(ev, key, (d[key] or "").strip() or None)
+    if "platform" in d:
+        ev.platform = sanitize_text((d["platform"] or "").strip() or None, max_len=80)
+    if "url" in d:
+        ev.url = sanitize_url(d["url"] or "") or None
     if "description" in d:
-        ev.description = d["description"] or ""
+        ev.description = sanitize_text(d["description"] or "", max_len=5000, strip_tags=False)
     if "venue_name" in d:
-        ev.venue_name = (d["venue_name"] or "").strip() or None
+        ev.venue_name = sanitize_text((d["venue_name"] or "").strip() or None, max_len=250)
     if "lat" in d or "lng" in d:
         ev.lat, ev.lng = to_float(d.get("lat")), to_float(d.get("lng"))
     for key in ("start_at", "end_at", "registration_deadline"):
@@ -251,9 +291,16 @@ def timeline():
             a, b = items[ids[0]], items[ids[1]]
             between = estimate_minutes(a["lat"], a["lng"], b["lat"], b["lng"], key)
             issue["suggestion"] = suggest_between(a, scores[a["id"]], b, scores[b["id"]], between or None)
+            issue["event_times"] = [
+                {"title": a["title"], "start_at": iso(a.get("start")), "end_at": iso(effective_end(a))},
+                {"title": b["title"], "start_at": iso(b.get("start")), "end_at": iso(effective_end(b))},
+            ]
         elif issue["type"] == "exam_week":
             it = items[ids[0]]
             issue["suggestion"] = suggest_for_exam(it, scores[it["id"]], issue["meta"]["exam"])
+            issue["event_times"] = [
+                {"title": it["title"], "start_at": iso(it.get("start")), "end_at": iso(effective_end(it))},
+            ]
         issue["titles"] = [items[i]["title"] for i in ids]
 
     serialized = [serialize_user_event(ue, items[ue.id], scores[ue.id]["score"], now_, scores[ue.id].get("parts")) for ue in uevs]
@@ -427,6 +474,14 @@ def calendar_feed():
                     "alarm_minutes": 24 * 60,
                 })
     return Response(build_ics(entries, f"Eventure: {g.user.name}"), mimetype="text/calendar")
+
+
+@bp.post("/calendar/reset")
+@login_required
+def reset_calendar_token():
+    from ..auth import make_token
+    new_token = make_token(g.user.id)
+    return jsonify(ok=True, token=new_token)
 
 
 # =========================================================================

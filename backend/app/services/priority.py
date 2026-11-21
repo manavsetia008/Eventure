@@ -148,5 +148,8 @@ def suggest_for_exam(item, item_score, exam_label):
     if worth_it:
         reason = f"{item['title']} scores {item_score['score']} for you, so it may be worth keeping. Plan your {exam_label} prep around it."
         return {"action": "keep", "keep": item["id"], "skip": None, "keep_title": item["title"], "skip_title": None, "reason": reason}
-    reason = f"{item['title']} scores only {item_score['score']} for you and lands in your {exam_label}. Consider skipping it."
+    if item_score["score"]:
+        reason = f"{item['title']} scores only {item_score['score']} for you and lands in your {exam_label}. Consider skipping it."
+    else:
+        reason = f"{item['title']} lands in your {exam_label}. Consider skipping it."
     return {"action": "skip", "keep": None, "skip": item["id"], "keep_title": None, "skip_title": item["title"], "reason": reason}
