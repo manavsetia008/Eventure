@@ -43,11 +43,13 @@ FROM eventure_private.provisioning_secret
 WHERE id = true;
 ```
 
-Set the returned `app_secret` as Render's `SECRET_KEY`. Set `DATABASE_URL` to the following
-template, replacing only `<db_password>` with the returned value:
+Set the returned `app_secret` as Render's `SECRET_KEY`. In Supabase, click **Connect → Session pooler** and copy the hostname exactly as shown; the
+pooler cluster index is assigned by Supabase and must not be guessed. Set `DATABASE_URL` to the
+following template, replacing `<db_password>` and `<SESSION_POOLER_HOST_FROM_SUPABASE_CONNECT>`
+with the returned password and copied host:
 
 ```text
-postgresql://eventure_app.hgtojfxftzsaekukdpzf:<db_password>@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require
+postgresql://eventure_app.hgtojfxftzsaekukdpzf:<db_password>@<SESSION_POOLER_HOST_FROM_SUPABASE_CONNECT>:5432/postgres?sslmode=require
 ```
 
 Do not paste either returned value into chat or commit them to Git. After the Render service is
