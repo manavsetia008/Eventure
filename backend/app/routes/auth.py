@@ -60,15 +60,17 @@ def login():
         user = User(
             name="Demo Student",
             email="demo@eventure.app",
-            college="State Tech University",
+            college="Main Campus",
             college_lat=28.5459,
             college_lng=77.2732,
-            goals="hackathons, web development, open source",
+            goals="AI, Web Development, Design",
         )
         user.set_password("demo1234")
         db.session.add(user)
         db.session.commit()
 
+    if user and not user.has_password:
+        raise ApiError("This account uses Google sign-in.", 401)
     if not user or not user.check_password(password):
         if limited:
             LOGIN_LIMIT.hit(ip)
@@ -99,7 +101,7 @@ def update_me():
     if "college_lng" in d:
         u.college_lng = to_float(d["college_lng"])
     if "goals" in d:
-        u.goals = _goals(d["goals"])
+        u.goals = clean_goals(d["goals"])
     if "scoring_mode" in d:
         mode = (d["scoring_mode"] or "balanced").strip().lower()
         if mode in ("balanced", "interest_first", "deadline_first", "nearby_first"):
@@ -127,11 +129,12 @@ def update_me():
 @bp.delete("/me")
 @login_required
 def delete_account():
-    """Delete the account and everything tied to it. Needs the password."""
+    """Delete the account and everything tied to it. Password accounts confirm with the password;
+    Google-only accounts have none, so the JWT plus the typed confirmation is enough."""
     from ..services import google_calendar as gc
 
     d = request.get_json(silent=True) or {}
-    if not g.user.check_password(d.get("password") or ""):
+    if g.user.has_password and not g.user.check_password(d.get("password") or ""):
         raise ApiError("That password is not correct.", 403)
     uid = g.user.id
 

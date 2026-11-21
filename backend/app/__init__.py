@@ -30,14 +30,25 @@ def create_app(config_object=None):
     from .routes.auth import bp as auth_bp
     from .routes.discover import bp as discover_bp
     from .routes.google import bp as google_bp
+    from .routes.google_login import bp as google_login_bp
     from .routes.inbox import bp as inbox_bp
+    from .routes.integrations import bp as integrations_bp
     from .routes.organizer import bp as organizer_bp
     from .routes.push import bp as push_bp
     from .routes.social import bp as social_bp
     from .routes.timeline import bp as timeline_bp
 
-    for bp in (auth_bp, timeline_bp, discover_bp, social_bp, inbox_bp, google_bp, push_bp, organizer_bp):
+    for bp in (auth_bp, google_login_bp, timeline_bp, discover_bp, social_bp, inbox_bp, google_bp, push_bp, organizer_bp, integrations_bp):
         app.register_blueprint(bp)
+
+    # Startup environment check & graceful notice logging (Part 9)
+    if not app.config.get("SARVAM_API_KEY") or app.config.get("SARVAM_API_KEY") == "your_sarvam_api_key_here":
+        logging.info("[Notice] SARVAM_API_KEY is not set in backend/.env — Smart Extraction will use deterministic offline fallback.")
+    else:
+        logging.info("[OK] Sarvam AI Indic Intelligence configured.")
+
+    if not (app.config.get("GOOGLE_CLIENT_ID") and app.config.get("GOOGLE_CLIENT_SECRET")):
+        logging.info("[Notice] Google sign-in is not configured — the 'Continue with Google' button stays hidden.")
 
     try:  # optional: schema migrations (flask --app run db init / migrate / upgrade)
         from flask_migrate import Migrate
@@ -66,15 +77,41 @@ def create_app(config_object=None):
 
     @app.get("/api/health")
     def health():
-        return jsonify(status="ok")
+        google = bool(app.config.get("GOOGLE_CLIENT_ID") and app.config.get("GOOGLE_CLIENT_SECRET"))
+        sarvam = bool(app.config.get("SARVAM_API_KEY") and "your_" not in app.config.get("SARVAM_API_KEY", ""))
+        return jsonify(status="ok", googleAuth=google, sarvamAuth=sarvam)
 
     with app.app_context():
         from . import models  # noqa: F401  (registers tables)
         if app.config["AUTO_CREATE_DB"]:
             db.create_all()
+            _sync_columns()
 
     _start_scheduler(app)
     return app
+
+
+def _sync_columns():
+    """create_all() never alters existing tables, so columns added in later versions would be
+    missing on old databases. Add any missing nullable column with a plain ALTER TABLE."""
+    from sqlalchemy import inspect, text
+
+    from .extensions import db
+
+    inspector = inspect(db.engine)
+    dialect = db.engine.dialect
+    for table in db.metadata.sorted_tables:
+        if table.name not in inspector.get_table_names():
+            continue
+        existing = {c["name"] for c in inspector.get_columns(table.name)}
+        for col in table.columns:
+            if col.name in existing:
+                continue
+            if not col.nullable and col.default is None:
+                continue  # cannot backfill a required column on existing rows
+            coltype = col.type.compile(dialect=dialect)
+            db.session.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN "{col.name}" {coltype}'))
+    db.session.commit()
 
 
 def _serve_frontend(app):
