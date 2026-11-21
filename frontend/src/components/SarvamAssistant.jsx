@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Bot, Mic, MicOff, Send, Volume2, X, Sparkles, Navigation, Calendar, AlertTriangle } from "lucide-react";
+import { Bot, Mic, MicOff, Send, Volume2, X, Sparkles, Navigation, Calendar } from "lucide-react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 
@@ -25,6 +25,7 @@ export default function SarvamAssistant() {
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
   const audioRef = useRef(null);
+  const sendMessageRef = useRef(null);
 
   // Initialize Web Speech API for voice assistant if available
   useEffect(() => {
@@ -39,7 +40,7 @@ export default function SarvamAssistant() {
         const transcript = event.results[0][0].transcript;
         setInput(transcript);
         setIsListening(false);
-        sendMessage(transcript);
+        sendMessageRef.current?.(transcript);
       };
 
       recognition.onerror = () => {
@@ -138,6 +139,9 @@ export default function SarvamAssistant() {
       setBusy(false);
     }
   };
+
+  // Keep the recognizer pointed at the latest handler without rebuilding it on every render.
+  sendMessageRef.current = sendMessage;
 
   if (!user) return null;
 

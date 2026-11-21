@@ -27,7 +27,7 @@ stage, spot schedule and exam-week clashes, and decide what to keep.
 | Layer | Choice |
 |---|---|
 | Backend | Flask 3, SQLAlchemy, PyJWT, APScheduler |
-| Database | SQLite by default (`backend/eventure.db`); PostgreSQL optional |
+| Database | Supabase Postgres in production; SQLite for local development |
 | Frontend | React 18 + Vite 5, react-router-dom |
 | Styling | Plain CSS with a single set of CSS variables (`frontend/src/styles.css`) |
 | Icons / Map | lucide-react, Leaflet |
@@ -81,8 +81,9 @@ python seed.py --reset            # load demo data
 python run.py                     # http://localhost:5000
 ```
 
-The app starts with **no API keys**. Extraction, clash detection, travel time and the calendar feed
-all work offline; any key that is missing simply switches that one feature to a built-in fallback.
+The app starts with **no third-party API keys** in local development. Extraction, clash detection,
+travel estimates and the calendar feed have offline/free fallbacks. Production should use Supabase
+Postgres via `DATABASE_URL`; SQLite remains the zero-setup local-development default.
 
 ### 2. Frontend
 
@@ -106,12 +107,15 @@ clash, an exam-week clash, tracked portals, inbox items, clubs and notifications
 
 ## Environment variables
 
-Copy `backend/.env.example` to `backend/.env` and fill in only what you need. **Everything is optional.**
+Copy `backend/.env.example` to `backend/.env` and fill in only what you need. Third-party
+integrations are optional; production requires `APP_ENV=production`, a unique `SECRET_KEY`, and
+a Supabase Postgres `DATABASE_URL`. Use Supabase's Transaction pooler URL with `sslmode=require`
+when deploying on Render.
 
 | Variable | Used for | Where to get it | Cost |
 |---|---|---|---|
 | `SECRET_KEY` | Signs auth tokens (required in production) | Any long random string | Free |
-| `DATABASE_URL` | Database connection (default: SQLite) | Your Postgres URL, or leave blank | Free / paid |
+| `DATABASE_URL` | Production database | Supabase Postgres Transaction pooler URL; leave blank for local SQLite | Free / paid |
 | `CORS_ORIGINS` | Allowed frontend origins (default `http://localhost:5173`) | — | Free |
 | `TIMEZONE` | Calendar and push times (default `Asia/Kolkata`) | — | Free |
 | `FRONTEND_URL` | Redirect target after Google OAuth | — | Free |
@@ -180,7 +184,7 @@ expect a `Bearer <token>` from `POST /api/auth/login`.
 | Push | `/api/push` | `GET /key`, `POST /subscribe`, `POST /unsubscribe` |
 | Integrations | `/api/integrations` | `GET /status`, `POST /test/:service` |
 
-Health check: `GET /api/health` → `{"status": "ok"}`.
+Health check: `GET /api/health` verifies the database connection and returns `database: true` only when it is reachable.
 
 ---
 
@@ -188,7 +192,7 @@ Health check: `GET /api/health` → `{"status": "ok"}`.
 
 ```powershell
 cd backend
-python -m pytest tests -q          # 92 tests
+python -m unittest discover -s tests -v
 
 cd ..\frontend
 npm test                           # 18 tests
@@ -209,14 +213,14 @@ can run on a single service.
 **Build step:** `cd frontend && npm install && npm run build`
 
 **Render / Railway / any VM**
-- Start command: `cd backend && python run.py` (or `gunicorn "app:create_app()"`).
+- Use the repository-root Dockerfile. It builds the React frontend and runs Flask under Gunicorn; do not use Flask's debug server in production.
 - Set the env vars from the table above. `SECRET_KEY` is required in production; set `TRUST_PROXY=1` behind a proxy.
-- Point `DATABASE_URL` at a managed Postgres instance for persistence (otherwise SQLite keeps a local file).
-- Optional one-time setup: `python seed.py --reset`.
+- Set `APP_ENV=production`, a unique `SECRET_KEY`, and point `DATABASE_URL` at Supabase Postgres (Transaction pooler, `sslmode=require`). Production startup refuses to use SQLite or a weak/missing secret.
+- The application creates its schema on first production boot. Do not run the demo seed script with `--reset` against a production database.
 
 **Vercel (frontend) + Render/Railway (backend)**
-- Deploy `frontend` to Vercel with build command `npm run build` and output directory `dist`, and set `VITE_API_URL` to your backend URL plus `/api`.
-- Deploy `backend` as above, then set `CORS_ORIGINS` and `FRONTEND_URL` to the Vercel URL.
+- Connect the GitHub repository to Vercel with project root `frontend`, framework Vite, build command `npm run build`, and output directory `dist`. The existing `frontend/vercel.json` rewrites API and Google callback requests to the Render backend, so leave `VITE_API_URL` unset unless you intentionally switch to direct cross-origin API requests.
+- Deploy the backend from the repository-root Dockerfile on Render. Set `CORS_ORIGINS`, `FRONTEND_URL`, and `APP_BASE_URL` to the production Vercel origin.
 
 **Docker**
 

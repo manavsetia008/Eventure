@@ -1,5 +1,5 @@
-import React, { useState, useRef } from "react";
-import { Search, Upload, CheckCircle2, AlertCircle, ArrowRight, X, Calendar, MapPin, Tag } from "lucide-react";
+import { useState, useRef } from "react";
+import { Search, Upload, CheckCircle2, ArrowRight, X, Calendar, MapPin } from "lucide-react";
 import { api } from "../api";
 import Badge from "./Badge";
 
@@ -70,13 +70,29 @@ export default function PortalSearchModal({ isOpen, onClose, onEventAdded }) {
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card portal-search-modal" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="modal-backdrop"
+      role="presentation"
+      tabIndex={-1}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
+    >
+      <div
+        className="modal-card portal-search-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="portal-search-title"
+        tabIndex={-1}
+      >
         <div className="modal-header">
           <div>
-            <h3>Search Top Portals (&gt;70% Match Engine)</h3>
+            <h3 id="portal-search-title">Search Top Portals (&gt;70% Match Engine)</h3>
             <p className="muted small">
-              Searches Unstop, Devfolio, Hack2skill, and Luma. Matches &gt;70% auto-sync with your live calendar.
+              Searches Eventure&apos;s maintained portal index. Similarity scores are not verification; confirm details on the organiser&apos;s official page.
             </p>
           </div>
           <button className="btn-icon-subtle" onClick={onClose} aria-label="Close modal">

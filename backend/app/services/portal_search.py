@@ -9,7 +9,7 @@ import difflib
 import re
 from datetime import datetime, timedelta
 
-# Curated index of premier verified portal events (frequently fetched/updated from Unstop, Devfolio, Luma)
+# Small maintained seed catalogue. Entries are not live-verified; confirm details with organisers.
 PORTAL_CATALOG = [
     {
         "id": "unstop-flipkart-grid-6",
@@ -163,7 +163,7 @@ def compute_match_score(query: str, portal_item: dict) -> float:
 
 
 def search_portal_catalog(query: str, min_score: float = 30.0) -> list:
-    """Searches top portal index and returns candidate matches ordered by score."""
+    """Searches Eventure's maintained catalogue and returns candidates ordered by text similarity."""
     candidates = []
     for item in PORTAL_CATALOG:
         score = compute_match_score(query, item)

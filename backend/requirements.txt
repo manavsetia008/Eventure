@@ -10,5 +10,5 @@ pywebpush>=2.0
 tzdata>=2024.1
 Pillow>=10.0
 pytesseract>=0.3.10
-# Only needed when DATABASE_URL points to PostgreSQL:
-# psycopg2-binary>=2.9
+# PostgreSQL driver for managed databases such as Supabase.
+psycopg2-binary>=2.9,<3

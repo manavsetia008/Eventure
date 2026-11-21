@@ -1,14 +1,12 @@
-"""Real-Time Hackathon Suggestion & Search Intelligence Engine.
+"""Hackathon suggestion engine backed by public web search and a curated seed catalogue.
 
-Reads user profile data (interests, skills, campus location, and experience)
-and discovers real-time hackathons matching their profile using Google Custom
-Search API or free live web search (DuckDuckGo & top portal indexes: Unstop, Devfolio, Hack2skill, Devpost).
+Search snippets are not authoritative event records. Missing schedules and deadlines
+remain unset until confirmed from an organiser's official listing.
 """
 import logging
 import os
 import re
 import urllib.parse
-from datetime import datetime, timedelta
 import requests
 
 from .portal_search import PORTAL_CATALOG
@@ -61,8 +59,11 @@ def search_google_hackathons(query: str, api_key: str, cx: str) -> list:
                     "venue_name": "Online / Regional",
                     "description": snippet,
                     "url": link,
-                    "start_at": (datetime.now() + timedelta(days=14)).isoformat(),
-                    "registration_deadline": (datetime.now() + timedelta(days=7)).isoformat(),
+                    # Search snippets rarely contain structured schedule fields. Never invent
+                    # a start date or deadline; the student can confirm them on the official page.
+                    "start_at": None,
+                    "end_at": None,
+                    "registration_deadline": None,
                     "source": "google_search",
                 })
             return results
@@ -116,8 +117,11 @@ def search_free_web_hackathons(query: str) -> list:
                 "venue_name": "Online / Regional",
                 "description": f"Live web announcement: {clean_title}",
                 "url": actual_url,
-                "start_at": (datetime.now() + timedelta(days=14)).isoformat(),
-                "registration_deadline": (datetime.now() + timedelta(days=7)).isoformat(),
+                # Search snippets rarely contain structured schedule fields. Never invent
+                # a start date or deadline; the student can confirm them on the official page.
+                "start_at": None,
+                "end_at": None,
+                "registration_deadline": None,
                 "source": "free_web_search",
             })
         return results
@@ -127,7 +131,7 @@ def search_free_web_hackathons(query: str) -> list:
 
 
 def suggest_hackathons_for_user(user, config: dict = None) -> list:
-    """Generates personalized, real-time hackathon suggestions for a student."""
+    """Generates personalized suggestions from web search plus a curated seed catalogue."""
     config = config or {}
     user_goals = user.goals_list if hasattr(user, "goals_list") else (user.get("goals") or [])
     user_tokens = set()
@@ -152,9 +156,9 @@ def suggest_hackathons_for_user(user, config: dict = None) -> list:
         web_results = search_free_web_hackathons(search_query)
         pool.extend(web_results)
 
-    # 2. Add verified curated portal index events
+    # 2. Add the maintained seed catalogue. These are candidates, not live-verified listings.
     for cat_item in PORTAL_CATALOG:
-        pool.append({**cat_item, "source": "verified_portal_catalog"})
+        pool.append({**cat_item, "source": "curated_portal_catalog"})
 
     # 3. Compute personalized match score for each candidate
     scored_candidates = []

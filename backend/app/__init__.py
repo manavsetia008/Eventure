@@ -16,6 +16,15 @@ def create_app(config_object=None):
 
     app = Flask(__name__)
     app.config.from_object(config_object or Config)
+
+    # Production must never silently run with the development signing key or a local SQLite
+    # database. Supabase Postgres is supplied through DATABASE_URL at the hosting provider.
+    if app.config.get("APP_ENV") == "production":
+        secret = app.config.get("SECRET_KEY") or ""
+        if len(secret) < 32:
+            raise RuntimeError("Production requires a random SECRET_KEY of at least 32 characters.")
+        if str(app.config.get("SQLALCHEMY_DATABASE_URI", "")).startswith("sqlite:"):
+            raise RuntimeError("Production requires DATABASE_URL pointing to the managed Postgres database.")
     if os.getenv("TRUST_PROXY") == "1":  # behind nginx, Render, Railway, etc.
         from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -24,6 +33,8 @@ def create_app(config_object=None):
         logging.warning("Using the default SECRET_KEY. Set SECRET_KEY in backend/.env before deploying.")
 
     origins = [o.strip() for o in app.config["CORS_ORIGINS"].split(",") if o.strip()]
+    if app.config.get("APP_ENV") == "production" and "*" in origins:
+        raise RuntimeError("Production CORS_ORIGINS must list trusted origins, not '*'.")
     CORS(app, resources={r"/api/*": {"origins": origins}})
     db.init_app(app)
 
@@ -100,16 +111,25 @@ def create_app(config_object=None):
 
     @app.get("/api/health")
     def health():
+        from sqlalchemy import text
+
+        try:
+            db.session.execute(text("SELECT 1"))
+        except Exception:
+            app.logger.exception("Database health check failed.")
+            db.session.rollback()
+            return jsonify(status="unavailable", database=False), 503
         google = bool(app.config.get("GOOGLE_CLIENT_ID") and app.config.get("GOOGLE_CLIENT_SECRET"))
         sarvam = bool(app.config.get("SARVAM_API_KEY") and "your_" not in app.config.get("SARVAM_API_KEY", ""))
         gemini = bool(app.config.get("GEMINI_API_KEY") and "your_" not in app.config.get("GEMINI_API_KEY", ""))
-        return jsonify(status="ok", googleAuth=google, sarvamAuth=sarvam, geminiAuth=gemini)
+        return jsonify(status="ok", database=True, googleAuth=google, sarvamAuth=sarvam, geminiAuth=gemini)
 
     with app.app_context():
         from . import models  # noqa: F401  (registers tables)
         if app.config["AUTO_CREATE_DB"]:
             db.create_all()
             _sync_columns()
+            _enable_postgres_rls()
 
     _start_scheduler(app)
     return app
@@ -135,6 +155,31 @@ def _sync_columns():
                 continue  # cannot backfill a required column on existing rows
             coltype = col.type.compile(dialect=dialect)
             db.session.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN "{col.name}" {coltype}'))
+    db.session.commit()
+
+
+def _enable_postgres_rls():
+    """Enable RLS on Eventure tables when using Postgres/Supabase.
+
+    The Flask API connects with the database owner credential and applies its own
+    per-user authorization. Enabling RLS ensures anon/authenticated Data API roles
+    cannot read or mutate these tables unless explicit policies are later added.
+    SQLite development databases are left unchanged.
+    """
+    from sqlalchemy import inspect, text
+
+    from .extensions import db
+
+    if db.engine.dialect.name != "postgresql":
+        return
+
+    inspector = inspect(db.engine)
+    existing = set(inspector.get_table_names(schema="public"))
+    quote = db.engine.dialect.identifier_preparer.quote
+    for table in db.metadata.sorted_tables:
+        if table.name in existing:
+            table_name = quote(table.name)
+            db.session.execute(text(f"ALTER TABLE public.{table_name} ENABLE ROW LEVEL SECURITY"))
     db.session.commit()
 
 

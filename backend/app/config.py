@@ -14,9 +14,15 @@ def _database_url():
 
 
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "eventure-dev-secret-key-32-bytes-minimum-length-phrase!")
+    APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
+    # A predictable development-only key keeps local setup friction low. Production refuses
+    # to boot unless a strong SECRET_KEY is supplied by the hosting environment.
+    SECRET_KEY = os.getenv("SECRET_KEY") or (
+        "" if APP_ENV == "production" else "eventure-local-development-key-do-not-deploy"
+    )
     SQLALCHEMY_DATABASE_URI = _database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True, "pool_recycle": 300}
     JWT_EXPIRY_HOURS = int(os.getenv("JWT_EXPIRY_HOURS", "72"))
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173")
     MAX_CONTENT_LENGTH = int(os.getenv("UPLOAD_MAX_MB", "8")) * 1024 * 1024

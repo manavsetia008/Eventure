@@ -33,8 +33,9 @@ def register():
         raise ApiError("Passwords do not match.")
     if User.query.filter_by(email=email).first():
         raise ApiError("An account with this email already exists. Sign in instead.", 409)
+    # Public registration may create student or organizer accounts, never administrators.
     role = (d.get("role") or "student").strip().lower()
-    if role not in ("student", "organizer", "admin"):
+    if role not in ("student", "organizer"):
         role = "student"
     primary_language = (d.get("primary_language") or "en").strip()
     user = User(
@@ -123,10 +124,8 @@ def update_me():
             pass
     if "use_maybe_range" in d:
         u.use_maybe_range = bool(d["use_maybe_range"])
-    if "role" in d:
-        role = (d["role"] or "").strip().lower()
-        if role in ("student", "organizer", "admin"):
-            u.role = role
+    # Role changes must be handled by a trusted administrative workflow, not self-service.
+    # In particular, a user must never be able to promote their own account to admin.
     if "primary_language" in d:
         lang = (d["primary_language"] or "").strip()
         if lang:

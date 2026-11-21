@@ -76,6 +76,23 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(ok.status_code, 200)
         self.assertEqual(self.client.get("/api/timeline").status_code, 401)
 
+    def test_public_registration_cannot_grant_admin_role(self):
+        response = self.client.post("/api/auth/register", json={
+            "name": "Untrusted User",
+            "email": "role-check@example.com",
+            "password": "secret1",
+            "role": "admin",
+        })
+        self.assertEqual(response.status_code, 201)
+        headers = {"Authorization": "Bearer " + response.get_json()["token"]}
+        user = self.client.get("/api/auth/me", headers=headers).get_json()["user"]
+        self.assertEqual(user["role"], "student")
+
+        # Role changes are not accepted through the self-service profile endpoint.
+        self.client.put("/api/auth/me", json={"role": "admin"}, headers=headers)
+        updated = self.client.get("/api/auth/me", headers=headers).get_json()["user"]
+        self.assertEqual(updated["role"], "student")
+
     def test_deadline_risk_on_timeline(self):
         h = self.user()
         self.add_event(h, "Hackathon X", day_at(3, 10), day_at(3, 18),
