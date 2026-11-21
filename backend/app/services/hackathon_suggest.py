@@ -131,8 +131,7 @@ def search_free_web_hackathons(query: str) -> list:
 
 
 def suggest_hackathons_for_user(user, config: dict = None) -> list:
-    """Rank live public listings against the student's goals and campus."""
-    config = config or {}
+    """Rank imported public listings against the student's goals and campus."""
     user_goals = user.goals_list if hasattr(user, "goals_list") else (user.get("goals") or [])
     college_name = user.college if hasattr(user, "college") else (user.get("college") or "")
 
@@ -141,20 +140,12 @@ def suggest_hackathons_for_user(user, config: dict = None) -> list:
         user_tokens.update(_clean_query_words(goal))
     user_tokens.update(_clean_query_words(college_name))
 
-    pool = []
-    # These providers expose public browse pages; no paid search key is needed.
     try:
         from .discover_feed import fetch_public_listings
-        pool.extend(fetch_public_listings())
+        pool = fetch_public_listings()
     except Exception as exc:
         logging.warning("Live hackathon feed unavailable for suggestions: %s", exc)
-
-    # Optional Google Custom Search fallback when the owner has configured a CSE key.
-    search_key = config.get("GOOGLE_SEARCH_API_KEY") or os.getenv("GOOGLE_SEARCH_API_KEY", "")
-    search_cx = config.get("GOOGLE_SEARCH_CX") or os.getenv("GOOGLE_SEARCH_CX", "")
-    if not pool and search_key and search_cx:
-        search_query = " ".join(sorted(user_tokens)[:4]) or "software engineering"
-        pool.extend(search_google_hackathons(search_query, search_key, search_cx))
+        pool = []
 
     scored = []
     seen_urls = set()
@@ -174,7 +165,7 @@ def suggest_hackathons_for_user(user, config: dict = None) -> list:
         platform = item.get("platform") or "Public listing"
         reason = (
             f"Matches your interests in {', '.join(matched[:3])}."
-            if matched else f"Currently listed on {platform}. Check the organiser page for the latest details."
+            if matched else f"Listed on {platform}. Confirm current dates and eligibility on the organiser's page."
         )
         scored.append({
             **item,
