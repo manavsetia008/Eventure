@@ -1,5 +1,9 @@
 import unittest
+from datetime import datetime
+from types import SimpleNamespace
+from unittest.mock import patch
 
+from app.services.hackathon_suggest import suggest_hackathons_for_user
 from app.services.discover_feed import (
     _AnchorParser,
     _devfolio_card_context,
@@ -54,6 +58,40 @@ class PublicDiscoverFeedTests(unittest.TestCase):
         self.assertEqual(status, "ended")
         self.assertIsNone(date)
         self.assertEqual(venue, "Offline venue to be confirmed")
+
+    def test_suggestion_ranking_accepts_published_datetimes_and_missing_dates(self):
+        user = SimpleNamespace(goals_list=["AI", "Python"], college="Delhi")
+        listings = [
+            {
+                "title": "AI Buildathon",
+                "platform": "Devfolio",
+                "url": "https://ai-buildathon.devfolio.co",
+                "start_at": datetime(2026, 12, 10, 10, 0),
+                "description": "Build with AI and Python",
+            },
+            {
+                "title": "Python Weekend Hack",
+                "platform": "Unstop",
+                "url": "https://unstop.com/hackathons/python-weekend",
+                "start_at": None,
+                "description": "Python coding competition",
+            },
+        ]
+        with patch("app.services.discover_feed.fetch_public_listings", return_value=listings):
+            suggestions = suggest_hackathons_for_user(user, {})
+        self.assertEqual(len(suggestions), 2)
+        self.assertIsInstance(suggestions[0]["start_at"], datetime)
+        self.assertIsNone(suggestions[1]["start_at"])
+
+    def test_unverified_candidates_are_available_when_live_sources_are_empty(self):
+        user = SimpleNamespace(goals_list=["AI", "software"], college="Delhi")
+        with patch("app.services.discover_feed.fetch_public_listings", return_value=[]):
+            suggestions = suggest_hackathons_for_user(user, {})
+        self.assertGreater(len(suggestions), 0)
+        self.assertEqual(suggestions[0]["source"], "curated_unverified")
+        self.assertIsNone(suggestions[0]["start_at"])
+        self.assertIsNone(suggestions[0]["registration_deadline"])
+        self.assertIn("verify", suggestions[0]["reason"].lower())
 
 
 if __name__ == "__main__":
