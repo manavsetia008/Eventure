@@ -3,11 +3,11 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://eventure-gdx5.onrender.com/api/$1"
+      "destination": "https://eventure-api-lxs5.onrender.com/api/$1"
     },
     {
       "source": "/auth/(.*)",
-      "destination": "https://eventure-gdx5.onrender.com/auth/$1"
+      "destination": "https://eventure-api-lxs5.onrender.com/auth/$1"
     },
     {
       "source": "/(.*)",
