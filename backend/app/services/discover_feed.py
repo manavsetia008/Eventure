@@ -6,11 +6,13 @@ This is best-effort discovery, not a guarantee that registration remains open.
 """
 import html
 import logging
+import os
 import re
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from html.parser import HTMLParser
+from zoneinfo import ZoneInfo
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -44,14 +46,28 @@ def _pick(item, *keys):
     return None
 
 
+def _listing_timezone():
+    try:
+        return ZoneInfo(os.getenv("TIMEZONE", "Asia/Kolkata"))
+    except Exception:
+        return timezone.utc
+
+
+def _to_listing_local(parsed):
+    if parsed.tzinfo is None:
+        return parsed
+    return parsed.astimezone(_listing_timezone()).replace(tzinfo=None)
+
+
 def _parse_datetime(value):
-    if not value:
+    if value is None or value == "":
         return None
     if isinstance(value, (int, float)):
-        # Public listing APIs sometimes return epoch seconds or milliseconds.
+        # Public APIs use epoch seconds or milliseconds; convert to the app's
+        # configured local timezone rather than the container's timezone.
         numeric = value / 1000 if value > 10_000_000_000 else value
         try:
-            return datetime.fromtimestamp(numeric)
+            return datetime.fromtimestamp(numeric, tz=timezone.utc).astimezone(_listing_timezone()).replace(tzinfo=None)
         except (OverflowError, OSError, ValueError):
             return None
     raw = str(value).strip()
@@ -59,7 +75,7 @@ def _parse_datetime(value):
         return None
     try:
         parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-        return parsed.replace(tzinfo=None)
+        return _to_listing_local(parsed)
     except ValueError:
         pass
     for pattern in ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d %b %Y", "%d %B %Y"):
