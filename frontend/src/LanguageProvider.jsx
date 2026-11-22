@@ -83,6 +83,7 @@ export function LanguageProvider({ children }) {
 
   const setLanguage = useCallback(async (nextLanguage) => {
     if (!SUPPORTED_LANGUAGES.some((item) => item.code === nextLanguage)) return;
+    failedLanguages.current.delete(nextLanguage);
     setLanguageState(nextLanguage);
     localStorage.setItem(STORAGE_KEY, nextLanguage);
     setLanguageStatus(nextLanguage === DEFAULT_LANGUAGE ? "" : "Changing language…");
@@ -101,7 +102,6 @@ export function LanguageProvider({ children }) {
   // in memory so changing language never translates a previous translation.
   useEffect(() => {
     const currentLanguage = language;
-    const generation = Symbol(currentLanguage);
     const pending = [];
     let timer = null;
     let cancelled = false;
@@ -239,7 +239,7 @@ export function LanguageProvider({ children }) {
     };
 
     const processElement = (element) => {
-      if (!element || element.nodeType !== Node.ELEMENT_NODE || shouldSkip(element)) return;
+      if (!element || element.nodeType !== Node.ELEMENT_NODE || shouldSkipAttributeTranslation(element)) return;
       let records = attrRecords.get(element);
       if (!records) {
         records = new Map();
