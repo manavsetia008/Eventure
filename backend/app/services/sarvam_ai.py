@@ -148,7 +148,7 @@ def extract_event_with_sarvam(text: str, api_key: str, model: str = "sarvam-105b
 
 def translate_many_with_sarvam(
     texts: list, target_lang: str, api_key: str, source_lang: str = "en-IN",
-    model: str = "sarvam-translate:v1",
+    model: str = "sarvam-translate:v1", strict: bool = False,
 ) -> list:
     """Translate a batch of UI strings while preserving their original order.
 
@@ -183,7 +183,7 @@ def translate_many_with_sarvam(
 
         combined = "\n".join(f"{marker} {value}" for _, marker, value in group)
         translated = translate_with_sarvam(
-            combined, target_code, api_key, source_lang=source_lang, model=model
+            combined, target_code, api_key, source_lang=source_lang, model=model, strict=strict
         )
 
         positions = [(translated.find(marker), marker, index) for index, marker, _ in group]
@@ -199,13 +199,13 @@ def translate_many_with_sarvam(
             # string per request for this small chunk to avoid cross-label mixups.
             for index, _, value in group:
                 results[index] = translate_with_sarvam(
-                    value, target_code, api_key, source_lang=source_lang, model=model
+                    value, target_code, api_key, source_lang=source_lang, model=model, strict=strict
                 )
 
     return results
 
 
-def translate_with_sarvam(text: str, target_lang: str, api_key: str, source_lang: str = "en-IN", model: str = "sarvam-translate:v1") -> str:
+def translate_with_sarvam(text: str, target_lang: str, api_key: str, source_lang: str = "en-IN", model: str = "sarvam-translate:v1", strict: bool = False) -> str:
     """Translate text using Sarvam Translate API (supports 22 Indic languages).
     
     Supports language codes like 'hi', 'hi-IN', 'bn', 'ta', 'te', 'mr', etc.
@@ -213,6 +213,8 @@ def translate_with_sarvam(text: str, target_lang: str, api_key: str, source_lang
     if not text or not text.strip():
         return ""
     if not api_key:
+        if strict:
+            raise ValueError("SARVAM_API_KEY is not configured.")
         return text
 
     target_code = INDIC_LANG_MAP.get(target_lang, target_lang)
@@ -236,9 +238,14 @@ def translate_with_sarvam(text: str, target_lang: str, api_key: str, source_lang
         resp = requests.post(f"{SARVAM_BASE_URL}/translate", headers=headers, json=payload, timeout=20)
         resp.raise_for_status()
         data = resp.json()
-        return data.get("translated_text", text)
+        translated = data.get("translated_text")
+        if not isinstance(translated, str) or not translated.strip():
+            raise ValueError("Sarvam Translate returned an empty translation.")
+        return translated
     except Exception as exc:
-        logging.warning("Sarvam translation failed (%s), returning original text.", exc)
+        logging.warning("Sarvam translation failed (%s).", exc)
+        if strict:
+            raise RuntimeError("Sarvam Translate request failed.") from exc
         return text
 
 
