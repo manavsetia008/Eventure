@@ -219,9 +219,17 @@ class _AnchorParser(HTMLParser):
 
 
 def _devfolio_card_context(source, start, end):
-    # The explore page is server-rendered. Read forward from this card's link so
-    # the status is taken from this listing, not the previous card's status.
-    raw = source[start:min(len(source), end + 2200)]
+    # Bound card parsing at the next event microsite link. The Explore page
+    # contains several links per card, so ignore generic CTAs and stop only at
+    # the next *.devfolio.co event URL.
+    limit = min(len(source), end + 2200)
+    for match in re.finditer(r'<a\\b[^>]*href=["\\']([^"\\']+)["\\']', source[end:limit], re.IGNORECASE):
+        candidate_url = _valid_http_url(match.group(1), _DEVFOLIO_URL)
+        host = (urlparse(candidate_url).hostname or "").lower()
+        if host.endswith(".devfolio.co"):
+            limit = end + match.start()
+            break
+    raw = source[start:limit]
     visible = _text(raw)
     # The title itself can contain words like "Past". Prefer an explicit
     # terminal status if present, otherwise accept the first open/upcoming marker.
