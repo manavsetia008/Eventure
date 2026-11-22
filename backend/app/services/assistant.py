@@ -127,7 +127,7 @@ def process_assistant_message(user: User, message: str, config: dict, screen: st
                 f"The student's interests are {user.goals or 'hackathons, coding'}. "
                 "Be helpful, enthusiastic, and concise (2-3 sentences max). Recommend relevant hackathon preparation tips or campus guidance."
             )
-            llm_reply = generate_with_gemini(msg, gemini_key, system_prompt, model=config.get("GEMINI_MODEL", "gemini-2.0-flash"))
+            llm_reply = generate_with_gemini(msg, gemini_key, system_prompt, model=config.get("GEMINI_MODEL", "gemini-3.8-flash"))
             if llm_reply:
                 return _format_response(llm_reply, None, user.primary_language, config, suggested_chips)
         except Exception as exc:
