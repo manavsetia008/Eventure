@@ -399,6 +399,43 @@ class ApiTests(unittest.TestCase):
         del_res = self.client.delete(f"/api/portals/{portal_id}", headers=h)
         self.assertEqual(del_res.status_code, 200)
 
+    def test_public_translate_and_tts_endpoints_require_authentication(self):
+        self.assertEqual(self.client.post("/api/translate", json={"text": "Hello"}).status_code, 401)
+        self.assertEqual(self.client.post("/api/tts", json={"text": "Hello"}).status_code, 401)
+
+    def test_portal_match_auto_add_joins_existing_public_event_without_duplicate(self):
+        owner = self.user("portal-owner@example.com")
+        student = self.user("portal-student@example.com")
+        event = self.add_event(
+            owner, "Campus AI Buildathon", day_at(7, 10), day_at(7, 18),
+            is_public=True, url="https://unstop.com/hackathons/campus-ai-buildathon",
+        )["event"]
+        candidate = {
+            "title": event["title"],
+            "platform": "Unstop",
+            "category": "hackathon",
+            "venue_name": event["venue_name"],
+            "url": event["url"],
+            "description": event["description"],
+            "start_at": datetime.fromisoformat(event["start_at"]),
+            "match_score": 92.0,
+        }
+        with patch("app.services.discover_feed.sync_public_listings"), \
+             patch("app.routes.assistant.search_portal_catalog", return_value=[candidate]):
+            response = self.client.post(
+                "/api/search-match",
+                data={"text": "Campus AI Buildathon", "auto_add": "true"},
+                headers=student,
+            )
+        self.assertEqual(response.status_code, 200, response.get_json())
+        body = response.get_json()
+        self.assertTrue(body["auto_added"])
+        self.assertEqual(body["best_match"]["event_id"], event["id"])
+        self.assertIsNotNone(body["added_user_event_id"])
+        with self.app.app_context():
+            from app.models import UserEvent
+            self.assertEqual(UserEvent.query.filter_by(event_id=event["id"]).count(), 2)
+
 
 def _google_config(**overrides):
     from app.config import Config
