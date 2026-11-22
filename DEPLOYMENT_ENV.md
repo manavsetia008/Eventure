@@ -63,9 +63,8 @@ client-side data access design.
 
 Optional integrations (only add when you have configured the provider):
 
-- `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-2.5-flash` — AI assistant and enhanced event parsing.
-- `SARVAM_API_KEY`, `SARVAM_MODEL`, `SARVAM_TRANSLATE_MODEL`, `SARVAM_TTS_MODEL` — Indic extraction,
-  translation, and speech. The service has provider-specific free credits/limits.
+- `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-3.8-flash` — AI assistant and Hackathon Vault submission reviews. Create a key in [Google AI Studio](https://aistudio.google.com/apikey).
+- `SARVAM_API_KEY`, `SARVAM_MODEL=sarvam-105b-conversations`, `SARVAM_TRANSLATE_MODEL=sarvam-translate:v1`, `SARVAM_TTS_MODEL=bulbul:v3` — Indic event extraction, translation, and voice. Create a key in the [Sarvam Dashboard](https://dashboard.sarvam.ai); verified sign-ups currently receive limited free credits, with paid credits needed after they are used.
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` — Google sign-in and Calendar.
   Set the callback URL to `<your-public-domain>/api/google/callback` for Calendar and
   `<your-public-domain>/auth/google/callback` for Google sign-in.
@@ -79,6 +78,28 @@ Do not enable aggressive geocoding or tile scraping; respect the public OSM serv
 
 Set Render's health check path to `/api/health`. It verifies the database connection, not just
 that the web process is alive.
+
+
+### Add the Gemini and Sarvam keys
+
+Create your own keys, then open **Render → eventure-api → Environment**:
+
+1. In [Google AI Studio API keys](https://aistudio.google.com/apikey), choose **Create API key** and copy it.
+2. In the [Sarvam Dashboard](https://dashboard.sarvam.ai), open **API Keys**, create a key, and copy it immediately. Sarvam displays a new key only once.
+3. In the Render Environment page, add these variables (the API keys are secret values):
+
+| Key | Value |
+| --- | --- |
+| `GEMINI_API_KEY` | Your Google AI Studio key |
+| `GEMINI_MODEL` | `gemini-3.8-flash` |
+| `SARVAM_API_KEY` | Your Sarvam API subscription key |
+| `SARVAM_MODEL` | `sarvam-105b-conversations` |
+| `SARVAM_TRANSLATE_MODEL` | `sarvam-translate:v1` |
+| `SARVAM_TTS_MODEL` | `bulbul:v3` |
+
+Click **Save Changes**. Render will restart the backend. Do not paste either key into GitHub, Vercel frontend variables, source files, or chat. They belong only in Render's server-side environment. Free usage and credits depend on the provider's current tier, model, and account.
+
+After redeployment, open Eventure → Settings → **AI providers** and press **Test Gemini** and **Test Sarvam**. That card reports whether the key exists on the server and tests each provider with a short request.
 
 ## Vercel — frontend
 
