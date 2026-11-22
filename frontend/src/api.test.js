@@ -92,4 +92,32 @@ describe("Frontend API client", () => {
     await api.upload("/extract", fakeForm);
     expect(capturedBody).toBe(fakeForm);
   });
+  it("explains when the local Flask API is not running behind the Vite proxy", async () => {
+    vi.stubGlobal("window", {
+      location: { origin: "http://localhost:5173", hostname: "localhost" },
+      dispatchEvent: vi.fn(),
+    });
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: false,
+      status: 502,
+      json: async () => { throw new Error("Unexpected token <"); },
+    })));
+
+    await expect(api.get("/auth/me")).rejects.toThrow(
+      'Local API request failed (HTTP 502). Start the Flask backend on port 5000 (run "python run.py" from the backend folder), then retry.'
+    );
+  });
+
+  it("uses the backend's JSON error message when one is available", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: "Invalid preference value" }),
+    })));
+
+    await expect(api.patch("/auth/me", { threshold_keep: 55 })).rejects.toThrow(
+      "Invalid preference value"
+    );
+  });
+
 });
