@@ -144,7 +144,7 @@ Keep output punchy, well-formatted markdown.
         }
 
     return {
-        "source": os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+        "source": os.getenv("GEMINI_MODEL", "gemini-3.8-flash"),
         "readiness_score": 85,
         "markdown": review_text,
     }
