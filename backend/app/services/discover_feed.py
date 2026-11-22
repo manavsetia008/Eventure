@@ -223,7 +223,7 @@ def _devfolio_card_context(source, start, end):
     # contains several links per card, so ignore generic CTAs and stop only at
     # the next *.devfolio.co event URL.
     limit = min(len(source), end + 2200)
-    for match in re.finditer(r'<a\\b[^>]*href=["\\']([^"\\']+)["\\']', source[end:limit], re.IGNORECASE):
+    for match in re.finditer(r"<a\b[^>]*href=['\x22]([^'\x22]+)['\x22]", source[end:limit], re.IGNORECASE):
         candidate_url = _valid_http_url(match.group(1), _DEVFOLIO_URL)
         host = (urlparse(candidate_url).hostname or "").lower()
         if host.endswith(".devfolio.co"):
