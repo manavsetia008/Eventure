@@ -10,7 +10,10 @@ from ..services.ocr import image_to_text
 from ..services.portal_search import compute_match_score, search_portal_catalog
 from ..services.sarvam_ai import ocr_with_sarvam, translate_many_with_sarvam
 from ..languages import SUPPORTED_LANGUAGE_CODES
+
+UI_TRANSLATE_LIMIT = Limiter(180, 60)
 from ..utils import ApiError, now, parse_dt
+from ..ratelimit import Limiter, rate_limited
 
 bp = Blueprint("assistant", __name__, url_prefix="/api")
 
@@ -30,11 +33,11 @@ def assistant_chat():
 
 
 @bp.post("/translate/ui")
-@login_required
+@rate_limited(UI_TRANSLATE_LIMIT)
 def translate_ui():
     """Translate visible interface strings into the user's selected language."""
     d = request.get_json(silent=True) or {}
-    target = (d.get("target_language") or g.user.primary_language or "en").strip()
+    target = (d.get("target_language") or "en").strip()
     if target == "en":
         target = "en-IN"
     if target not in SUPPORTED_LANGUAGE_CODES and target != "en-IN":
