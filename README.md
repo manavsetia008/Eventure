@@ -68,7 +68,9 @@ Frontend routes: `/` (Timeline when signed in, otherwise the landing page), `/lo
 
 Prerequisites: **Python 3.11+** and **Node.js 18+**.
 
-### 1. Backend
+### 1. Backend (keep this terminal running)
+
+Open a terminal in the repository root:
 
 ```powershell
 cd backend
@@ -77,15 +79,19 @@ python -m venv .venv
 pip install -r requirements.txt
 copy .env.example .env            # macOS/Linux: cp .env.example .env
 
-python seed.py --reset            # load demo data
-python run.py                     # http://localhost:5000
+python run.py                     # Flask API at http://localhost:5000
 ```
+
+Do not close this terminal. The Vite frontend proxies all `/api/*` requests to this Flask
+server. If Settings shows a local API/HTTP 500 error, check this terminal for the backend traceback.
 
 The app starts with **no third-party API keys** in local development. Extraction, clash detection,
 travel estimates and the calendar feed have offline/free fallbacks. Production should use Supabase
 Postgres via `DATABASE_URL`; SQLite remains the zero-setup local-development default.
 
-### 2. Frontend
+### 2. Frontend (open a second terminal)
+
+From the repository root in a separate terminal:
 
 ```powershell
 cd frontend
