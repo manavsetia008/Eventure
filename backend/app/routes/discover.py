@@ -7,6 +7,9 @@ from ..models import STATUSES, Event, Review, Stage, TrackedPortal, UserEvent
 from ..services.priority import goal_fit, score_item
 from ..services.travel import estimate_minutes, haversine_km
 from ..utils import ApiError, now
+from ..ratelimit import Limiter, rate_limited
+
+SUGGESTION_LIMIT = Limiter(6, 60, "discover-suggestions")
 
 bp = Blueprint("discover", __name__, url_prefix="/api")
 
@@ -261,6 +264,7 @@ def compare():
 
 @bp.get("/discover/suggestions")
 @login_required
+@rate_limited(SUGGESTION_LIMIT)
 def get_hackathon_suggestions():
     """Real-time hackathon suggestions based on user profile and Google Search data."""
     from flask import current_app
