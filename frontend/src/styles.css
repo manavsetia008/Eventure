@@ -4498,7 +4498,29 @@ input::placeholder, textarea::placeholder {
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
 }
-.map.leaflet-container { background: var(--bg-subtle); font-family: var(--font-sans); }
+.map { background: var(--bg-subtle); }
+.map-embed {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--bg-subtle);
+}
+.map-open-link {
+  position: absolute;
+  z-index: 10;
+  top: 10px;
+  right: 10px;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface);
+  font-size: 0.72rem;
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+}
+.map-open-link:hover { background: var(--surface-hover); }
 
 .map-state {
   position: absolute;
