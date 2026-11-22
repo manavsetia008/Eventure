@@ -54,5 +54,24 @@ class GeminiBatchTranslationTests(unittest.TestCase):
         self.assertEqual(translate_many_with_gemini(values, "Hindi", "test-key"), values)
 
 
+    @patch("app.services.sarvam_ai.requests.post")
+    def test_sarvam_strict_mode_raises_instead_of_returning_english(self, post):
+        post.side_effect = OSError("provider offline")
+        from app.services.sarvam_ai import translate_with_sarvam
+        with self.assertRaises(RuntimeError):
+            translate_with_sarvam("Hello", "hi-IN", "test-key", strict=True)
+
+    def test_sarvam_strict_mode_rejects_missing_key(self):
+        from app.services.sarvam_ai import translate_with_sarvam
+        with self.assertRaises(ValueError):
+            translate_with_sarvam("Hello", "hi-IN", "", strict=True)
+
+    @patch("app.services.gemini.generate_with_gemini", return_value="")
+    def test_gemini_strict_mode_rejects_empty_translation(self, _generate):
+        with self.assertRaises(RuntimeError):
+            translate_many_with_gemini(["Hello"], "Hindi", "test-key", strict=True)
+
+
+
 if __name__ == "__main__":
     unittest.main()
