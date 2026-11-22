@@ -29,8 +29,25 @@ INDIC_LANG_MAP = {
     "kn": "kn-IN",
     "ml": "ml-IN",
     "od": "od-IN",
+    "as": "as-IN",
+    "brx": "brx-IN",
+    "doi": "doi-IN",
+    "kok": "kok-IN",
+    "ks": "ks-IN",
+    "mai": "mai-IN",
+    "mni": "mni-IN",
+    "ne": "ne-IN",
+    "sa": "sa-IN",
+    "sat": "sat-IN",
+    "sd": "sd-IN",
+    "ur": "ur-IN",
     "en": "en-IN",
 }
+SUPPORTED_TRANSLATION_CODES = frozenset(INDIC_LANG_MAP.values())
+TTS_SUPPORTED_CODES = frozenset({
+    "en-IN", "hi-IN", "bn-IN", "gu-IN", "kn-IN",
+    "ml-IN", "mr-IN", "pa-IN", "ta-IN", "te-IN", "od-IN",
+})
 
 SARVAM_SYSTEM_PROMPT = """You are an expert Indic information extraction model for college campus events, hackathons, and academic circulars.
 Your job is to read unstructured text (which may be in English, Hindi, or code-mixed Hinglish) and extract structured event details.
@@ -129,6 +146,65 @@ def extract_event_with_sarvam(text: str, api_key: str, model: str = "sarvam-105b
     raise ValueError("Empty or invalid response from Sarvam AI Chat API.")
 
 
+def translate_many_with_sarvam(
+    texts: list, target_lang: str, api_key: str, source_lang: str = "en-IN",
+    model: str = "sarvam-translate:v1",
+) -> list:
+    """Translate a batch of UI strings while preserving their original order.
+
+    Sarvam's text endpoint accepts one input string (up to 2,000 characters).
+    Short, stable sentinel tokens let us batch strings into a small number of
+    requests while keeping each UI label independently addressable.
+    """
+    values = [str(value or "") for value in texts]
+    if not values or not api_key:
+        return values
+
+    target_code = INDIC_LANG_MAP.get(target_lang, target_lang)
+    if target_code == "en":
+        target_code = "en-IN"
+    if target_code not in SUPPORTED_TRANSLATION_CODES:
+        raise ValueError("Unsupported target language.")
+
+    results = list(values)
+    cursor = 0
+    while cursor < len(values):
+        group = []
+        total = 0
+        while cursor < len(values) and len(group) < 12:
+            value = values[cursor][:350]
+            marker = f"EVTUIITEM{cursor:03d}X"
+            addition = len(marker) + len(value) + 3
+            if group and total + addition > 1750:
+                break
+            group.append((cursor, marker, value))
+            total += addition
+            cursor += 1
+
+        combined = "\\n".join(f"{marker} {value}" for _, marker, value in group)
+        translated = translate_with_sarvam(
+            combined, target_code, api_key, source_lang=source_lang, model=model
+        )
+
+        positions = [(translated.find(marker), marker, index) for index, marker, _ in group]
+        if all(position >= 0 for position, _, _ in positions):
+            positions.sort()
+            for i, (position, marker, index) in enumerate(positions):
+                start = position + len(marker)
+                end = positions[i + 1][0] if i + 1 < len(positions) else len(translated)
+                part = translated[start:end].strip(" \\t\\r\\n:：-")
+                results[index] = part or values[index]
+        else:
+            # Some translation models may alter sentinels. Fall back to one
+            # string per request for this small chunk to avoid cross-label mixups.
+            for index, _, value in group:
+                results[index] = translate_with_sarvam(
+                    value, target_code, api_key, source_lang=source_lang, model=model
+                )
+
+    return results
+
+
 def translate_with_sarvam(text: str, target_lang: str, api_key: str, source_lang: str = "en-IN", model: str = "sarvam-translate:v1") -> str:
     """Translate text using Sarvam Translate API (supports 22 Indic languages).
     
@@ -140,6 +216,8 @@ def translate_with_sarvam(text: str, target_lang: str, api_key: str, source_lang
         return text
 
     target_code = INDIC_LANG_MAP.get(target_lang, target_lang)
+    if target_code == "en":
+        target_code = "en-IN"
     if "-" not in target_code and len(target_code) == 2:
         target_code = f"{target_code}-IN"
 
