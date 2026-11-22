@@ -8,6 +8,7 @@ from app.services.discover_feed import (
     _AnchorParser,
     _devfolio_card_context,
     _normalise_unstop,
+    _parse_datetime,
 )
 
 
@@ -32,6 +33,20 @@ class PublicDiscoverFeedTests(unittest.TestCase):
         self.assertEqual(result["start_at"].isoformat(), "2026-12-10T10:00:00")
         self.assertEqual(result["registration_deadline"].isoformat(), "2026-12-05T23:59:00")
         self.assertIsNone(result["end_at"])
+
+    def test_timezone_aware_iso_dates_are_converted_to_configured_local_time(self):
+        with patch.dict("os.environ", {"TIMEZONE": "Asia/Kolkata"}):
+            utc = _parse_datetime("2026-12-10T04:30:00Z")
+            offset = _parse_datetime("2026-12-10T10:00:00+05:30")
+        self.assertEqual(utc, datetime(2026, 12, 10, 10, 0))
+        self.assertEqual(offset, datetime(2026, 12, 10, 10, 0))
+
+    def test_epoch_milliseconds_are_converted_to_configured_local_time(self):
+        from datetime import timezone
+        epoch_ms = int(datetime(2026, 12, 10, 4, 30, tzinfo=timezone.utc).timestamp() * 1000)
+        with patch.dict("os.environ", {"TIMEZONE": "Asia/Kolkata"}):
+            parsed = _parse_datetime(epoch_ms)
+        self.assertEqual(parsed, datetime(2026, 12, 10, 10, 0))
 
     def test_devfolio_parser_extracts_public_microsite_link(self):
         page = (
