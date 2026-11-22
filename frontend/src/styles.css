@@ -4499,6 +4499,40 @@ input::placeholder, textarea::placeholder {
   border-radius: var(--radius-card);
 }
 .map.leaflet-container { background: var(--bg-subtle); font-family: var(--font-sans); }
+
+.map-state {
+  position: absolute;
+  z-index: 1000;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  text-align: center;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  font-size: 0.875rem;
+  pointer-events: none;
+}
+.map-state-error {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+}
+.map-provider-label {
+  position: absolute;
+  z-index: 900;
+  top: 8px;
+  left: 8px;
+  max-width: calc(100% - 16px);
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  font-size: 0.65rem;
+  line-height: 1.2;
+  pointer-events: none;
+}
 .map-marker { stroke-width: 2; }
 .map-marker-college { stroke: var(--card) !important; fill: var(--ink) !important; }
 .map-marker-event { stroke: var(--card) !important; fill: var(--danger) !important; }
