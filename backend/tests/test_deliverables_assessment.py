@@ -160,8 +160,8 @@ class TestDeliverableAssessment(unittest.TestCase):
     # 5. Search Event >70% Match & Choice Cards
     # ─────────────────────────────────────────────────────────────────────────────
     def test_portal_search_match_engine(self):
-        # Portal matching must use current public feed records, never a built-in
-        # list of dated events that may be stale or fabricated.
+        # The matcher now consumes current public feed entries only; it must not
+        # rely on an embedded catalogue with stale schedules.
         listings = [
             {
                 "title": "Flipkart GRiD 6.0 software development hackathon",
@@ -184,15 +184,13 @@ class TestDeliverableAssessment(unittest.TestCase):
             self.assertEqual(best["platform"], "Unstop")
             self.assertGreaterEqual(best["match_score"], 90.0)
 
-            # Similarity supported by a common platform word is never a
-            # high-confidence match without a distinctive title phrase.
+            # A partial name plus a platform keyword is only a potential match.
             score = compute_match_score(
                 "ETHIndia 2026 Devfolio",
                 {"title": "ETHIndia 2026 - World's Largest Ethereum Hackathon", "platform": "Devfolio"},
             )
             self.assertLess(score, 70.0)
 
-            # Broad event searches use the same current live feed records.
             broad_matches = search_portal_catalog("Hackathon Conclave", min_score=30.0)
             self.assertGreaterEqual(len(broad_matches), 1)
 
