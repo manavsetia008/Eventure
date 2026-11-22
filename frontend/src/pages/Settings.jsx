@@ -368,7 +368,7 @@ function PriorityTuningCard({ user, onSaved }) {
         setMsg("Preferences saved to your account.");
       } catch (error) {
         setErr(
-          `Your settings are saved on this device, but could not sync to your account: ${error.message}`
+          `The selected value is active in this session, but could not be saved to your account: ${error.message}`
         );
         setMsg("");
       } finally {
