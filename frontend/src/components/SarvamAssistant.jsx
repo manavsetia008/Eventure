@@ -188,7 +188,7 @@ export default function SarvamAssistant() {
             {messages.map((m, idx) => (
               <div key={idx} className={`sarvam-bubble-wrap ${m.sender === "user" ? "user" : "bot"}`}>
                 <div className={`sarvam-bubble ${m.sender}`}>
-                  <p data-no-translate={m.serverTranslated ? "true" : undefined}>{m.text}</p>
+                  <p data-no-translate={m.serverTranslated || m.sender === "user" ? "true" : undefined}>{m.text}</p>
 
                   {/* Audio read-aloud button */}
                   {m.audio && (
