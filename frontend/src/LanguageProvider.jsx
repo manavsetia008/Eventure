@@ -49,6 +49,29 @@ function shouldSkip(element) {
   );
 }
 
+function shouldSkipAttributeTranslation(element) {
+  if (!element) return true;
+  return Boolean(
+    element.closest(
+      [
+        "[data-no-translate]",
+        "[contenteditable='true']",
+        "script",
+        "style",
+        "noscript",
+        "select",
+        "option",
+        "code",
+        "pre",
+        "svg",
+        ".map",
+        ".map-embed",
+        ".user-generated-content",
+      ].join(",")
+    )
+  );
+}
+
 function hasReadableText(value) {
   return Boolean(value && value.trim() && /[\p{L}]/u.test(value));
 }
