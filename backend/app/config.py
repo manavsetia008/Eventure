@@ -55,7 +55,7 @@ class Config:
 
     # Gemini LLM Network (Chatbot & Hackathon Submission Box)
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
     # Real-Time Hackathon Suggestions (Google Custom Search Data)
     GOOGLE_SEARCH_API_KEY = os.getenv("GOOGLE_SEARCH_API_KEY", "")
