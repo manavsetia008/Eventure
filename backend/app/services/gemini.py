@@ -70,7 +70,7 @@ def generate_with_gemini(
 
 
 def translate_many_with_gemini(
-    texts: list, target_language: str, api_key: str, model: str = None
+    texts: list, target_language: str, api_key: str, model: str = None, strict: bool = False
 ) -> list:
     """Translate short interface strings as a JSON array using Gemini."""
     import json
@@ -94,6 +94,8 @@ def translate_many_with_gemini(
         temperature=0.1,
     )
     if not raw:
+        if strict:
+            raise RuntimeError("Gemini did not return a translation.")
         return values
 
     cleaned = raw.strip()
@@ -101,11 +103,15 @@ def translate_many_with_gemini(
         cleaned = cleaned.replace("```json", "", 1).replace("```", "").strip()
     try:
         translated = json.loads(cleaned)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as exc:
         logging.warning("Gemini returned invalid JSON for UI translation.")
+        if strict:
+            raise RuntimeError("Gemini returned an invalid translation response.") from exc
         return values
     if not isinstance(translated, list) or len(translated) != len(values):
         logging.warning("Gemini returned a different number of UI strings.")
+        if strict:
+            raise RuntimeError("Gemini returned an incomplete translation response.")
         return values
     return [item if isinstance(item, str) and item.strip() else values[index]
             for index, item in enumerate(translated)]
