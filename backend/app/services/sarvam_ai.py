@@ -192,7 +192,7 @@ def translate_many_with_sarvam(
             for i, (position, marker, index) in enumerate(positions):
                 start = position + len(marker)
                 end = positions[i + 1][0] if i + 1 < len(positions) else len(translated)
-                part = translated[start:end].strip(" \\t\\r\\n:：-")
+                part = translated[start:end].strip().strip(":：-").strip()
                 results[index] = part or values[index]
         else:
             # Some translation models may alter sentinels. Fall back to one
