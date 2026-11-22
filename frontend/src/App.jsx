@@ -18,6 +18,7 @@ import Organizer from "./pages/Organizer.jsx";
 import Settings from "./pages/Settings.jsx";
 import Timeline from "./pages/Timeline.jsx";
 import SarvamAssistant from "./components/SarvamAssistant.jsx";
+import { LanguageSwitcher } from "./LanguageProvider.jsx";
 import PortalSearchModal from "./components/PortalSearchModal.jsx";
 import {
   Bell,
@@ -115,6 +116,7 @@ function Layout({ children, theme, toggleTheme }) {
           </nav>
 
         <div className="topbar-right">
+          <LanguageSwitcher />
           <button
             type="button"
             className="portal-search-trigger-btn"
@@ -292,6 +294,7 @@ export default function App() {
   };
 
   return (
+    <>
     <Routes>
       <Route path="/login" element={<Login initialMode="login" />} />
       <Route path="/signup" element={<Login initialMode="register" />} />
@@ -320,5 +323,7 @@ export default function App() {
       <Route path="/settings" element={<Protected theme={theme} toggleTheme={toggleTheme}><Settings /></Protected>} />
       <Route path="*" element={<Protected theme={theme} toggleTheme={toggleTheme}><NotFound /></Protected>} />
     </Routes>
+    {!user && <LanguageSwitcher floating />}
+    </>
   );
 }
