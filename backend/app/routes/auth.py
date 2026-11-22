@@ -8,6 +8,7 @@ from ..models import (Club, ClubFollow, Event, ExamPeriod, GoogleAccount, InboxI
                       Review, SyncedItem, Team, TeamMember, TopPriorityCall, User, UserEvent)
 from ..ratelimit import Limiter, rate_limited
 from ..utils import ApiError, clean_goals, to_float
+from ..languages import SUPPORTED_LANGUAGE_CODES
 
 bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -38,6 +39,8 @@ def register():
     if role not in ("student", "organizer"):
         role = "student"
     primary_language = (d.get("primary_language") or "en").strip()
+    if primary_language not in SUPPORTED_LANGUAGE_CODES:
+        primary_language = "en"
     user = User(
         name=name, email=email, college=(d.get("college") or "").strip() or None,
         college_lat=to_float(d.get("college_lat")), college_lng=to_float(d.get("college_lng")),
@@ -128,8 +131,9 @@ def update_me():
     # In particular, a user must never be able to promote their own account to admin.
     if "primary_language" in d:
         lang = (d["primary_language"] or "").strip()
-        if lang:
-            u.primary_language = lang
+        if lang not in SUPPORTED_LANGUAGE_CODES:
+            raise ApiError("Choose one of Eventure's supported languages.")
+        u.primary_language = lang
     db.session.commit()
     return jsonify(user=u.to_dict())
 
