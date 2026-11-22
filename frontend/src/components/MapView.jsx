@@ -86,7 +86,6 @@ export default function MapView({ college, events, onOpen }) {
         maxNativeZoom: provider.maxZoom,
         keepBuffer: 2,
         updateWhenIdle: true,
-        crossOrigin: true,
       });
 
       tileLayer.on("tileload", () => {
