@@ -181,7 +181,7 @@ def translate_many_with_sarvam(
             total += addition
             cursor += 1
 
-        combined = "\\n".join(f"{marker} {value}" for _, marker, value in group)
+        combined = "\n".join(f"{marker} {value}" for _, marker, value in group)
         translated = translate_with_sarvam(
             combined, target_code, api_key, source_lang=source_lang, model=model
         )
