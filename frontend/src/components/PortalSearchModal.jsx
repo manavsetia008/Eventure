@@ -39,31 +39,19 @@ export default function PortalSearchModal({ isOpen, onClose, onEventAdded }) {
   };
 
   const handleSelectChoice = async (candidate) => {
+    if (!candidate?.event_id) {
+      setError("This result is not linked to a current public event. Open the organiser's page to verify it, or add it manually.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      // Add the chosen candidate event
-      const payload = {
-        title: candidate.title,
-        platform: candidate.platform,
-        category: candidate.category || "hackathon",
-        venue_name: candidate.venue_name,
-        lat: candidate.lat,
-        lng: candidate.lng,
-        start_at: candidate.start_at,
-        end_at: candidate.end_at,
-        registration_deadline: candidate.registration_deadline,
-        url: candidate.url,
-        description: candidate.description,
-        stages: candidate.stages || [],
-        is_public: true,
-        status: "registered",
-      };
-      const res = await api.post("/events", payload);
-      setAddedId(res.user_event?.id);
+      // Join the canonical public event already stored in Eventure; never make a duplicate copy.
+      const res = await api.post(`/events/${candidate.event_id}/join`, { status: "interested" });
+      setAddedId(res.user_event_id);
       if (onEventAdded) onEventAdded();
     } catch (err) {
-      setError(err.message || "Could not add selected event.");
+      setError(err.message || "Could not add this event to your timeline.");
     } finally {
       setLoading(false);
     }
@@ -90,9 +78,9 @@ export default function PortalSearchModal({ isOpen, onClose, onEventAdded }) {
       >
         <div className="modal-header">
           <div>
-            <h3 id="portal-search-title">Search Top Portals (&gt;70% Match Engine)</h3>
+            <h3 id="portal-search-title">Find current public events</h3>
             <p className="muted small">
-              Searches Eventure&apos;s maintained portal index. Similarity scores are not verification; confirm details on the organiser&apos;s official page.
+              Searches current public listings from Unstop and Devfolio. Similarity is not verification; confirm details on the organiser&apos;s official page.
             </p>
           </div>
           <button className="btn-icon-subtle" onClick={onClose} aria-label="Close modal">
