@@ -134,7 +134,7 @@ def process_assistant_message(user: User, message: str, config: dict, screen: st
             )
             llm_reply = generate_with_gemini(msg, gemini_key, system_prompt, model=config.get("GEMINI_MODEL", "gemini-3.8-flash"))
             if llm_reply:
-                return _format_response(llm_reply, None, user.primary_language, config, suggested_chips)
+                return _format_response(llm_reply, None, user.primary_language, config, suggested_chips, already_localized=True)
         except Exception as exc:
             logging.warning("Gemini conversational generation fallback: %s", exc)
 
