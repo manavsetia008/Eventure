@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import { api, calendarFeedUrl } from "../api";
 import { useNavigate } from "react-router-dom";
@@ -290,6 +290,12 @@ function PriorityTuningCard({ user, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const thresholdSaveTimer = useRef(null);
+  const pendingThresholds = useRef(null);
+
+  useEffect(() => () => {
+    if (thresholdSaveTimer.current) window.clearTimeout(thresholdSaveTimer.current);
+  }, []);
 
   const presets = [
     {
@@ -319,13 +325,13 @@ function PriorityTuningCard({ user, onSaved }) {
   ];
 
   const saveMode = async (m) => {
+    if (saving) return;
     setMode(m);
     setSaving(true);
     setMsg("");
     setErr("");
-    if (saving) return;
     try {
-      const res = await api.patch("/me", { scoring_mode: m });
+      const res = await api.patch("/auth/me", { scoring_mode: m });
       if (onSaved) onSaved(res.user);
       setMsg(`Scoring profile updated to "${presets.find((p) => p.id === m)?.title}".`);
     } catch (e) {
@@ -335,21 +341,41 @@ function PriorityTuningCard({ user, onSaved }) {
     }
   };
 
-  const persistThresholds = async (newKeep, newSkip, newMaybe) => {
-    localStorage.setItem("eventure_threshold_keep", newKeep);
-    localStorage.setItem("eventure_threshold_skip", newSkip);
+  const persistThresholds = (newKeep, newSkip, newMaybe) => {
+    // Apply locally immediately so the controls remain responsive, then sync
+    // once the user pauses dragging instead of sending a request for every pixel.
+    localStorage.setItem("eventure_threshold_keep", String(newKeep));
+    localStorage.setItem("eventure_threshold_skip", String(newSkip));
     localStorage.setItem("eventure_use_maybe_range", newMaybe ? "true" : "false");
     window.dispatchEvent(new Event("eventure_threshold_change"));
-    try {
-      await api.put("/auth/me", {
-        threshold_keep: newKeep,
-        threshold_skip: newSkip,
-        use_maybe_range: newMaybe,
-      });
-      setMsg("Saved.");
-    } catch {
-      setMsg("Could not save your thresholds. Please try again.");
-    }
+
+    pendingThresholds.current = {
+      threshold_keep: newKeep,
+      threshold_skip: newSkip,
+      use_maybe_range: newMaybe,
+    };
+    if (thresholdSaveTimer.current) window.clearTimeout(thresholdSaveTimer.current);
+
+    setErr("");
+    setSaving(true);
+    setMsg("Saving your preferences…");
+    thresholdSaveTimer.current = window.setTimeout(async () => {
+      const payload = pendingThresholds.current;
+      pendingThresholds.current = null;
+      try {
+        const result = await api.patch("/auth/me", payload);
+        if (onSaved) onSaved(result.user);
+        setMsg("Preferences saved to your account.");
+      } catch (error) {
+        setErr(
+          `Your settings are saved on this device, but could not sync to your account: ${error.message}`
+        );
+        setMsg("");
+      } finally {
+        setSaving(false);
+        thresholdSaveTimer.current = null;
+      }
+    }, 500);
   };
 
   const handleKeepChange = (val) => {
@@ -379,7 +405,6 @@ function PriorityTuningCard({ user, onSaved }) {
     setSkipVal(40);
     setUseMaybe(false);
     persistThresholds(55, 40, false);
-    setMsg("Reset to default (55).");
   };
 
   // Dynamic preview evaluation against sample event scores
