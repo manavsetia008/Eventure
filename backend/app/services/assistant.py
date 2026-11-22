@@ -150,9 +150,19 @@ def _format_response(text: str, action: dict, target_lang: str, config: dict, ch
     translated_text = text
 
     # If user's primary language is Indic, translate assistant speech
-    if target_lang and target_lang not in ("en", "en-IN") and sarvam_key and not already_localized:
+    if target_lang and target_lang not in ("en", "en-IN") and not already_localized:
         try:
-            translated_text = translate_with_sarvam(text, target_lang, sarvam_key)
+            if sarvam_key:
+                translated_text = translate_with_sarvam(text, target_lang, sarvam_key)
+            elif config.get("GEMINI_API_KEY"):
+                from .gemini import translate_many_with_gemini
+                language_name = LANGUAGES.get(target_lang, {}).get("name", target_lang)
+                translated_text = translate_many_with_gemini(
+                    [text],
+                    language_name,
+                    config.get("GEMINI_API_KEY"),
+                    model=config.get("GEMINI_MODEL", "gemini-3.8-flash"),
+                )[0]
         except Exception as e:
             logging.warning("Failed translating assistant response: %s", e)
 
