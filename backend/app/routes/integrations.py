@@ -21,6 +21,7 @@ def _is_configured(val):
 def get_integrations_status():
     cfg = current_app.config
 
+    gemini_key = _is_configured(cfg.get("GEMINI_API_KEY"))
     sarvam_key = _is_configured(cfg.get("SARVAM_API_KEY"))
     google_cal = _is_configured(cfg.get("GOOGLE_CLIENT_ID")) and _is_configured(cfg.get("GOOGLE_CLIENT_SECRET"))
     google_connected = bool(GoogleAccount.query.filter_by(user_id=g.user.id).first()) if hasattr(g, "user") and g.user else False
@@ -28,6 +29,14 @@ def get_integrations_status():
     imap_sync = _is_configured(cfg.get("IMAP_HOST")) and _is_configured(cfg.get("IMAP_USER")) and _is_configured(cfg.get("IMAP_PASSWORD"))
 
     integrations = [
+        {
+            "id": "gemini",
+            "name": "Gemini AI assistant and submission review",
+            "env_var": "GEMINI_API_KEY",
+            "connected": gemini_key,
+            "available": gemini_key,
+            "purpose": "Power the chat assistant and Hackathon Vault submission reviews.",
+        },
         {
             "id": "sarvam",
             "name": "Smart extraction and translation",
@@ -78,7 +87,25 @@ def get_integrations_status():
 def test_integration(service):
     cfg = current_app.config
 
-    if service == "sarvam":
+    if service == "gemini":
+        key = cfg.get("GEMINI_API_KEY")
+        if not _is_configured(key):
+            return jsonify(ok=False, message="Gemini API key is not configured on the server.")
+        try:
+            from ..services.gemini import generate_with_gemini
+            reply = generate_with_gemini(
+                "Reply with exactly: Eventure Gemini connection is working.",
+                key,
+                model=cfg.get("GEMINI_MODEL", "gemini-3.8-flash"),
+            )
+            if reply.strip():
+                return jsonify(ok=True, message="Gemini responded successfully.")
+            return jsonify(ok=False, message="Gemini did not return a response. Check the key, model and AI Studio usage limits.")
+        except Exception:
+            current_app.logger.exception("Gemini integration test failed.")
+            return jsonify(ok=False, message="Gemini test failed. Check the server logs and AI Studio usage.")
+
+    elif service == "sarvam":
         key = cfg.get("SARVAM_API_KEY")
         if not _is_configured(key):
             return jsonify(ok=False, message="Could not connect. Check your settings.")
