@@ -6,6 +6,101 @@ import { useAuth } from "../auth.jsx";
 import Status from "../components/Status.jsx";
 import { urlBase64ToUint8Array } from "../utils";
 
+function AIProvidersCard() {
+  const [providers, setProviders] = useState([]);
+  const [message, setMessage] = useState({});
+  const [busy, setBusy] = useState("");
+
+  const load = useCallback(async () => {
+    try {
+      const result = await api.get("/integrations/status");
+      setProviders((result.integrations || []).filter((item) => ["gemini", "sarvam"].includes(item.id)));
+    } catch (error) {
+      setMessage({ load: { ok: false, message: error.message || "Could not load provider status." } });
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function testProvider(id) {
+    setBusy(id);
+    setMessage((previous) => ({ ...previous, [id]: null }));
+    try {
+      const result = await api.post(`/integrations/test/${id}`);
+      setMessage((previous) => ({ ...previous, [id]: result }));
+      await load();
+    } catch (error) {
+      setMessage((previous) => ({
+        ...previous,
+        [id]: { ok: false, message: error.message || "Connection test failed." },
+      }));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <div>
+          <h2>AI providers</h2>
+          <p className="muted small">Keys stay on the backend. Add or rotate them in Render, never in browser code.</p>
+        </div>
+        <a
+          className="btn-tertiary"
+          href="https://dashboard.render.com/web/srv-dc125ud9fdbs739hk1sg"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open Render environment
+        </a>
+      </div>
+
+      {providers.length === 0 ? (
+        <p className="muted small">Loading AI provider configuration…</p>
+      ) : (
+        <div className="settings-provider-list">
+          {providers.map((provider) => {
+            const result = message[provider.id];
+            return (
+              <div className="settings-provider-row" key={provider.id}>
+                <div className="settings-provider-copy">
+                  <div className="row" style={{ gap: "0.5rem", alignItems: "center" }}>
+                    <strong>{provider.name}</strong>
+                    <Status
+                      variant={provider.connected ? "active" : "neutral"}
+                      label={provider.connected ? "Key configured" : "Key missing"}
+                    />
+                  </div>
+                  <p className="muted small">{provider.purpose}</p>
+                  <p className="muted small mono">{provider.env_var}</p>
+                  {result && (
+                    <p className={result.ok ? "notice small" : "error small"} role="status">
+                      {result.message}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="btn small"
+                  disabled={!provider.connected || busy === provider.id}
+                  onClick={() => testProvider(provider.id)}
+                >
+                  {busy === provider.id ? "Testing…" : `Test ${provider.id === "gemini" ? "Gemini" : "Sarvam"}`}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {message.load && <p className="error small">{message.load.message}</p>}
+      <p className="muted small">After saving environment variables in Render, the service redeploys. Reload this page to refresh the status.</p>
+    </section>
+  );
+}
+
 function GoogleCard() {
   const [st, setSt] = useState(null);
   const [msg, setMsg] = useState("");
@@ -826,6 +921,7 @@ export default function Settings() {
       </section>
 
       <PortalsCard />
+      <AIProvidersCard />
       <GoogleCard />
       <PushCard />
 
