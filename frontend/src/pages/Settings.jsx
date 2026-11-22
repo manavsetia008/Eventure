@@ -896,6 +896,9 @@ export default function Settings() {
               <option key={l.code} value={l.code}>{l.label}</option>
             ))}
           </select>
+          <p className="muted small">
+            The interface and assistant use Sarvam Translate (22 Indian languages plus English), with Gemini as a fallback. Add either SARVAM_API_KEY or GEMINI_API_KEY to the Render backend to enable live translation.
+          </p>
         </label>
 
         <label>
