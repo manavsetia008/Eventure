@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 
 from ..extensions import db
 from ..models import Event, ExamPeriod, User, UserEvent
+from ..languages import LANGUAGES
 from ..services.conflicts import detect_issues
 from ..services.extraction import extract_event
 from ..services.sarvam_ai import speak_with_sarvam, translate_with_sarvam
@@ -122,9 +123,13 @@ def process_assistant_message(user: User, message: str, config: dict, screen: st
     if gemini_key:
         try:
             from .gemini import generate_with_gemini
+            lang_code = user.primary_language or "en"
+            language_name = "English" if lang_code == "en" else LANGUAGES.get(lang_code, {}).get("name", "English")
             system_prompt = (
                 f"You are the Eventure AI Assistant for student {user.name} ({user.college or 'Campus'}). "
                 f"The student's interests are {user.goals or 'hackathons, coding'}. "
+                f"Always write the final answer in {language_name}, using its normal native script. "
+                "Keep event names, URLs, product names, code, and dates unchanged. "
                 "Be helpful, enthusiastic, and concise (2-3 sentences max). Recommend relevant hackathon preparation tips or campus guidance."
             )
             llm_reply = generate_with_gemini(msg, gemini_key, system_prompt, model=config.get("GEMINI_MODEL", "gemini-3.8-flash"))
@@ -155,8 +160,12 @@ def _format_response(text: str, action: dict, target_lang: str, config: dict, ch
     audio_b64 = ""
     if sarvam_key:
         try:
-            lang_code = target_lang if target_lang not in ("en", "") else "en-IN"
-            audio_b64 = speak_with_sarvam(translated_text, lang_code, sarvam_key)
+            from ..services.sarvam_ai import INDIC_LANG_MAP, TTS_SUPPORTED_CODES
+            lang_code = INDIC_LANG_MAP.get(target_lang, target_lang)
+            if lang_code == "en":
+                lang_code = "en-IN"
+            if lang_code in TTS_SUPPORTED_CODES:
+                audio_b64 = speak_with_sarvam(translated_text, lang_code, sarvam_key)
         except Exception as e:
             logging.warning("Bulbul TTS synthesis skipped: %s", e)
 
