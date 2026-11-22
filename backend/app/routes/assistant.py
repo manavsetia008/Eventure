@@ -8,7 +8,8 @@ from ..services.assistant import process_assistant_message
 from ..services.extraction import extract_event
 from ..services.ocr import image_to_text
 from ..services.portal_search import compute_match_score, search_portal_catalog
-from ..services.sarvam_ai import ocr_with_sarvam
+from ..services.sarvam_ai import ocr_with_sarvam, translate_many_with_sarvam
+from ..languages import SUPPORTED_LANGUAGE_CODES
 from ..utils import ApiError, now, parse_dt
 
 bp = Blueprint("assistant", __name__, url_prefix="/api")
@@ -26,6 +27,40 @@ def assistant_chat():
 
     resp = process_assistant_message(g.user, message, current_app.config, screen)
     return jsonify(resp)
+
+
+@bp.post("/translate/ui")
+@login_required
+def translate_ui():
+    """Translate visible interface strings into the user's selected language."""
+    d = request.get_json(silent=True) or {}
+    target = (d.get("target_language") or g.user.primary_language or "en").strip()
+    if target == "en":
+        target = "en-IN"
+    if target not in SUPPORTED_LANGUAGE_CODES and target != "en-IN":
+        raise ApiError("That language is not supported.")
+
+    texts = d.get("texts")
+    if not isinstance(texts, list) or not texts or len(texts) > 18:
+        raise ApiError("Send between 1 and 18 interface strings per translation request.")
+    if any(not isinstance(item, str) or len(item) > 350 for item in texts):
+        raise ApiError("Each interface string must be plain text up to 350 characters.")
+
+    if target == "en-IN":
+        return jsonify(translations=texts, language=target, translated=False)
+
+    api_key = current_app.config.get("SARVAM_API_KEY") or ""
+    if not api_key:
+        raise ApiError("Site-wide translation needs SARVAM_API_KEY configured in the Render backend.", 503)
+
+    translated = translate_many_with_sarvam(
+        texts,
+        target,
+        api_key,
+        source_lang="en-IN",
+        model=current_app.config.get("SARVAM_TRANSLATE_MODEL", "sarvam-translate:v1"),
+    )
+    return jsonify(translations=translated, language=target, translated=True)
 
 
 @bp.post("/assistant/review-submission")
