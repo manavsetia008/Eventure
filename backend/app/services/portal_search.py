@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 def _normalize_tokens(text: str) -> set:
     if not text:
         return set()
-    cleaned = re.sub(r"[^\\w\\s]", " ", text.lower())
+    cleaned = re.sub(r"[^\w\s]", " ", text.lower())
     words = cleaned.split()
     stop = {
         "the", "a", "an", "and", "or", "in", "at", "for", "of", "to",
@@ -24,7 +24,7 @@ def _normalize_tokens(text: str) -> set:
 
 def compute_match_score(query: str, portal_item: dict) -> float:
     """Return a conservative similarity score; 70+ requires a distinctive title match."""
-    q_norm = re.sub(r"\\s+", " ", (query or "").lower()).strip()
+    q_norm = re.sub(r"\s+", " ", (query or "").lower()).strip()
     title = re.sub(r"\\s+", " ", (portal_item.get("title") or "").lower()).strip()
     if not q_norm or not title:
         return 0.0
