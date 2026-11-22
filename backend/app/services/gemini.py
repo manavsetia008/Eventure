@@ -69,6 +69,48 @@ def generate_with_gemini(
     return ""
 
 
+def translate_many_with_gemini(
+    texts: list, target_language: str, api_key: str, model: str = None
+) -> list:
+    """Translate short interface strings as a JSON array using Gemini."""
+    import json
+    values = [str(value or "") for value in texts]
+    if not values or not api_key:
+        return values
+
+    payload = json.dumps(values, ensure_ascii=False)
+    system_instruction = (
+        "You are a precise software-interface translator. "
+        f"Translate every string into {target_language}, using its native script. "
+        "Return ONLY a valid JSON array of strings in the same order and same length. "
+        "Do not add notes or markdown. Preserve URLs, product names, code, numbers, "
+        "placeholders such as {name}, and keyboard shortcuts exactly."
+    )
+    raw = generate_with_gemini(
+        f"Translate this JSON array into {target_language}:\\n{payload}",
+        api_key=api_key,
+        system_instruction=system_instruction,
+        model=model,
+        temperature=0.1,
+    )
+    if not raw:
+        return values
+
+    cleaned = raw.strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.replace("```json", "", 1).replace("```", "").strip()
+    try:
+        translated = json.loads(cleaned)
+    except (TypeError, ValueError):
+        logging.warning("Gemini returned invalid JSON for UI translation.")
+        return values
+    if not isinstance(translated, list) or len(translated) != len(values):
+        logging.warning("Gemini returned a different number of UI strings.")
+        return values
+    return [item if isinstance(item, str) and item.strip() else values[index]
+            for index, item in enumerate(translated)]
+
+
 def review_hackathon_submission(vault_data: dict, event_title: str, api_key: str = None) -> dict:
     """Reviews Hackathon Vault submission links and notes using Gemini LLM."""
     demo_url = vault_data.get("demo_url", "Not provided")
