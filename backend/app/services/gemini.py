@@ -35,7 +35,7 @@ def generate_with_gemini(
     if not key or key == "your_gemini_api_key_here":
         return ""
 
-    model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    model = model or os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
     endpoint = f"{GEMINI_API_URL}/{model}:generateContent?key={key}"
     headers = {"Content-Type": "application/json"}
 
