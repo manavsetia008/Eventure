@@ -34,7 +34,7 @@ export default function SarvamAssistant() {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = user?.primary_language === "hi-IN" ? "hi-IN" : "en-IN";
+      recognition.lang = user?.primary_language === "en" || !user?.primary_language ? "en-IN" : user.primary_language;
 
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
@@ -112,6 +112,7 @@ export default function SarvamAssistant() {
         audio: resp.audio,
         action: resp.action,
         chips: resp.chips || [],
+        serverTranslated: true,
       };
 
       setMessages((prev) => [...prev, botReply]);
@@ -187,7 +188,7 @@ export default function SarvamAssistant() {
             {messages.map((m, idx) => (
               <div key={idx} className={`sarvam-bubble-wrap ${m.sender === "user" ? "user" : "bot"}`}>
                 <div className={`sarvam-bubble ${m.sender}`}>
-                  <p>{m.text}</p>
+                  <p data-no-translate={m.serverTranslated ? "true" : undefined}>{m.text}</p>
 
                   {/* Audio read-aloud button */}
                   {m.audio && (
