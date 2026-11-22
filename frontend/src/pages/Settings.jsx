@@ -794,6 +794,7 @@ export default function Settings() {
     try {
       await api.put("/auth/me", {
         ...p,
+        primary_language: language,
         college_lat: p.college_lat === "" ? null : p.college_lat,
         college_lng: p.college_lng === "" ? null : p.college_lng,
       });
