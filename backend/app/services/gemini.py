@@ -48,7 +48,7 @@ def generate_with_gemini(
         },
     }
     if system_instruction:
-        payload["system_instruction"] = {
+        payload["systemInstruction"] = {
             "parts": [{"text": system_instruction}]
         }
 
