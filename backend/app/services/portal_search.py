@@ -25,7 +25,7 @@ def _normalize_tokens(text: str) -> set:
 def compute_match_score(query: str, portal_item: dict) -> float:
     """Return a conservative similarity score; 70+ requires a distinctive title match."""
     q_norm = re.sub(r"\s+", " ", (query or "").lower()).strip()
-    title = re.sub(r"\\s+", " ", (portal_item.get("title") or "").lower()).strip()
+    title = re.sub(r"\s+", " ", (portal_item.get("title") or "").lower()).strip()
     if not q_norm or not title:
         return 0.0
     if q_norm == title:
@@ -74,7 +74,8 @@ def search_portal_catalog(query: str, min_score: float = 30.0) -> list:
         parsed = urlparse(url)
         if not title or parsed.scheme not in ("https", "http") or not parsed.netloc or url in seen:
             continue
-        if not (parsed.hostname == "unstop.com" or parsed.hostname.endswith(".devfolio.co")):
+        host = (parsed.hostname or "").lower()
+        if not (host == "unstop.com" or host.endswith(".devfolio.co")):
             continue
         seen.add(url)
         score = compute_match_score(query, item)
