@@ -90,6 +90,10 @@ export default function Discover() {
   }
 
   const events = data?.events || [];
+  const hasMapPins = Boolean(
+    (data?.college?.lat != null && data?.college?.lng != null) ||
+    events.some((event) => event.lat != null && event.lng != null)
+  );
   return (
     <>
       <div className="page-head">
@@ -311,7 +315,9 @@ export default function Discover() {
         <aside className="map-wrap">
           <MapView college={data?.college} events={events} onOpen={open} />
           <p className="small muted discover-map-note">
-            The solid dot marks your college; the others are events. Select one to view details.
+            {hasMapPins
+              ? "The dark marker is your college; event markers are shown where listings include real coordinates. Select a marker to view details."
+              : "The basemap is live, but these public listings do not provide map coordinates yet. Event pins will appear when the organisers publish locations."}
           </p>
         </aside>
       </div>
