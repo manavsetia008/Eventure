@@ -4497,8 +4497,8 @@ input::placeholder, textarea::placeholder {
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
+  background: var(--bg-subtle);
 }
-.map { background: var(--bg-subtle); }
 .map-embed {
   display: block;
   width: 100%;
@@ -4521,63 +4521,6 @@ input::placeholder, textarea::placeholder {
   box-shadow: var(--shadow-sm);
 }
 .map-open-link:hover { background: var(--surface-hover); }
-
-.map-state {
-  position: absolute;
-  z-index: 1000;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.25rem;
-  text-align: center;
-  color: var(--text-secondary);
-  background: color-mix(in srgb, var(--surface) 82%, transparent);
-  font-size: 0.875rem;
-  pointer-events: none;
-}
-.map-state-error {
-  color: var(--danger);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-}
-.map-provider-label {
-  position: absolute;
-  z-index: 900;
-  top: 8px;
-  left: 8px;
-  max-width: calc(100% - 16px);
-  padding: 3px 7px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-muted);
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-  font-size: 0.65rem;
-  line-height: 1.2;
-  pointer-events: none;
-}
-.map-marker { stroke-width: 2; }
-.map-marker-college { stroke: var(--card) !important; fill: var(--ink) !important; }
-.map-marker-event { stroke: var(--card) !important; fill: var(--danger) !important; }
-.map .leaflet-control-attribution {
-  background: var(--surface) !important;
-  color: var(--text-muted) !important;
-}
-.map .leaflet-control-attribution a { color: var(--text-secondary) !important; }
-.map .leaflet-control-zoom a {
-  background: var(--surface) !important;
-  color: var(--text) !important;
-  border-bottom-color: var(--border) !important;
-}
-.map .leaflet-control-zoom a:hover { background: var(--surface-hover) !important; }
-.map .leaflet-tooltip {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  box-shadow: var(--shadow-sm);
-  font-size: 12px;
-}
-.map .leaflet-tooltip-top::before { border-top-color: var(--surface); }
-.map .leaflet-tooltip-bottom::before { border-bottom-color: var(--surface); }
 
 /* ── Landing alignment helpers ── */
 .landing-hero-text { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
