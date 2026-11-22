@@ -55,7 +55,7 @@ class Limiter:
             # Count current hits in window
             pipe.zcard(redis_key)
             # Add current hit
-            pipe.zadd(redis_key, {str(now): now})
+            pipe.zadd(redis_key, {f"{now}:{time.time_ns()}": now})
             # Set key TTL
             pipe.expire(redis_key, self.window + 5)
             res = pipe.execute()
@@ -102,7 +102,7 @@ class Limiter:
         if r:
             try:
                 redis_key = f"rl:{self.name}:{key}"
-                r.zadd(redis_key, {str(now): now})
+                r.zadd(redis_key, {f"{now}:{time.time_ns()}": now})
                 r.expire(redis_key, self.window + 5)
                 return
             except Exception:
