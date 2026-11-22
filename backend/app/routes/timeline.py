@@ -14,6 +14,15 @@ from ..services.priority import score_item, suggest_between, suggest_for_exam
 from ..services.reminders import run_reminder_check
 from ..services.travel import estimate_minutes, geocode
 from ..utils import ApiError, iso, now, parse_date, parse_dt, to_float, to_int
+from ..ratelimit import Limiter, rate_limited
+from ..languages import SUPPORTED_LANGUAGE_CODES
+
+EXTRACT_LIMIT = Limiter(12, 60, "extract")
+GEOCODE_LIMIT = Limiter(8, 60, "geocode")
+TRANSLATE_LIMIT = Limiter(30, 60, "translate")
+TTS_LIMIT = Limiter(10, 60, "tts")
+REMINDER_CHECK_LIMIT = Limiter(6, 60, "reminder-check")
+TOP_CALL_TEST_LIMIT = Limiter(1, 300, "top-call-test")
 
 bp = Blueprint("timeline", __name__, url_prefix="/api")
 
@@ -81,6 +90,7 @@ def serialize_user_event(ue, item=None, score=None, now_=None, score_parts=None)
 
 @bp.post("/extract")
 @login_required
+@rate_limited(EXTRACT_LIMIT)
 def extract():
     text, ocr_text = "", None
     upload = request.files.get("image")
@@ -124,39 +134,62 @@ def extract():
 
 
 @bp.post("/translate")
+@login_required
+@rate_limited(TRANSLATE_LIMIT)
 def translate():
-    """Translate event title/description into Hindi or any Indic language via Sarvam Translate."""
+    """Translate user-provided text with the configured Sarvam translation model."""
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
-    target_lang = data.get("target_language_code") or "hi-IN"
+    target_lang = (data.get("target_language_code") or "hi-IN").strip()
     if not text:
-        return jsonify(translated_text="")
+        return jsonify(translated_text="", target_language_code=target_lang)
+    if len(text) > 2000:
+        raise ApiError("Text translation is limited to 2,000 characters per request.")
+    if target_lang not in SUPPORTED_LANGUAGE_CODES and target_lang != "en-IN":
+        raise ApiError("Choose a supported translation language.")
+    sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
+    if not sarvam_key:
+        raise ApiError("Text translation is not configured on this server.", 503)
 
     from ..services.sarvam_ai import translate_with_sarvam
-    sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
-    translated = translate_with_sarvam(
-        text, target_lang, sarvam_key,
-        model=current_app.config.get("SARVAM_TRANSLATE_MODEL") or "sarvam-translate:v1",
-    )
+    try:
+        translated = translate_with_sarvam(
+            text, target_lang, sarvam_key,
+            model=current_app.config.get("SARVAM_TRANSLATE_MODEL") or "sarvam-translate:v1",
+            strict=True,
+        )
+    except Exception:
+        current_app.logger.exception("Sarvam text translation failed.")
+        raise ApiError("The translation provider did not respond. Please try again.", 502)
     return jsonify(translated_text=translated, target_language_code=target_lang)
 
 
 @bp.post("/tts")
+@login_required
+@rate_limited(TTS_LIMIT)
 def text_to_speech():
     """Generate Indic voice audio from event text via Sarvam Bulbul TTS."""
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
-    target_lang = data.get("target_language_code") or "hi-IN"
-    speaker = data.get("speaker") or "aditya"
+    target_lang = (data.get("target_language_code") or "hi-IN").strip()
+    speaker = (data.get("speaker") or "aditya").strip()
     if not text:
-        return jsonify(audio="")
+        return jsonify(audio="", target_language_code=target_lang)
+    if len(text) > 500:
+        raise ApiError("Speech generation is limited to 500 characters per request.")
 
-    from ..services.sarvam_ai import speak_with_sarvam
+    from ..services.sarvam_ai import speak_with_sarvam, TTS_SUPPORTED_CODES
+    if target_lang not in TTS_SUPPORTED_CODES:
+        raise ApiError("Speech is not available in that language. Text translation may still be supported.")
     sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
+    if not sarvam_key:
+        raise ApiError("Speech generation is not configured on this server.", 503)
     audio_b64 = speak_with_sarvam(
         text, target_lang, sarvam_key, speaker,
         model=current_app.config.get("SARVAM_TTS_MODEL") or "bulbul:v3",
     )
+    if not audio_b64:
+        raise ApiError("The speech provider could not generate audio. Please try again.", 502)
     return jsonify(audio=audio_b64, target_language_code=target_lang)
 
 
@@ -213,10 +246,13 @@ def create_event():
 
 @bp.post("/geocode")
 @login_required
+@rate_limited(GEOCODE_LIMIT)
 def geocode_venue():
     venue = ((request.get_json(silent=True) or {}).get("venue") or "").strip()
     if not venue:
         raise ApiError("Type the venue first.")
+    if len(venue) > 250:
+        raise ApiError("Venue names must be 250 characters or fewer.")
     point = look_up(venue)
     if not point:
         raise ApiError("Could not find that location. Try adding the campus or city name.", 404)
@@ -447,6 +483,7 @@ def read_all_notifications():
 
 @bp.post("/notifications/check")
 @login_required
+@rate_limited(REMINDER_CHECK_LIMIT)
 def check_deadlines_now():
     created = run_reminder_check(current_app._get_current_object(), user_id=g.user.id)
     return jsonify(created=created)
@@ -682,6 +719,7 @@ def remove_top_priority():
 
 @bp.post("/top-priority/test-call")
 @login_required
+@rate_limited(TOP_CALL_TEST_LIMIT)
 def test_top_priority_call():
     """Trigger an immediate Sarvam voice reminder test call for the top priority event."""
     call_rec = TopPriorityCall.query.filter_by(user_id=g.user.id).first()
