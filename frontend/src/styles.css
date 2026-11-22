@@ -5582,3 +5582,35 @@ input::placeholder, textarea::placeholder {
   margin-top: 12px;
 }
 
+
+
+/* ── Settings: server-side AI provider status ── */
+.settings-provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.settings-provider-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--border);
+}
+.settings-provider-copy {
+  min-width: 0;
+  flex: 1;
+}
+.settings-provider-copy p {
+  margin: 0.3rem 0 0;
+}
+@media (max-width: 680px) {
+  .settings-provider-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .settings-provider-row > button {
+    align-self: flex-start;
+  }
+}
