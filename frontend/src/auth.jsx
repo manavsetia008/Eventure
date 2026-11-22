@@ -46,8 +46,11 @@ export function AuthProvider({ children }) {
     const r = await api.get("/auth/me");
     setUser(r.user);
   }, []);
+  const updateUser = useCallback((patch) => {
+    setUser((current) => current ? { ...current, ...patch } : current);
+  }, []);
 
-  return <Ctx.Provider value={{ user, loading, login, register, signInWithToken, logout, refresh }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, loading, login, register, signInWithToken, logout, refresh, updateUser }}>{children}</Ctx.Provider>;
 }
 
 export const useAuth = () => useContext(Ctx);
