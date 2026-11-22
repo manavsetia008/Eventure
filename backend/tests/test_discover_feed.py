@@ -78,6 +78,20 @@ class PublicDiscoverFeedTests(unittest.TestCase):
         self.assertIsNone(date)
         self.assertEqual(venue, "Offline venue to be confirmed")
 
+    def test_devfolio_card_does_not_inherit_the_next_event_status(self):
+        page = (
+            '<article><a href="https://open-hack.devfolio.co">Open Hack</a>'
+            '<span>Online Upcoming Starts 23/11/26</span></article>'
+            '<article><a href="https://past-hack.devfolio.co">Past Hack</a>'
+            '<span>Offline Ended</span></article>'
+        )
+        start = page.find("https://open-hack.devfolio.co")
+        end = start + len("https://open-hack.devfolio.co")
+        status, date, venue = _devfolio_card_context(page, start, end)
+        self.assertEqual(status, "upcoming")
+        self.assertEqual(date, datetime(2026, 11, 23))
+        self.assertEqual(venue, "Online")
+
     def test_suggestion_ranking_accepts_published_datetimes_and_missing_dates(self):
         user = SimpleNamespace(goals_list=["AI", "Python"], college="Delhi")
         listings = [
