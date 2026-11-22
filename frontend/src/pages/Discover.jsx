@@ -90,9 +90,8 @@ export default function Discover() {
   }
 
   const events = data?.events || [];
-  const hasMapPins = Boolean(
-    (data?.college?.lat != null && data?.college?.lng != null) ||
-    events.some((event) => event.lat != null && event.lng != null)
+  const hasCollegeLocation = Boolean(
+    data?.college?.lat != null && data?.college?.lng != null
   );
   return (
     <>
@@ -313,11 +312,11 @@ export default function Discover() {
         </div>
 
         <aside className="map-wrap">
-          <MapView college={data?.college} events={events} onOpen={open} />
+          <MapView college={data?.college} />
           <p className="small muted discover-map-note">
-            {hasMapPins
-              ? "The dark marker is your college; event markers are shown where listings include real coordinates. Select a marker to view details."
-              : "The basemap is live, but these public listings do not provide map coordinates yet. Event pins will appear when the organisers publish locations."}
+            {hasCollegeLocation
+              ? "Map centred on your college. Pan and zoom the OpenStreetMap below, or open the full map for directions."
+              : "Explore the map of India below. Add your college name and location in Settings to centre the map on your campus."}
           </p>
         </aside>
       </div>
