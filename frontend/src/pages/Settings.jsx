@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
 import Status from "../components/Status.jsx";
 import { urlBase64ToUint8Array } from "../utils";
+import { useLanguage } from "../LanguageProvider.jsx";
 
 function AIProvidersCard() {
   const [providers, setProviders] = useState([]);
@@ -765,22 +766,9 @@ function DeleteAccountCard() {
   );
 }
 
-const INDIC_LANGUAGES = [
-  { code: "en", label: "English" },
-  { code: "hi-IN", label: "Hindi (हिन्दी)" },
-  { code: "bn-IN", label: "Bengali (বাংলা)" },
-  { code: "ta-IN", label: "Tamil (தமிழ்)" },
-  { code: "te-IN", label: "Telugu (తెలుగు)" },
-  { code: "mr-IN", label: "Marathi (मराठी)" },
-  { code: "gu-IN", label: "Gujarati (ગુજરાતી)" },
-  { code: "kn-IN", label: "Kannada (ಕನ್ನಡ)" },
-  { code: "ml-IN", label: "Malayalam (മലയാളം)" },
-  { code: "pa-IN", label: "Punjabi (ਪੰਜਾਬੀ)" },
-  { code: "od-IN", label: "Odia (ଓଡ଼ିଆ)" },
-];
-
 export default function Settings() {
   const { user, refresh } = useAuth();
+  const { language, setLanguage, languages } = useLanguage();
   const [p, setP] = useState({
     name: user.name,
     college: user.college || "",
@@ -895,12 +883,15 @@ export default function Settings() {
         <label>Goals and interests<input value={p.goals} onChange={(e) => setP({ ...p, goals: e.target.value })} placeholder="hackathon, ai, web" /></label>
 
         <label>
-          Base Primary Language (Auto-Translates Posters, Portal Matches & Event Details)
+          Site & Assistant Language (translates the interface and AI assistant)
           <select
-            value={p.primary_language}
-            onChange={(e) => setP({ ...p, primary_language: e.target.value })}
+            value={language}
+            onChange={(e) => {
+              setP({ ...p, primary_language: e.target.value });
+              setLanguage(e.target.value);
+            }}
           >
-            {INDIC_LANGUAGES.map((l) => (
+            {languages.map((l) => (
               <option key={l.code} value={l.code}>{l.label}</option>
             ))}
           </select>
