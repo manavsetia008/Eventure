@@ -10,7 +10,7 @@ const TILE_PROVIDERS = [
     name: "Esri World Street Map",
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
     attribution:
-      'Sources: <a href="https://www.esri.com/" target="_blank" rel="noreferrer">Esri</a>, HERE, Garmin, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), MapmyIndia, TomTom.',
+      'Sources: <a href="https://www.esri.com/" target="_blank" rel="noreferrer">Esri</a>, DeLorme, HERE, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), MapmyIndia, TomTom.',
     maxZoom: 18,
   },
   {
