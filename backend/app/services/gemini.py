@@ -87,7 +87,7 @@ def translate_many_with_gemini(
         "placeholders such as {name}, and keyboard shortcuts exactly."
     )
     raw = generate_with_gemini(
-        f"Translate this JSON array into {target_language}:\\n{payload}",
+        f"Translate this JSON array into {target_language}:\n{payload}",
         api_key=api_key,
         system_instruction=system_instruction,
         model=model,
