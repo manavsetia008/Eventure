@@ -13,13 +13,17 @@ from ..languages import LANGUAGES, SUPPORTED_LANGUAGE_CODES
 from ..ratelimit import Limiter, rate_limited
 from ..utils import ApiError, now, parse_dt
 
-UI_TRANSLATE_LIMIT = Limiter(180, 60)
+UI_TRANSLATE_LIMIT = Limiter(90, 60, "ui-translate")
+AI_CHAT_LIMIT = Limiter(20, 60, "assistant-chat")
+AI_REVIEW_LIMIT = Limiter(5, 60, "assistant-review")
+PORTAL_MATCH_LIMIT = Limiter(10, 60, "portal-match")
 
 bp = Blueprint("assistant", __name__, url_prefix="/api")
 
 
 @bp.post("/assistant/chat")
 @login_required
+@rate_limited(AI_CHAT_LIMIT)
 def assistant_chat():
     """Floating AI assistant endpoint (Gemini LLM Network + Sarvam Saaras v4)."""
     d = request.get_json(silent=True) or {}
@@ -72,6 +76,7 @@ def translate_ui():
             language_name,
             gemini_key,
             model=current_app.config.get("GEMINI_MODEL", "gemini-3.8-flash"),
+            strict=True,
         )
         provider = "gemini"
     else:
@@ -85,6 +90,7 @@ def translate_ui():
 
 @bp.post("/assistant/review-submission")
 @login_required
+@rate_limited(AI_REVIEW_LIMIT)
 def review_submission():
     """Gemini-powered evaluation for Hackathon Vault submissions (repo, deck, video, checklist)."""
     d = request.get_json(silent=True) or {}
@@ -98,6 +104,7 @@ def review_submission():
 
 @bp.post("/search-match")
 @login_required
+@rate_limited(PORTAL_MATCH_LIMIT)
 def search_match():
     """Searches premier portals (Unstop, Devfolio, Luma) for matches.
     
