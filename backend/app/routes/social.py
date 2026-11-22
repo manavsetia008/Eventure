@@ -6,6 +6,9 @@ from ..auth import login_required
 from ..extensions import db
 from ..models import Club, ClubFollow, Event, Team, TeamMember, User, UserEvent
 from ..utils import ApiError, iso, now, to_int
+from ..ratelimit import Limiter, rate_limited
+
+TEAM_JOIN_LIMIT = Limiter(8, 60, "team-join")
 
 bp = Blueprint("social", __name__, url_prefix="/api")
 
@@ -105,6 +108,7 @@ def create_team():
 
 @bp.post("/teams/join")
 @login_required
+@rate_limited(TEAM_JOIN_LIMIT)
 def join_team():
     code = ((request.get_json(silent=True) or {}).get("code") or "").strip().upper()
     team = Team.query.filter_by(code=code).first()
