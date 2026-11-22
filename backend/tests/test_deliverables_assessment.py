@@ -9,6 +9,7 @@
 """
 from datetime import datetime, timedelta
 import unittest
+from unittest.mock import patch
 
 from app import create_app
 from app.auth import make_token, role_required
@@ -159,21 +160,41 @@ class TestDeliverableAssessment(unittest.TestCase):
     # 5. Search Event >70% Match & Choice Cards
     # ─────────────────────────────────────────────────────────────────────────────
     def test_portal_search_match_engine(self):
-        # Query matching Flipkart GRiD flagship
-        query = "Flipkart GRiD 6.0 software development hackathon"
-        matches = search_portal_catalog(query)
-        self.assertGreater(len(matches), 0)
-        best = matches[0]
-        self.assertEqual(best["platform"], "Unstop")
-        self.assertGreater(best["match_score"], 70.0)
+        # Portal matching must use current public feed records, never a built-in
+        # list of dated events that may be stale or fabricated.
+        listings = [
+            {
+                "title": "Flipkart GRiD 6.0 software development hackathon",
+                "platform": "Unstop",
+                "url": "https://unstop.com/hackathons/flipkart-grid-6",
+                "description": "Software development competition",
+            },
+            {
+                "title": "Hackathon Conclave for AI Builders",
+                "platform": "Unstop",
+                "url": "https://unstop.com/hackathons/ai-builders-conclave",
+                "description": "Build projects with AI",
+            },
+        ]
+        with patch("app.services.discover_feed.fetch_public_listings", return_value=listings):
+            query = "Flipkart GRiD 6.0 software development hackathon"
+            matches = search_portal_catalog(query)
+            self.assertGreater(len(matches), 0)
+            best = matches[0]
+            self.assertEqual(best["platform"], "Unstop")
+            self.assertGreaterEqual(best["match_score"], 90.0)
 
-        # Multi-signal match score calculation
-        score = compute_match_score("ETHIndia 2026 Devfolio", {"title": "ETHIndia 2026 - World's Largest Ethereum Hackathon", "platform": "Devfolio"})
-        self.assertGreater(score, 75.0)
+            # Similarity supported by a common platform word is never a
+            # high-confidence match without a distinctive title phrase.
+            score = compute_match_score(
+                "ETHIndia 2026 Devfolio",
+                {"title": "ETHIndia 2026 - World's Largest Ethereum Hackathon", "platform": "Devfolio"},
+            )
+            self.assertLess(score, 70.0)
 
-        # Conflicting/ambiguous search yields multiple choice cards
-        broad_matches = search_portal_catalog("Hackathon Conclave", min_score=30.0)
-        self.assertGreaterEqual(len(broad_matches), 1)
+            # Broad event searches use the same current live feed records.
+            broad_matches = search_portal_catalog("Hackathon Conclave", min_score=30.0)
+            self.assertGreaterEqual(len(broad_matches), 1)
 
     # ─────────────────────────────────────────────────────────────────────────────
     # 6. Priority-Gated Alerts
