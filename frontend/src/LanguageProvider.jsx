@@ -110,6 +110,7 @@ export function LanguageProvider({ children }) {
     setLanguageState(nextLanguage);
     localStorage.setItem(STORAGE_KEY, nextLanguage);
     setLanguageStatus(nextLanguage === DEFAULT_LANGUAGE ? "" : "Changing language…");
+    if (user) updateUser({ primary_language: nextLanguage });
 
     if (user) {
       try {
@@ -233,7 +234,7 @@ export function LanguageProvider({ children }) {
           pending.length = 0;
           setLanguageStatus(
             error.message?.includes("SARVAM_API_KEY")
-              ? "Add SARVAM_API_KEY in Render to translate the entire site."
+              ? "Add SARVAM_API_KEY or GEMINI_API_KEY in Render to translate the entire site."
               : `Translation failed: ${error.message}`
           );
           return;
