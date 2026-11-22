@@ -436,6 +436,33 @@ class ApiTests(unittest.TestCase):
             from app.models import UserEvent
             self.assertEqual(UserEvent.query.filter_by(event_id=event["id"]).count(), 2)
 
+    def test_public_ui_translation_reports_missing_provider(self):
+        with self.app.app_context():
+            self.app.config["SARVAM_API_KEY"] = ""
+            self.app.config["GEMINI_API_KEY"] = ""
+        response = self.client.post(
+            "/api/translate/ui",
+            json={"target_language": "hi-IN", "texts": ["Save changes"]},
+        )
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("SARVAM_API_KEY or GEMINI_API_KEY", response.get_json()["error"])
+
+    def test_ui_translation_falls_back_to_gemini_when_sarvam_fails(self):
+        with self.app.app_context():
+            self.app.config["SARVAM_API_KEY"] = "sarvam-test-key"
+            self.app.config["GEMINI_API_KEY"] = "gemini-test-key"
+        with patch("app.routes.assistant.translate_many_with_sarvam", side_effect=RuntimeError("Sarvam offline")), \
+             patch("app.services.gemini.translate_many_with_gemini", return_value=["बदलाव सहेजें"]) as gemini:
+            response = self.client.post(
+                "/api/translate/ui",
+                json={"target_language": "hi-IN", "texts": ["Save changes"]},
+            )
+        self.assertEqual(response.status_code, 200, response.get_json())
+        self.assertEqual(response.get_json()["provider"], "gemini")
+        self.assertEqual(response.get_json()["translations"], ["बदलाव सहेजें"])
+        self.assertTrue(gemini.called)
+
+
 
 def _google_config(**overrides):
     from app.config import Config
