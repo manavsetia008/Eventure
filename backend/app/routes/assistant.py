@@ -9,11 +9,11 @@ from ..services.extraction import extract_event
 from ..services.ocr import image_to_text
 from ..services.portal_search import compute_match_score, search_portal_catalog
 from ..services.sarvam_ai import ocr_with_sarvam, translate_many_with_sarvam
-from ..languages import SUPPORTED_LANGUAGE_CODES
+from ..languages import LANGUAGES, SUPPORTED_LANGUAGE_CODES
+from ..ratelimit import Limiter, rate_limited
+from ..utils import ApiError, now, parse_dt
 
 UI_TRANSLATE_LIMIT = Limiter(180, 60)
-from ..utils import ApiError, now, parse_dt
-from ..ratelimit import Limiter, rate_limited
 
 bp = Blueprint("assistant", __name__, url_prefix="/api")
 
@@ -52,18 +52,35 @@ def translate_ui():
     if target == "en-IN":
         return jsonify(translations=texts, language=target, translated=False)
 
-    api_key = current_app.config.get("SARVAM_API_KEY") or ""
-    if not api_key:
-        raise ApiError("Site-wide translation needs SARVAM_API_KEY configured in the Render backend.", 503)
+    sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
+    gemini_key = current_app.config.get("GEMINI_API_KEY") or ""
 
-    translated = translate_many_with_sarvam(
-        texts,
-        target,
-        api_key,
-        source_lang="en-IN",
-        model=current_app.config.get("SARVAM_TRANSLATE_MODEL", "sarvam-translate:v1"),
-    )
-    return jsonify(translations=translated, language=target, translated=True)
+    if sarvam_key:
+        translated = translate_many_with_sarvam(
+            texts,
+            target,
+            sarvam_key,
+            source_lang="en-IN",
+            model=current_app.config.get("SARVAM_TRANSLATE_MODEL", "sarvam-translate:v1"),
+        )
+        provider = "sarvam"
+    elif gemini_key:
+        from ..services.gemini import translate_many_with_gemini
+        language_name = LANGUAGES.get(target, {}).get("name", target)
+        translated = translate_many_with_gemini(
+            texts,
+            language_name,
+            gemini_key,
+            model=current_app.config.get("GEMINI_MODEL", "gemini-3.8-flash"),
+        )
+        provider = "gemini"
+    else:
+        raise ApiError(
+            "Add SARVAM_API_KEY or GEMINI_API_KEY to the Render backend to translate the site.",
+            503,
+        )
+
+    return jsonify(translations=translated, language=target, translated=True, provider=provider)
 
 
 @bp.post("/assistant/review-submission")
