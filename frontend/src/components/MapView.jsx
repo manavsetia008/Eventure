@@ -25,7 +25,7 @@ export default function MapView({ college }) {
   const embedUrl = useMemo(() => {
     if (!hasCollegeLocation) {
       const [west, south, east, north] = INDIA.bbox;
-      return `https://www.openstreetmap.org/export/embed.html?bbox=${west}%2C${south}%2C${east}%2C${north}%26layer=mapnik`;
+      return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent([west, south, east, north].join(","))}&layer=mapnik`;
     }
 
     const pad = 0.18;
