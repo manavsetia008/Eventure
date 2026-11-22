@@ -1,5 +1,6 @@
 """Routes for the Sarvam AI Voice & Chat Bot and Top Portal >70% Match Engine."""
 from flask import Blueprint, current_app, g, jsonify, request
+from sqlalchemy.exc import IntegrityError
 
 from ..auth import login_required
 from ..extensions import db
@@ -202,10 +203,18 @@ def search_match():
             if existing:
                 existing.status = "interested"
                 user_event = existing
+                db.session.commit()
             else:
                 user_event = UserEvent(user_id=g.user.id, event_id=event.id, status="interested")
                 db.session.add(user_event)
-            db.session.commit()
+                try:
+                    db.session.commit()
+                except IntegrityError:
+                    # A second request may have added this same public listing concurrently.
+                    db.session.rollback()
+                    user_event = UserEvent.query.filter_by(user_id=g.user.id, event_id=event.id).first()
+                    if not user_event:
+                        raise
             auto_added = True
             added_user_event_id = user_event.id
 
