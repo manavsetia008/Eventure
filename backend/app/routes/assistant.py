@@ -3,15 +3,15 @@ from flask import Blueprint, current_app, g, jsonify, request
 
 from ..auth import login_required
 from ..extensions import db
-from ..models import Event, Stage, UserEvent
+from ..models import Event, UserEvent
 from ..services.assistant import process_assistant_message
 from ..services.extraction import extract_event
 from ..services.ocr import image_to_text
-from ..services.portal_search import compute_match_score, search_portal_catalog
+from ..services.portal_search import search_portal_catalog
 from ..services.sarvam_ai import ocr_with_sarvam, translate_many_with_sarvam
 from ..languages import LANGUAGES, SUPPORTED_LANGUAGE_CODES
 from ..ratelimit import Limiter, rate_limited
-from ..utils import ApiError, now, parse_dt
+from ..utils import ApiError, now
 
 UI_TRANSLATE_LIMIT = Limiter(90, 60, "ui-translate")
 AI_CHAT_LIMIT = Limiter(20, 60, "assistant-chat")
