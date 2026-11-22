@@ -145,12 +145,12 @@ def process_assistant_message(user: User, message: str, config: dict, screen: st
     return _format_response(reply_text, None, user.primary_language, config, suggested_chips)
 
 
-def _format_response(text: str, action: dict, target_lang: str, config: dict, chips: list) -> dict:
+def _format_response(text: str, action: dict, target_lang: str, config: dict, chips: list, already_localized: bool = False) -> dict:
     sarvam_key = config.get("SARVAM_API_KEY") or ""
     translated_text = text
 
     # If user's primary language is Indic, translate assistant speech
-    if target_lang and target_lang not in ("en", "en-IN") and sarvam_key:
+    if target_lang and target_lang not in ("en", "en-IN") and sarvam_key and not already_localized:
         try:
             translated_text = translate_with_sarvam(text, target_lang, sarvam_key)
         except Exception as e:
