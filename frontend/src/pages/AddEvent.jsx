@@ -4,6 +4,7 @@ import { AlertCircle, FileText, MessageSquare, Upload } from "lucide-react";
 import { api } from "../api";
 import EventForm, { BLANK } from "../components/EventForm.jsx";
 import Badge from "../components/Badge.jsx";
+import DoodleHeading from "../components/ui/DoodleHeading.jsx";
 import { toInput } from "../utils";
 
 function fromParsed(parsed) {
@@ -184,7 +185,7 @@ export default function AddEvent() {
     <div className="add-event-container">
       <div className="page-head">
         <div>
-          <h1>Add an event</h1>
+          <DoodleHeading text="Add an event" mascot="mushroom" />
           <p className="muted small">Paste event text, upload a poster, or enter details by hand.</p>
         </div>
       </div>

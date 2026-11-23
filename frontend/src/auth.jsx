@@ -30,7 +30,10 @@ export function AuthProvider({ children }) {
     setUser(r.user);
   };
   const login = async (email, password) => finish(await api.post("/auth/login", { email, password }));
-  const register = async (data) => finish(await api.post("/auth/register", data));
+  const register = async (data) => finish(await api.post("/auth/register", {
+    ...data,
+    primary_language: data.primary_language || localStorage.getItem("eventure_language") || "en",
+  }));
   // Used after Google sign-in: the backend hands us a session token and we load the user with it.
   const signInWithToken = async (token) => {
     setToken(token);
@@ -46,8 +49,11 @@ export function AuthProvider({ children }) {
     const r = await api.get("/auth/me");
     setUser(r.user);
   }, []);
+  const updateUser = useCallback((patch) => {
+    setUser((current) => current ? { ...current, ...patch } : current);
+  }, []);
 
-  return <Ctx.Provider value={{ user, loading, login, register, signInWithToken, logout, refresh }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, loading, login, register, signInWithToken, logout, refresh, updateUser }}>{children}</Ctx.Provider>;
 }
 
 export const useAuth = () => useContext(Ctx);

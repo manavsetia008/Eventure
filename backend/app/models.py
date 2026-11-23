@@ -17,6 +17,8 @@ class User(db.Model):
     email = db.Column(db.String(200), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(300))  # null for accounts that only use Google sign-in
     google_id = db.Column(db.String(120), unique=True, index=True)  # Google account id, set on first Google sign-in
+    role = db.Column(db.String(20), default="student", server_default="student")  # student | organizer | admin
+    primary_language = db.Column(db.String(20), default="en", server_default="en")  # en, hi-IN, ta-IN, te-IN, bn-IN, mr-IN, etc.
     college = db.Column(db.String(200))
     college_lat = db.Column(db.Float)
     college_lng = db.Column(db.Float)
@@ -55,6 +57,8 @@ class User(db.Model):
             "college_lng": self.college_lng,
             "goals": self.goals_list,
             "scoring_mode": self.scoring_mode or "balanced",
+            "role": self.role or "student",
+            "primary_language": self.primary_language or "en",
             "threshold_keep": self.threshold_keep if self.threshold_keep is not None else 55,
             "threshold_skip": self.threshold_skip if self.threshold_skip is not None else 40,
             "use_maybe_range": bool(self.use_maybe_range),
@@ -65,6 +69,8 @@ class Club(db.Model):
     __tablename__ = "clubs"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
+    role = db.Column(db.String(20), default="student", server_default="student")  # student | organizer | admin
+    primary_language = db.Column(db.String(20), default="en", server_default="en")  # en, hi-IN, ta-IN, te-IN, bn-IN, mr-IN, etc.
     college = db.Column(db.String(200))
     description = db.Column(db.Text, default="")
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
@@ -94,6 +100,7 @@ class Event(db.Model):
     end_at = db.Column(db.DateTime)
     registration_deadline = db.Column(db.DateTime)
     url = db.Column(db.String(500))
+    source = db.Column(db.String(30), default="user", nullable=True)  # user or public_feed
     club_id = db.Column(db.Integer, db.ForeignKey("clubs.id"))
     is_public = db.Column(db.Boolean, default=False, index=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
@@ -115,6 +122,7 @@ class Event(db.Model):
             "end_at": iso(self.end_at),
             "registration_deadline": iso(self.registration_deadline),
             "url": self.url,
+            "source": self.source or "user",
             "club_id": self.club_id,
             "club_name": self.club.name if self.club else None,
             "is_public": bool(self.is_public),
@@ -275,6 +283,44 @@ class PushSubscription(db.Model):
     p256dh = db.Column(db.String(200), nullable=False)
     auth = db.Column(db.String(100), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
+
+
+class TopPriorityCall(db.Model):
+    """Voice call alert for student's single top-priority event.
+    
+    Exactly 1 top priority event per student at any time (replaceable).
+    A voice call is triggered exactly 24 hours before the latest deadline listed.
+    """
+    __tablename__ = "top_priority_calls"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), unique=True, nullable=False, index=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
+    user_event_id = db.Column(db.Integer, db.ForeignKey("user_events.id"), nullable=False)
+    scheduled_call_at = db.Column(db.DateTime, nullable=False, index=True)
+    phone_number = db.Column(db.String(20), default="")
+    status = db.Column(db.String(20), default="scheduled")  # scheduled, completed, failed, cancelled
+    latest_deadline = db.Column(db.DateTime, nullable=False)
+    call_log = db.Column(db.Text, default="")
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    user = db.relationship("User")
+    event = db.relationship("Event")
+    user_event = db.relationship("UserEvent")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "event_id": self.event_id,
+            "event_title": self.event.title if self.event else None,
+            "user_event_id": self.user_event_id,
+            "scheduled_call_at": iso(self.scheduled_call_at),
+            "phone_number": self.phone_number,
+            "status": self.status,
+            "latest_deadline": iso(self.latest_deadline),
+            "call_log": self.call_log,
+            "created_at": iso(self.created_at),
+        }
 
 
 class TrackedPortal(db.Model):

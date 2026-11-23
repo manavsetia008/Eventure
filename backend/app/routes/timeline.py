@@ -4,7 +4,7 @@ from flask import Blueprint, Response, current_app, g, jsonify, request
 
 from ..auth import login_required
 from ..extensions import db
-from ..models import STATUSES, Event, ExamPeriod, InboxItem, Notification, Stage, TrackedPortal, UserEvent
+from ..models import STATUSES, Event, ExamPeriod, InboxItem, Notification, Stage, TopPriorityCall, TrackedPortal, UserEvent
 from ..services.conflicts import detect_external_clashes, detect_issues, effective_end
 from ..services.extraction import extract_event
 from ..services.google_calendar import get_external_events
@@ -14,6 +14,15 @@ from ..services.priority import score_item, suggest_between, suggest_for_exam
 from ..services.reminders import run_reminder_check
 from ..services.travel import estimate_minutes, geocode
 from ..utils import ApiError, iso, now, parse_date, parse_dt, to_float, to_int
+from ..ratelimit import Limiter, rate_limited
+from ..languages import SUPPORTED_LANGUAGE_CODES
+
+EXTRACT_LIMIT = Limiter(12, 60, "extract")
+GEOCODE_LIMIT = Limiter(8, 60, "geocode")
+TRANSLATE_LIMIT = Limiter(30, 60, "translate")
+TTS_LIMIT = Limiter(10, 60, "tts")
+REMINDER_CHECK_LIMIT = Limiter(6, 60, "reminder-check")
+TOP_CALL_TEST_LIMIT = Limiter(1, 300, "top-call-test")
 
 bp = Blueprint("timeline", __name__, url_prefix="/api")
 
@@ -81,6 +90,7 @@ def serialize_user_event(ue, item=None, score=None, now_=None, score_parts=None)
 
 @bp.post("/extract")
 @login_required
+@rate_limited(EXTRACT_LIMIT)
 def extract():
     text, ocr_text = "", None
     upload = request.files.get("image")
@@ -97,12 +107,21 @@ def extract():
             try:
                 ocr_text = image_to_text(img_bytes)
             except OCRUnavailable as exc:
-                if not ocr_text:
-                    raise ApiError(str(exc), 422)
-        text = ocr_text
+                msg = str(exc)
+                if "not a readable image" in msg or "no text found" in msg:
+                    raise ApiError(msg, 422)
+                ocr_text = ""
+        text = ocr_text or ""
     typed = request.form.get("text") or (request.get_json(silent=True) or {}).get("text") or ""
     text = f"{text}\n{typed}".strip()
     if not text:
+        if upload:
+            return jsonify(parsed={
+                "title": "", "platform": None, "category": "other",
+                "description": "", "venue_name": None,
+                "start_at": None, "end_at": None,
+                "registration_deadline": None, "url": None, "stages": [],
+            }, ocr_text="", ocr_unavailable=True)
         raise ApiError("Paste the event text or upload a poster.")
     parsed = extract_event(
         text,
@@ -110,72 +129,110 @@ def extract():
         sarvam_key=current_app.config.get("SARVAM_API_KEY") or None,
         sarvam_model=current_app.config.get("SARVAM_MODEL", "sarvam-105b"),
     )
+    user_lang = getattr(g.user, "primary_language", "en")
+    if user_lang and user_lang not in ("en", "en-IN"):
+        sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
+        if sarvam_key:
+            from ..services.sarvam_ai import translate_with_sarvam
+            if parsed.get("title"):
+                parsed["title_localized"] = translate_with_sarvam(parsed["title"], user_lang, sarvam_key)
+            if parsed.get("description"):
+                parsed["description_localized"] = translate_with_sarvam(parsed["description"], user_lang, sarvam_key)
+        parsed["primary_language"] = user_lang
     return jsonify(parsed=parsed, ocr_text=ocr_text)
 
 
 @bp.post("/translate")
+@login_required
+@rate_limited(TRANSLATE_LIMIT)
 def translate():
-    """Translate event title/description into Hindi or any Indic language via Sarvam Translate."""
+    """Translate user-provided text with the configured Sarvam translation model."""
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
-    target_lang = data.get("target_language_code") or "hi-IN"
+    target_lang = (data.get("target_language_code") or "hi-IN").strip()
     if not text:
-        return jsonify(translated_text="")
+        return jsonify(translated_text="", target_language_code=target_lang)
+    if len(text) > 2000:
+        raise ApiError("Text translation is limited to 2,000 characters per request.")
+    if target_lang not in SUPPORTED_LANGUAGE_CODES and target_lang != "en-IN":
+        raise ApiError("Choose a supported translation language.")
+    sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
+    if not sarvam_key:
+        raise ApiError("Text translation is not configured on this server.", 503)
 
     from ..services.sarvam_ai import translate_with_sarvam
-    sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
-    translated = translate_with_sarvam(
-        text, target_lang, sarvam_key,
-        model=current_app.config.get("SARVAM_TRANSLATE_MODEL") or "sarvam-translate:v1",
-    )
+    try:
+        translated = translate_with_sarvam(
+            text, target_lang, sarvam_key,
+            model=current_app.config.get("SARVAM_TRANSLATE_MODEL") or "sarvam-translate:v1",
+            strict=True,
+        )
+    except Exception:
+        current_app.logger.exception("Sarvam text translation failed.")
+        raise ApiError("The translation provider did not respond. Please try again.", 502)
     return jsonify(translated_text=translated, target_language_code=target_lang)
 
 
 @bp.post("/tts")
+@login_required
+@rate_limited(TTS_LIMIT)
 def text_to_speech():
     """Generate Indic voice audio from event text via Sarvam Bulbul TTS."""
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
-    target_lang = data.get("target_language_code") or "hi-IN"
-    speaker = data.get("speaker") or "aditya"
+    target_lang = (data.get("target_language_code") or "hi-IN").strip()
+    speaker = (data.get("speaker") or "aditya").strip()
     if not text:
-        return jsonify(audio="")
+        return jsonify(audio="", target_language_code=target_lang)
+    if len(text) > 500:
+        raise ApiError("Speech generation is limited to 500 characters per request.")
 
-    from ..services.sarvam_ai import speak_with_sarvam
+    from ..services.sarvam_ai import speak_with_sarvam, TTS_SUPPORTED_CODES
+    if target_lang not in TTS_SUPPORTED_CODES:
+        raise ApiError("Speech is not available in that language. Text translation may still be supported.")
     sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
+    if not sarvam_key:
+        raise ApiError("Speech generation is not configured on this server.", 503)
     audio_b64 = speak_with_sarvam(
         text, target_lang, sarvam_key, speaker,
         model=current_app.config.get("SARVAM_TTS_MODEL") or "bulbul:v3",
     )
+    if not audio_b64:
+        raise ApiError("The speech provider could not generate audio. Please try again.", 502)
     return jsonify(audio=audio_b64, target_language_code=target_lang)
 
 
 @bp.post("/events")
 @login_required
 def create_event():
+    from ..sanitizer import sanitize_text, sanitize_url
     d = request.get_json(silent=True) or {}
-    title = (d.get("title") or "").strip()
-    if not title:
+    raw_title = (d.get("title") or "").strip()
+    if not raw_title:
         raise ApiError("Add a title for the event.")
+    title = sanitize_text(raw_title, max_len=250)
     start, end = parse_dt(d.get("start_at")), parse_dt(d.get("end_at"))
     if start and end and end < start:
         raise ApiError("The end time is before the start time.")
     reg = parse_dt(d.get("registration_deadline"))
     lat, lng = to_float(d.get("lat")), to_float(d.get("lng"))
-    venue = (d.get("venue_name") or "").strip() or None
+    venue = sanitize_text((d.get("venue_name") or "").strip() or None, max_len=250)
     if (lat is None or lng is None) and venue:
         point = look_up(venue)
         if point:
             lat, lng = point
     ev = Event(
-        title=title[:250], platform=(d.get("platform") or None), category=(d.get("category") or "other").lower(),
-        description=d.get("description") or "", venue_name=venue, lat=lat, lng=lng, start_at=start, end_at=end,
-        registration_deadline=reg, url=d.get("url") or None, is_public=bool(d.get("is_public")), created_by=g.user.id,
+        title=title, platform=sanitize_text(d.get("platform") or None, max_len=80),
+        category=(d.get("category") or "other").lower(),
+        description=sanitize_text(d.get("description") or "", max_len=5000, strip_tags=False),
+        venue_name=venue, lat=lat, lng=lng, start_at=start, end_at=end,
+        registration_deadline=reg, url=sanitize_url(d.get("url") or "") or None,
+        is_public=bool(d.get("is_public")), created_by=g.user.id,
     )
     db.session.add(ev)
     db.session.flush()
     status = d.get("status") if d.get("status") in STATUSES else "registered"
-    notes = (d.get("notes") or "").strip()
+    notes = sanitize_text((d.get("notes") or "").strip(), max_len=2000)
     ue = UserEvent(user_id=g.user.id, event_id=ev.id, status=status, notes=notes)
     db.session.add(ue)
     db.session.flush()
@@ -198,10 +255,13 @@ def create_event():
 
 @bp.post("/geocode")
 @login_required
+@rate_limited(GEOCODE_LIMIT)
 def geocode_venue():
     venue = ((request.get_json(silent=True) or {}).get("venue") or "").strip()
     if not venue:
         raise ApiError("Type the venue first.")
+    if len(venue) > 250:
+        raise ApiError("Venue names must be 250 characters or fewer.")
     point = look_up(venue)
     if not point:
         raise ApiError("Could not find that location. Try adding the campus or city name.", 404)
@@ -215,20 +275,22 @@ def update_event(event_id):
     if not ev or ev.created_by != g.user.id:
         raise ApiError("You can only edit events you added.", 404)
     d = request.get_json(silent=True) or {}
+    from ..sanitizer import sanitize_text, sanitize_url
     if "title" in d:
         title = (d["title"] or "").strip()
         if not title:
             raise ApiError("Add a title for the event.")
-        ev.title = title[:250]
+        ev.title = sanitize_text(title, max_len=250)
     if "category" in d:
         ev.category = (d["category"] or "other").lower()
-    for key in ("platform", "url"):
-        if key in d:
-            setattr(ev, key, (d[key] or "").strip() or None)
+    if "platform" in d:
+        ev.platform = sanitize_text((d["platform"] or "").strip() or None, max_len=80)
+    if "url" in d:
+        ev.url = sanitize_url(d["url"] or "") or None
     if "description" in d:
-        ev.description = d["description"] or ""
+        ev.description = sanitize_text(d["description"] or "", max_len=5000, strip_tags=False)
     if "venue_name" in d:
-        ev.venue_name = (d["venue_name"] or "").strip() or None
+        ev.venue_name = sanitize_text((d["venue_name"] or "").strip() or None, max_len=250)
     if "lat" in d or "lng" in d:
         ev.lat, ev.lng = to_float(d.get("lat")), to_float(d.get("lng"))
     for key in ("start_at", "end_at", "registration_deadline"):
@@ -430,6 +492,7 @@ def read_all_notifications():
 
 @bp.post("/notifications/check")
 @login_required
+@rate_limited(REMINDER_CHECK_LIMIT)
 def check_deadlines_now():
     created = run_reminder_check(current_app._get_current_object(), user_id=g.user.id)
     return jsonify(created=created)
@@ -562,3 +625,127 @@ def sync_portal_deadlines(portal_id):
         updated_events=count,
         message=f"Synced with {p.name}. {count} event(s) monitored for registration deadline changes."
     )
+
+
+# =========================================================================
+# Sarvam Top-Priority Voice Call Alert System
+# Exactly one event can be designated Top Priority at a time (replaceable).
+# Automatically schedules and places an Indic voice call 24 hours before
+# the latest listed deadline.
+# =========================================================================
+
+@bp.get("/top-priority")
+@login_required
+def get_top_priority():
+    call_rec = TopPriorityCall.query.filter_by(user_id=g.user.id).first()
+    if not call_rec:
+        return jsonify(top_priority=None)
+    return jsonify(top_priority=call_rec.to_dict())
+
+
+@bp.post("/top-priority/set")
+@login_required
+def set_top_priority():
+    d = request.get_json(silent=True) or {}
+    event_id = to_int(d.get("event_id"))
+    phone_number = (d.get("phone_number") or "").strip()
+    if not event_id:
+        raise ApiError("Select an event to designate as top priority.", 400)
+
+    ev = db.session.get(Event, event_id)
+    if not ev:
+        raise ApiError("Event not found.", 404)
+
+    ue = UserEvent.query.filter_by(user_id=g.user.id, event_id=event_id).first()
+    if not ue:
+        ue = UserEvent(user_id=g.user.id, event_id=event_id, status="registered")
+        db.session.add(ue)
+        db.session.flush()
+
+    # Find the latest deadline among event stages, registration deadline, and end_at
+    deadlines = []
+    if ev.registration_deadline:
+        deadlines.append(ev.registration_deadline)
+    if ev.end_at:
+        deadlines.append(ev.end_at)
+    if ev.start_at:
+        deadlines.append(ev.start_at)
+    for st in ue.stages:
+        if st.due_at:
+            deadlines.append(st.due_at)
+
+    now_dt = now()
+    future_deadlines = [dt for dt in deadlines if dt > now_dt]
+    latest_deadline = max(future_deadlines) if future_deadlines else (max(deadlines) if deadlines else (now_dt + timedelta(days=2)))
+
+    # Scheduled exactly 24 hours before the latest deadline
+    scheduled_call_at = latest_deadline - timedelta(hours=24)
+    # If deadline is less than 24 hours away, schedule call in 2 minutes
+    if scheduled_call_at <= now_dt:
+        scheduled_call_at = now_dt + timedelta(minutes=2)
+
+    # Replace existing top priority call if any (only one top priority permitted)
+    call_rec = TopPriorityCall.query.filter_by(user_id=g.user.id).first()
+    if not call_rec:
+        call_rec = TopPriorityCall(
+            user_id=g.user.id,
+            event_id=ev.id,
+            user_event_id=ue.id,
+            scheduled_call_at=scheduled_call_at,
+            phone_number=phone_number,
+            status="scheduled",
+            latest_deadline=latest_deadline,
+        )
+        db.session.add(call_rec)
+    else:
+        call_rec.event_id = ev.id
+        call_rec.user_event_id = ue.id
+        call_rec.scheduled_call_at = scheduled_call_at
+        call_rec.phone_number = phone_number or call_rec.phone_number
+        call_rec.status = "scheduled"
+        call_rec.latest_deadline = latest_deadline
+
+    # Mark custom high score on UserEvent
+    ue.custom_score = 99
+    db.session.commit()
+
+    return jsonify(
+        ok=True,
+        top_priority=call_rec.to_dict(),
+        message=f"'{ev.title}' is now your Top-Priority event. Sarvam voice call scheduled exactly 24 hours before deadline on {iso(scheduled_call_at)}."
+    )
+
+
+@bp.delete("/top-priority")
+@login_required
+def remove_top_priority():
+    call_rec = TopPriorityCall.query.filter_by(user_id=g.user.id).first()
+    if call_rec:
+        db.session.delete(call_rec)
+        db.session.commit()
+    return jsonify(ok=True, message="Top priority removed.")
+
+
+@bp.post("/top-priority/test-call")
+@login_required
+@rate_limited(TOP_CALL_TEST_LIMIT)
+def test_top_priority_call():
+    """Trigger an immediate Sarvam voice reminder test call for the top priority event."""
+    call_rec = TopPriorityCall.query.filter_by(user_id=g.user.id).first()
+    if not call_rec:
+        raise ApiError("No top-priority event configured.", 400)
+
+    from ..services.sarvam_ai import trigger_sarvam_voice_call
+    api_key = current_app.config.get("SARVAM_API_KEY", "")
+    lang = getattr(g.user, "primary_language", "hi-IN") or "hi-IN"
+
+    res = trigger_sarvam_voice_call(
+        phone=call_rec.phone_number,
+        event_title=call_rec.event.title if call_rec.event else "Your event",
+        deadline_str=iso(call_rec.latest_deadline),
+        api_key=api_key,
+        lang=lang,
+    )
+    call_rec.call_log = f"Test call executed at {now().isoformat()}: status={res.get('status')}"
+    db.session.commit()
+    return jsonify(ok=True, call_result=res)

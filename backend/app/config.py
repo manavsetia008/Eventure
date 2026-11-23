@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 
@@ -7,19 +8,58 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 
 def _database_url():
-    url = os.getenv("DATABASE_URL") or f"sqlite:///{os.path.join(BASE_DIR, 'eventure.db')}"
+    url = (os.getenv("DATABASE_URL") or f"sqlite:///{os.path.join(BASE_DIR, 'eventure.db')}").strip()
+
+    # A full PostgreSQL DSN is occasionally pasted with an HTTP(S) scheme by mistake.
+    # Repair only when it contains all the parts of a real database URI; never mistake
+    # a Supabase project/API URL for a database connection string.
+    if url.startswith(("https://", "http://")):
+        parsed = urlsplit(url)
+        has_database_credentials = bool(
+            parsed.username and parsed.password and parsed.hostname and parsed.port
+            and parsed.path.strip("/")
+        )
+        if not has_database_credentials:
+            raise RuntimeError(
+                "DATABASE_URL is an HTTP(S) URL, not a PostgreSQL connection string. "
+                "Use the URI shown by Supabase Connect > Session pooler "
+                "(postgresql://...:5432/postgres), not the Supabase API/project URL."
+            )
+        url = "postgresql+psycopg://" + url.split("://", 1)[1]
+
     if url.startswith("postgres://"):  # some hosts still hand out the old scheme
         url = "postgresql://" + url[len("postgres://"):]
+
+    scheme = url.split("://", 1)[0].lower() if "://" in url else ""
+    if scheme not in {"sqlite", "postgresql", "postgresql+psycopg", "postgresql+psycopg2"}:
+        raise RuntimeError(
+            "DATABASE_URL must use a PostgreSQL connection URI from Supabase "
+            "(postgresql:// or postgresql+psycopg://)."
+        )
     return url
 
 
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "eventure-dev-secret-key-32-bytes-minimum-length-phrase!")
+    APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
+    # A predictable development-only key keeps local setup friction low. Production refuses
+    # to boot unless a strong SECRET_KEY is supplied by the hosting environment.
+    SECRET_KEY = os.getenv("SECRET_KEY") or (
+        "" if APP_ENV == "production" else "eventure-local-development-key-do-not-deploy"
+    )
     SQLALCHEMY_DATABASE_URI = _database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True, "pool_recycle": 300}
     JWT_EXPIRY_HOURS = int(os.getenv("JWT_EXPIRY_HOURS", "72"))
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173")
     MAX_CONTENT_LENGTH = int(os.getenv("UPLOAD_MAX_MB", "8")) * 1024 * 1024
+
+    # Gemini LLM Network (Chatbot & Hackathon Submission Box)
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+
+    # Real-Time Hackathon Suggestions (Google Custom Search Data)
+    GOOGLE_SEARCH_API_KEY = os.getenv("GOOGLE_SEARCH_API_KEY", "")
+    GOOGLE_SEARCH_CX = os.getenv("GOOGLE_SEARCH_CX", "")
 
     # Sarvam AI Indic Intelligence (Sarvam-105B & Sarvam Translate)
     SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")

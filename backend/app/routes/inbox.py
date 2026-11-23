@@ -7,6 +7,9 @@ from ..extensions import db
 from ..models import InboxItem
 from ..services.inbox import find_token, forwarding_address, html_to_text, ingest_email, parse_raw_email
 from ..utils import ApiError
+from ..ratelimit import Limiter, rate_limited
+
+INBOUND_EMAIL_LIMIT = Limiter(120, 60, "inbound-email")
 
 bp = Blueprint("inbox", __name__, url_prefix="/api")
 
@@ -30,6 +33,7 @@ def dismiss(item_id):
 
 
 @bp.post("/inbound/email")
+@rate_limited(INBOUND_EMAIL_LIMIT)
 def inbound_email():
     """Webhook for mail providers (Mailgun, SendGrid, Postmark style). Protected by INBOUND_SECRET."""
     secret = current_app.config["INBOUND_SECRET"]

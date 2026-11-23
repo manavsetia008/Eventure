@@ -1,5 +1,5 @@
-from flask import Blueprint, g, jsonify, request
-from sqlalchemy import func
+from flask import Blueprint, current_app, g, jsonify, request
+from sqlalchemy import and_, func, or_
 
 from ..auth import login_required
 from ..extensions import db
@@ -7,6 +7,9 @@ from ..models import STATUSES, Event, Review, Stage, TrackedPortal, UserEvent
 from ..services.priority import goal_fit, score_item
 from ..services.travel import estimate_minutes, haversine_km
 from ..utils import ApiError, now
+from ..ratelimit import Limiter, rate_limited
+
+SUGGESTION_LIMIT = Limiter(6, 60, "discover-suggestions")
 
 bp = Blueprint("discover", __name__, url_prefix="/api")
 
@@ -63,7 +66,22 @@ def event_card(ev, user, ratings, in_timeline, portal_keys=None):
 @login_required
 def discover():
     user, now_ = g.user, now()
-    q = Event.query.filter(Event.is_public.is_(True), Event.start_at >= now_)
+    # Pull the latest public listings into the shared catalogue. Source failures are
+    # non-fatal: locally created events remain available when an upstream is offline.
+    if not current_app.config.get("TESTING"):
+        try:
+            from ..services.discover_feed import sync_public_listings
+            sync_public_listings()
+        except Exception:
+            current_app.logger.exception("Public discovery feed sync failed.")
+
+    q = Event.query.filter(
+        Event.is_public.is_(True),
+        or_(
+            Event.start_at >= now_,
+            and_(Event.start_at.is_(None), Event.source == "public_feed"),
+        ),
+    )
     category = (request.args.get("category") or "").strip().lower()
     if category:
         q = q.filter(func.lower(Event.category) == category)
@@ -96,7 +114,12 @@ def discover():
     else:
         cards.sort(key=lambda c: -c["rank"])
     college = {"name": user.college, "lat": user.college_lat, "lng": user.college_lng}
-    return jsonify(events=cards, college=college, tracked_portals=[p.name for p in user_portals])
+    return jsonify(
+        events=cards,
+        college=college,
+        tracked_portals=[p.name for p in user_portals],
+        feed_sources=["Unstop", "Devfolio"],
+    )
 
 
 @bp.get("/events/<int:event_id>")
@@ -110,6 +133,15 @@ def event_detail(event_id):
     ue = UserEvent.query.filter_by(user_id=user.id, event_id=ev.id).first()
     mine = {ev.id} if ue else set()
     card = event_card(ev, user, ratings, mine)
+    user_lang = getattr(user, "primary_language", "en")
+    if user_lang and user_lang not in ("en", "en-IN"):
+        from flask import current_app
+        sarvam_key = current_app.config.get("SARVAM_API_KEY") or ""
+        if sarvam_key:
+            from ..services.sarvam_ai import translate_with_sarvam
+            card["title_localized"] = translate_with_sarvam(ev.title, user_lang, sarvam_key)
+            card["description_localized"] = translate_with_sarvam(ev.description or "", user_lang, sarvam_key)
+        card["primary_language"] = user_lang
     reviews = Review.query.filter_by(event_id=ev.id).order_by(Review.created_at.desc()).all()
     already = any(r.user_id == user.id for r in reviews)
 
@@ -173,8 +205,10 @@ def add_review(event_id):
         if not 1 <= v <= 5:
             raise ApiError(f"Rate {k} from 1 to 5.")
         dims[k] = v
+    from ..sanitizer import sanitize_text
     overall = round(sum(dims.values()) / 3, 1)
-    review = Review(event_id=ev.id, user_id=g.user.id, overall=overall, comment=(d.get("comment") or "").strip()[:1500], **dims)
+    clean_comment = sanitize_text((d.get("comment") or "").strip(), max_len=1500, strip_tags=True)
+    review = Review(event_id=ev.id, user_id=g.user.id, overall=overall, comment=clean_comment, **dims)
     db.session.add(review)
     db.session.commit()
     return jsonify(review=review.to_dict()), 201
@@ -227,3 +261,26 @@ def compare():
         rows.append(card)
     rows.sort(key=lambda c: ids.index(c["id"]) if c["id"] in ids else 0)
     return jsonify(events=rows)
+
+
+@bp.get("/discover/suggestions")
+@login_required
+@rate_limited(SUGGESTION_LIMIT)
+def get_hackathon_suggestions():
+    """Real-time hackathon suggestions based on user profile and Google Search data."""
+    from flask import current_app
+    from ..services.discover_feed import sync_public_listings
+    from ..services.hackathon_suggest import suggest_hackathons_for_user
+
+    try:
+        sync_public_listings()
+    except Exception:
+        current_app.logger.exception("Public feed sync failed while loading suggestions.")
+
+    suggestions = suggest_hackathons_for_user(g.user, current_app.config)
+    # Suggestions use the same persisted event records as Discover so the timeline
+    # action always receives a real numeric event id.
+    for suggestion in suggestions:
+        event = Event.query.filter_by(url=suggestion.get("url")).first()
+        suggestion["id"] = event.id if event else None
+    return jsonify(suggestions=suggestions)

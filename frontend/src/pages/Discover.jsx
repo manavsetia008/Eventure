@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ExternalLink, Rss, Search, X } from "lucide-react";
+import { ExternalLink, Rss, Search, Sparkles, X } from "lucide-react";
 import { api } from "../api";
 import MapView from "../components/MapView.jsx";
 import Status from "../components/Status.jsx";
 import Chip from "../components/Chip.jsx";
 import Checkbox from "../components/Checkbox.jsx";
+import DoodleHeading from "../components/ui/DoodleHeading.jsx";
 import { CATEGORIES, cap, fmtDate, fmtDuration, fmtRange } from "../utils";
 
 const EMPTY_FILTERS = { q: "", category: "", radius_km: "", portals_only: "", sort: "rank" };
@@ -27,6 +28,13 @@ export default function Discover() {
   const [picked, setPicked] = useState([]);
   const [compare, setCompare] = useState(null);
   const [portals, setPortals] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+
+  useEffect(() => {
+    api.get("/discover/suggestions")
+      .then((r) => setSuggestions(r.suggestions || []))
+      .catch(() => {});
+  }, []);
 
   const loadPortals = useCallback(() => {
     api.get("/portals").then((r) => setPortals(r.portals || [])).catch(() => {});
@@ -83,14 +91,82 @@ export default function Discover() {
   }
 
   const events = data?.events || [];
+  const hasCollegeLocation = Boolean(
+    data?.college?.lat != null && data?.college?.lng != null
+  );
   return (
     <>
       <div className="page-head">
         <div>
-          <h1>Discover events</h1>
-          <p className="muted small">Find verified campus events, view locations on map, and compare side by side.</p>
+          <DoodleHeading text="Discover events" mascot="kid" />
+          <p className="muted small">Browse live public hackathons from Unstop and Devfolio. Dates that organisers do not publish stay marked as unconfirmed.</p>
         </div>
       </div>
+
+      {/* Personalized suggestions from web search and the maintained portal catalogue */}
+      {suggestions.length > 0 && (
+        <section className="card" style={{ background: "rgba(99, 102, 241, 0.05)", border: "1px solid var(--accent)", padding: "1.2rem", marginBottom: "1.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.8rem", flexWrap: "wrap", gap: "0.5rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Sparkles size={18} color="var(--accent)" />
+              <strong style={{ fontSize: "1rem" }}>Hackathon suggestions</strong>
+            </div>
+            <span className="pill ok" style={{ fontSize: "0.75rem" }}>Live listings + portal directory</span>
+          </div>
+          <p className="small muted" style={{ margin: "0 0 1rem 0" }}>
+            Ranked against your interests and goals. Portal-directory links are not event listings; confirm dates, eligibility and registration on the organiser&apos;s official page.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
+            {suggestions.map((s, idx) => (
+              <div key={idx} className="card" style={{ background: "var(--surface)", border: "1px solid var(--line)", padding: "0.9rem", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.4rem" }}>
+                    <span className="pill" style={{ fontSize: "0.7rem", background: "var(--accent-subtle)", color: "var(--accent)" }}>{s.platform || "Hackathon"}</span>
+                    <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--accent)" }}>{s.match_score} Fit</span>
+                  </div>
+                  <h4 style={{ margin: "0.5rem 0 0.3rem", fontSize: "0.95rem" }}>{s.title}</h4>
+                  <p className="small muted" style={{ margin: "0 0 0.5rem", lineHeight: "1.4" }}>{s.reason || s.description?.slice(0, 100)}</p>
+                  {!s.start_at && (
+                    <p className="small muted" style={{ margin: "0 0 0.5rem" }}>
+                      Dates are not confirmed by this public listing — check the organiser&apos;s page.
+                    </p>
+                  )}
+                  {s.matched_skills && s.matched_skills.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "0.6rem" }}>
+                      {s.matched_skills.map((sk) => (
+                        <span key={sk} style={{ fontSize: "0.65rem", padding: "2px 6px", borderRadius: "999px", background: "var(--card-light)", border: "1px solid var(--line)" }}>
+                          #{sk}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem" }}>
+                  {s.url && (
+                    <a href={s.url} target="_blank" rel="noreferrer" className="btn-tertiary" style={{ fontSize: "0.75rem", padding: "4px 8px" }}>
+                      View Link <ExternalLink size={11} />
+                    </a>
+                  )}
+                  {s.id ? (
+                    <button
+                      type="button"
+                      className="btn small"
+                      style={{ fontSize: "0.75rem", padding: "4px 10px" }}
+                      onClick={() => add({ id: s.id, title: s.title })}
+                    >
+                      + Add to Timeline
+                    </button>
+                  ) : (
+                    <span className="small muted" title="This is a discovery candidate, not a verified live event">
+                      Verify listing before adding
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Tracked portals strip */}
       <div className="portal-tracker-bar">
@@ -237,9 +313,11 @@ export default function Discover() {
         </div>
 
         <aside className="map-wrap">
-          <MapView college={data?.college} events={events} onOpen={open} />
+          <MapView college={data?.college} />
           <p className="small muted discover-map-note">
-            The solid dot marks your college; the others are events. Select one to view details.
+            {hasCollegeLocation
+              ? "Map centred on your college. Pan and zoom the OpenStreetMap below, or open the full map for directions."
+              : "Explore the map of India below. Add your college name and location in Settings to centre the map on your campus."}
           </p>
         </aside>
       </div>

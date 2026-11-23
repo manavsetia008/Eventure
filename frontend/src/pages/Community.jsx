@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Check, Users } from "lucide-react";
 import { api } from "../api";
 import Badge from "../components/Badge.jsx";
+import DoodleHeading from "../components/ui/DoodleHeading.jsx";
 import { cap, fmtDate, fmtRange, timeLeft } from "../utils";
 
 function Clubs() {
@@ -259,7 +260,7 @@ export default function Community() {
     <>
       <div className="page-head">
         <div>
-          <h1>Community</h1>
+          <DoodleHeading text="Community" mascot="cat" />
           <p className="muted small">Clubs across campuses and the teams you build with.</p>
         </div>
       </div>

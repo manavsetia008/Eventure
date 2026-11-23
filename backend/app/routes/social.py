@@ -6,6 +6,9 @@ from ..auth import login_required
 from ..extensions import db
 from ..models import Club, ClubFollow, Event, Team, TeamMember, User, UserEvent
 from ..utils import ApiError, iso, now, to_int
+from ..ratelimit import Limiter, rate_limited
+
+TEAM_JOIN_LIMIT = Limiter(8, 60, "team-join")
 
 bp = Blueprint("social", __name__, url_prefix="/api")
 
@@ -27,11 +30,15 @@ def list_clubs():
 @bp.post("/clubs")
 @login_required
 def create_club():
+    from ..sanitizer import sanitize_text
     d = request.get_json(silent=True) or {}
-    name = (d.get("name") or "").strip()
-    if not name:
+    raw_name = (d.get("name") or "").strip()
+    if not raw_name:
         raise ApiError("Name the club or community.")
-    club = Club(name=name[:150], college=(d.get("college") or g.user.college), description=(d.get("description") or "").strip(), created_by=g.user.id)
+    name = sanitize_text(raw_name, max_len=150)
+    college = sanitize_text(d.get("college") or g.user.college or "", max_len=200)
+    description = sanitize_text(d.get("description") or "", max_len=3000, strip_tags=False)
+    club = Club(name=name, college=college or None, description=description, created_by=g.user.id)
     db.session.add(club)
     db.session.flush()
     db.session.add(ClubFollow(user_id=g.user.id, club_id=club.id))
@@ -85,10 +92,12 @@ def list_teams():
 @bp.post("/teams")
 @login_required
 def create_team():
-    name = ((request.get_json(silent=True) or {}).get("name") or "").strip()
-    if not name:
+    from ..sanitizer import sanitize_text
+    raw_name = ((request.get_json(silent=True) or {}).get("name") or "").strip()
+    if not raw_name:
         raise ApiError("Name your team.")
-    team = Team(name=name[:150], code=secrets.token_hex(3).upper(), owner_id=g.user.id)
+    name = sanitize_text(raw_name, max_len=150)
+    team = Team(name=name, code=secrets.token_hex(3).upper(), owner_id=g.user.id)
     db.session.add(team)
     db.session.flush()
     db.session.add(TeamMember(team_id=team.id, user_id=g.user.id))
@@ -98,6 +107,7 @@ def create_team():
 
 @bp.post("/teams/join")
 @login_required
+@rate_limited(TEAM_JOIN_LIMIT)
 def join_team():
     code = ((request.get_json(silent=True) or {}).get("code") or "").strip().upper()
     team = Team.query.filter_by(code=code).first()

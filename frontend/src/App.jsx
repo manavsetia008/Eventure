@@ -17,6 +17,9 @@ import Notifications from "./pages/Notifications.jsx";
 import Organizer from "./pages/Organizer.jsx";
 import Settings from "./pages/Settings.jsx";
 import Timeline from "./pages/Timeline.jsx";
+import SarvamAssistant from "./components/SarvamAssistant.jsx";
+import { LanguageSwitcher } from "./LanguageProvider.jsx";
+import PortalSearchModal from "./components/PortalSearchModal.jsx";
 import {
   Bell,
   Calendar,
@@ -27,6 +30,7 @@ import {
   Moon,
   Plus,
   Settings as SettingsIcon,
+  Sparkles,
   Sun,
   User,
   Users,
@@ -36,6 +40,7 @@ function Layout({ children, theme, toggleTheme }) {
   const { user, logout } = useAuth();
   const [unread, setUnread] = useState(0);
   const [inbox, setInbox] = useState(0);
+  const [portalSearchOpen, setPortalSearchOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -72,44 +77,69 @@ function Layout({ children, theme, toggleTheme }) {
 
   return (
     <>
-      <header className="topbar">
-        <Link to="/" className="topbar-brand" aria-label="Eventure Home">
-          <Logo size={24} />
-        </Link>
+      <div className="topbar-surround">
+        <header className="topbar">
+          <Link to="/" className="topbar-brand" aria-label="Eventure Home">
+            <Logo size={24} />
+          </Link>
 
-        <nav className="desktop-nav" aria-label="Main Navigation">
-          <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
-            <Calendar size={15} strokeWidth={1.75} />
-            <span>Timeline</span>
-          </NavLink>
-          <NavLink to="/discover" className={({ isActive }) => (isActive ? "active" : "")}>
-            <Compass size={15} strokeWidth={1.75} />
-            <span>Discover</span>
-          </NavLink>
-          <NavLink to="/add" className={({ isActive }) => (isActive ? "active" : "")}>
-            <Plus size={15} strokeWidth={1.75} />
-            <span>Add event</span>
-          </NavLink>
-          <NavLink to="/inbox" className={({ isActive }) => (isActive ? "active" : "")}>
-            <InboxIcon size={15} strokeWidth={1.75} />
-            <span>Inbox</span>
-            {inbox > 0 && <span className="nav-badge-count">{inbox}</span>}
-          </NavLink>
-          <NavLink to="/community" className={({ isActive }) => (isActive ? "active" : "")}>
-            <Users size={15} strokeWidth={1.75} />
-            <span>Community</span>
-          </NavLink>
-          <NavLink to="/organizer" className={({ isActive }) => (isActive ? "active" : "")}>
-            <ClipboardList size={15} strokeWidth={1.75} />
-            <span>Organizer</span>
-          </NavLink>
-          <NavLink to="/settings" className={({ isActive }) => (isActive ? "active" : "")}>
-            <SettingsIcon size={15} strokeWidth={1.75} />
-            <span>Settings</span>
-          </NavLink>
-        </nav>
+          <nav className="desktop-nav" aria-label="Main Navigation">
+            <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
+              <Calendar size={15} strokeWidth={1.75} />
+              <span>Timeline</span>
+            </NavLink>
+            <NavLink to="/discover" className={({ isActive }) => (isActive ? "active" : "")}>
+              <Compass size={15} strokeWidth={1.75} />
+              <span>Discover</span>
+            </NavLink>
+            <NavLink to="/add" className={({ isActive }) => (isActive ? "active" : "")}>
+              <Plus size={15} strokeWidth={1.75} />
+              <span>Add event</span>
+            </NavLink>
+            <NavLink to="/inbox" className={({ isActive }) => (isActive ? "active" : "")}>
+              <InboxIcon size={15} strokeWidth={1.75} />
+              <span>Inbox</span>
+              {inbox > 0 && <span className="nav-badge-count">{inbox}</span>}
+            </NavLink>
+            <NavLink to="/community" className={({ isActive }) => (isActive ? "active" : "")}>
+              <Users size={15} strokeWidth={1.75} />
+              <span>Community</span>
+            </NavLink>
+            <NavLink to="/organizer" className={({ isActive }) => (isActive ? "active" : "")}>
+              <ClipboardList size={15} strokeWidth={1.75} />
+              <span>Organizer</span>
+            </NavLink>
+            <NavLink to="/settings" className={({ isActive }) => (isActive ? "active" : "")}>
+              <SettingsIcon size={15} strokeWidth={1.75} />
+              <span>Settings</span>
+            </NavLink>
+          </nav>
 
         <div className="topbar-right">
+          <LanguageSwitcher />
+          <button
+            type="button"
+            className="portal-search-trigger-btn"
+            onClick={() => setPortalSearchOpen(true)}
+            title="Search Top Portals (>70% Match Engine)"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "5px",
+              padding: "5px 10px",
+              fontSize: "0.8rem",
+              fontWeight: 500,
+              background: "var(--accent-subtle, rgba(99, 102, 241, 0.1))",
+              color: "var(--accent, #6366f1)",
+              border: "1px solid var(--accent, #6366f1)",
+              borderRadius: "6px",
+              cursor: "pointer",
+            }}
+          >
+            <Sparkles size={13} />
+            <span>Search Portals</span>
+          </button>
+
           <button
             type="button"
             className="theme-toggle-btn"
@@ -166,6 +196,7 @@ function Layout({ children, theme, toggleTheme }) {
           </div>
         </div>
       </header>
+    </div>
 
       <main className="page-main-container">{children}</main>
 
@@ -192,6 +223,9 @@ function Layout({ children, theme, toggleTheme }) {
           <span>Settings</span>
         </NavLink>
       </nav>
+
+      <PortalSearchModal isOpen={portalSearchOpen} onClose={() => setPortalSearchOpen(false)} />
+      <SarvamAssistant />
     </>
   );
 }
@@ -260,6 +294,7 @@ export default function App() {
   };
 
   return (
+    <>
     <Routes>
       <Route path="/login" element={<Login initialMode="login" />} />
       <Route path="/signup" element={<Login initialMode="register" />} />
@@ -288,5 +323,7 @@ export default function App() {
       <Route path="/settings" element={<Protected theme={theme} toggleTheme={toggleTheme}><Settings /></Protected>} />
       <Route path="*" element={<Protected theme={theme} toggleTheme={toggleTheme}><NotFound /></Protected>} />
     </Routes>
+    {!user && <LanguageSwitcher floating />}
+    </>
   );
 }

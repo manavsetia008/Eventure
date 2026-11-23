@@ -76,6 +76,23 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(ok.status_code, 200)
         self.assertEqual(self.client.get("/api/timeline").status_code, 401)
 
+    def test_public_registration_cannot_grant_admin_role(self):
+        response = self.client.post("/api/auth/register", json={
+            "name": "Untrusted User",
+            "email": "role-check@example.com",
+            "password": "secret1",
+            "role": "admin",
+        })
+        self.assertEqual(response.status_code, 201)
+        headers = {"Authorization": "Bearer " + response.get_json()["token"]}
+        user = self.client.get("/api/auth/me", headers=headers).get_json()["user"]
+        self.assertEqual(user["role"], "student")
+
+        # Role changes are not accepted through the self-service profile endpoint.
+        self.client.put("/api/auth/me", json={"role": "admin"}, headers=headers)
+        updated = self.client.get("/api/auth/me", headers=headers).get_json()["user"]
+        self.assertEqual(updated["role"], "student")
+
     def test_deadline_risk_on_timeline(self):
         h = self.user()
         self.add_event(h, "Hackathon X", day_at(3, 10), day_at(3, 18),
@@ -381,6 +398,186 @@ class ApiTests(unittest.TestCase):
         # 5. Delete portal
         del_res = self.client.delete(f"/api/portals/{portal_id}", headers=h)
         self.assertEqual(del_res.status_code, 200)
+
+    def test_public_translate_and_tts_endpoints_require_authentication(self):
+        self.assertEqual(self.client.post("/api/translate", json={"text": "Hello"}).status_code, 401)
+        self.assertEqual(self.client.post("/api/tts", json={"text": "Hello"}).status_code, 401)
+
+    def test_portal_match_auto_add_joins_existing_public_event_without_duplicate(self):
+        owner = self.user("portal-owner@example.com")
+        student = self.user("portal-student@example.com")
+        event = self.add_event(
+            owner, "Campus AI Buildathon", day_at(7, 10), day_at(7, 18),
+            is_public=True, url="https://unstop.com/hackathons/campus-ai-buildathon",
+        )["event"]
+        candidate = {
+            "title": event["title"],
+            "platform": "Unstop",
+            "category": "hackathon",
+            "venue_name": event["venue_name"],
+            "url": event["url"],
+            "description": event["description"],
+            "start_at": datetime.fromisoformat(event["start_at"]),
+            "match_score": 92.0,
+        }
+        with patch("app.services.discover_feed.sync_public_listings"), \
+             patch("app.routes.assistant.search_portal_catalog", return_value=[candidate]):
+            response = self.client.post(
+                "/api/search-match",
+                data={"text": "Campus AI Buildathon", "auto_add": "true"},
+                headers=student,
+            )
+        self.assertEqual(response.status_code, 200, response.get_json())
+        body = response.get_json()
+        self.assertTrue(body["auto_added"])
+        self.assertEqual(body["best_match"]["event_id"], event["id"])
+        self.assertIsNotNone(body["added_user_event_id"])
+        with self.app.app_context():
+            from app.models import UserEvent
+            self.assertEqual(UserEvent.query.filter_by(event_id=event["id"]).count(), 2)
+
+    def test_public_ui_translation_reports_missing_provider(self):
+        with self.app.app_context():
+            self.app.config["SARVAM_API_KEY"] = ""
+            self.app.config["GEMINI_API_KEY"] = ""
+        response = self.client.post(
+            "/api/translate/ui",
+            json={"target_language": "hi-IN", "texts": ["Save changes"]},
+        )
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("SARVAM_API_KEY or GEMINI_API_KEY", response.get_json()["error"])
+
+    def test_ui_translation_falls_back_to_gemini_when_sarvam_fails(self):
+        with self.app.app_context():
+            self.app.config["SARVAM_API_KEY"] = "sarvam-test-key"
+            self.app.config["GEMINI_API_KEY"] = "gemini-test-key"
+        with patch("app.routes.assistant.translate_many_with_sarvam", side_effect=RuntimeError("Sarvam offline")), \
+             patch("app.services.gemini.translate_many_with_gemini", return_value=["बदलाव सहेजें"]) as gemini:
+            response = self.client.post(
+                "/api/translate/ui",
+                json={"target_language": "hi-IN", "texts": ["Save changes"]},
+            )
+        self.assertEqual(response.status_code, 200, response.get_json())
+        self.assertEqual(response.get_json()["provider"], "gemini")
+        self.assertEqual(response.get_json()["translations"], ["बदलाव सहेजें"])
+        self.assertTrue(gemini.called)
+
+
+
+def _google_config(**overrides):
+    from app.config import Config
+
+    class TestConfig(Config):
+        TESTING = True
+        SECRET_KEY = "test-secret-key-that-is-at-least-32-bytes-long!"
+        SQLALCHEMY_DATABASE_URI = "sqlite://"
+        ENABLE_SCHEDULER = False
+        APP_BASE_URL = "http://localhost:5173"
+        GOOGLE_CLIENT_ID = "client-123.apps.googleusercontent.com"
+        GOOGLE_CLIENT_SECRET = "secret-456"
+        GOOGLE_REDIRECT_URI = "http://localhost:5000/api/google/callback"
+        SARVAM_API_KEY = ""
+        GOOGLE_MAPS_API_KEY = ""
+
+    for key, value in overrides.items():
+        setattr(TestConfig, key, value)
+    return TestConfig
+
+
+@unittest.skipUnless(HAVE_DB, "Flask-SQLAlchemy is not installed")
+class GoogleSignInTests(unittest.TestCase):
+    """Sign in with Google, with the Google responses mocked."""
+
+    def setUp(self):
+        from app import create_app
+
+        self.app = create_app(_google_config())
+        self.client = self.app.test_client()
+
+    def _callback(self, claims, state="abc123"):
+        self.client.set_cookie("g_state", "abc123")
+        self.client.set_cookie("g_verifier", "verifier-xyz")
+        with patch("app.services.google_signin.exchange_code", return_value={"id_token": "idtok"}), \
+             patch("app.services.google_signin.verify_id_token", return_value=claims):
+            return self.client.get(f"/auth/google/callback?state={state}&code=code-1")
+
+    def _token_from(self, resp):
+        self.assertIn("#google_token=", resp.headers["Location"])
+        return resp.headers["Location"].split("#google_token=")[1]
+
+    def test_health_reports_google_enabled(self):
+        self.assertTrue(self.client.get("/api/health").get_json()["googleAuth"])
+
+    def test_start_redirects_to_google_with_pkce(self):
+        r = self.client.get("/auth/google")
+        self.assertEqual(r.status_code, 302)
+        loc = r.headers["Location"]
+        self.assertIn("accounts.google.com", loc)
+        self.assertIn("code_challenge_method=S256", loc)
+        self.assertIn("auth%2Fgoogle%2Fcallback", loc)
+        cookies = " ".join(r.headers.getlist("Set-Cookie"))
+        self.assertIn("g_state=", cookies)
+        self.assertIn("g_verifier=", cookies)
+
+    def test_new_google_user_is_created_without_a_password(self):
+        r = self._callback({"email": "new@example.com", "email_verified": True, "sub": "g-1", "name": "New Person"})
+        self.assertEqual(r.status_code, 302)
+        token = self._token_from(r)
+        user = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"}).get_json()["user"]
+        self.assertEqual(user["email"], "new@example.com")
+        self.assertEqual(user["name"], "New Person")
+        self.assertFalse(user["has_password"])
+
+    def test_existing_email_is_linked_not_duplicated(self):
+        self.client.post("/api/auth/register", json={"name": "Existing", "email": "same@example.com", "password": "secret1"})
+        r = self._callback({"email": "same@example.com", "email_verified": True, "sub": "g-2", "name": "Existing"})
+        token = self._token_from(r)
+        self.assertEqual(self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code, 200)
+        with self.app.app_context():
+            from app.models import User
+            users = User.query.filter_by(email="same@example.com").all()
+            self.assertEqual(len(users), 1)
+            self.assertEqual(users[0].google_id, "g-2")
+
+    def test_unverified_email_is_rejected(self):
+        r = self._callback({"email": "nope@example.com", "email_verified": False, "sub": "g-3"})
+        self.assertIn("google=cancelled", r.headers["Location"])
+        self.assertNotIn("google_token", r.headers["Location"])
+
+    def test_state_mismatch_is_rejected(self):
+        r = self._callback({"email": "x@example.com", "email_verified": True, "sub": "g-4"}, state="different-state")
+        self.assertIn("google=cancelled", r.headers["Location"])
+        self.assertNotIn("google_token", r.headers["Location"])
+
+    def test_google_only_account_login_and_delete(self):
+        r = self._callback({"email": "gonly@example.com", "email_verified": True, "sub": "g-5", "name": "G Only"})
+        token = self._token_from(r)
+        h = {"Authorization": f"Bearer {token}"}
+        # email/password sign-in explains that the account uses Google
+        bad = self.client.post("/api/auth/login", json={"email": "gonly@example.com", "password": "whatever"})
+        self.assertEqual(bad.status_code, 401)
+        self.assertIn("Google", bad.get_json()["error"])
+        # delete works without a password for a Google-only account
+        self.assertEqual(self.client.delete("/api/auth/me", json={}, headers=h).status_code, 200)
+
+
+@unittest.skipUnless(HAVE_DB, "Flask-SQLAlchemy is not installed")
+class GoogleSignInUnconfiguredTests(unittest.TestCase):
+    """Without an OAuth client the app stays up and the button should be hidden on the client."""
+
+    def setUp(self):
+        from app import create_app
+
+        self.app = create_app(_google_config(GOOGLE_CLIENT_ID="", GOOGLE_CLIENT_SECRET=""))
+        self.client = self.app.test_client()
+
+    def test_health_reports_google_disabled(self):
+        self.assertFalse(self.client.get("/api/health").get_json()["googleAuth"])
+
+    def test_start_route_does_not_crash(self):
+        r = self.client.get("/auth/google")
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("google=unavailable", r.headers["Location"])
 
 
 def _google_config(**overrides):

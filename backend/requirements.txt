@@ -10,6 +10,7 @@ pywebpush>=2.0
 tzdata>=2024.1
 Pillow>=10.0
 pytesseract>=0.3.10
-# Only needed when DATABASE_URL points to PostgreSQL:
-# psycopg2-binary>=2.9
-
+# PostgreSQL drivers: psycopg 3 is used by postgresql+psycopg:// Supabase URLs.
+psycopg[binary]>=3.2,<4
+# Keep psycopg2 available for legacy postgresql:// URLs and integrations.
+psycopg2-binary>=2.9,<3

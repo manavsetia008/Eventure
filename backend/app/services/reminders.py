@@ -29,10 +29,16 @@ def _human(hours_left):
 
 
 def compute_reminders(stages, now):
-    """stages: [{"id", "user_id", "event_title", "name", "due_at", "done", "status"}] -> reminder dicts."""
+    """stages: [{"id", "user_id", "event_title", "name", "due_at", "done", "status", "priority_allowed"}] -> reminder dicts.
+    
+    Priority-gated: alerts are strictly limited to Registered and Keep-threshold events to save API costs.
+    """
     out = []
     for s in stages:
         if s["done"] or not s["due_at"] or s.get("status") in ("skipped", "attended"):
+            continue
+        # If explicitly gated out by priority scoring, suppress alert
+        if s.get("priority_allowed") is False:
             continue
         hours_left = (s["due_at"] - now).total_seconds() / 3600
         level = level_for(hours_left)
@@ -72,7 +78,8 @@ def run_reminder_check(app, user_id=None):
     from sqlalchemy.exc import IntegrityError
 
     from ..extensions import db
-    from ..models import Notification, Stage, User, UserEvent
+    from ..models import Notification, Stage, TopPriorityCall, User, UserEvent
+    from ..services.priority import score_item
     from ..utils import now as now_fn
 
     created = 0
@@ -80,17 +87,46 @@ def run_reminder_check(app, user_id=None):
         now = now_fn()
         window_end = now + timedelta(hours=49)
         query = (
-            db.session.query(Stage, UserEvent)
+            db.session.query(Stage, UserEvent, User)
             .join(UserEvent, Stage.user_event_id == UserEvent.id)
+            .join(User, UserEvent.user_id == User.id)
             .filter(Stage.done.is_(False), Stage.due_at.isnot(None), Stage.due_at <= window_end, Stage.due_at >= now - timedelta(hours=25))
         )
         if user_id:
             query = query.filter(UserEvent.user_id == user_id)
-        rows = [
-            {"id": st.id, "user_id": ue.user_id, "event_title": ue.event.title, "name": st.name,
-             "due_at": st.due_at, "done": st.done, "status": ue.status}
-            for st, ue in query.all()
-        ]
+
+        rows = []
+        for st, ue, u in query.all():
+            priority_allowed = True
+            if ue.status in ("skipped", "attended"):
+                priority_allowed = False
+            elif ue.status == "registered":
+                priority_allowed = True
+            elif ue.status == "interested":
+                threshold = u.threshold_keep if u.threshold_keep is not None else 55
+                score = getattr(ue, "custom_score", None)
+                if score is not None:
+                    priority_allowed = (score >= threshold)
+                else:
+                    item_dict = {
+                        "title": ue.event.title,
+                        "category": ue.event.category,
+                        "description": ue.event.description,
+                        "status": ue.status,
+                    }
+                    fit = score_item(item_dict, u.goals_list, now, u.scoring_mode or "balanced")
+                    priority_allowed = (fit["score"] >= threshold)
+
+            rows.append({
+                "id": st.id,
+                "user_id": ue.user_id,
+                "event_title": ue.event.title,
+                "name": st.name,
+                "due_at": st.due_at,
+                "done": st.done,
+                "status": ue.status,
+                "priority_allowed": priority_allowed,
+            })
         for r in compute_reminders(rows, now):
             exists = Notification.query.filter_by(user_id=r["user_id"], dedupe_key=r["key"]).first()
             if exists:
@@ -108,4 +144,36 @@ def run_reminder_check(app, user_id=None):
                 from .push import push_to_user
 
                 push_to_user(app.config, user.id, "Eventure", r["message"], "/")
+
+        # ── 24-Hour Voice Call Check for Top-Priority Events ──
+        pending_calls = TopPriorityCall.query.filter(
+            TopPriorityCall.status == "scheduled",
+            TopPriorityCall.scheduled_call_at <= now,
+        ).all()
+        for call_rec in pending_calls:
+            try:
+                from .sarvam_ai import trigger_sarvam_voice_call
+                u = db.session.get(User, call_rec.user_id)
+                lang = getattr(u, "primary_language", "hi-IN") or "hi-IN"
+                call_res = trigger_sarvam_voice_call(
+                    phone=call_rec.phone_number,
+                    event_title=call_rec.event.title if call_rec.event else "Top Priority Event",
+                    deadline_str=str(call_rec.latest_deadline),
+                    api_key=app.config.get("SARVAM_API_KEY", ""),
+                    lang=lang,
+                )
+                call_rec.status = "completed"
+                call_rec.call_log = f"Automated voice call placed at {now.isoformat()}: {call_res.get('status')}"
+                alert_msg = f"📞 24h Sarvam Voice Alert placed for your top-priority event '{call_rec.event.title if call_rec.event else 'Event'}'. Deadline: {call_rec.latest_deadline}."
+                db.session.add(Notification(
+                    user_id=call_rec.user_id,
+                    message=alert_msg,
+                    level="urgent",
+                    dedupe_key=f"top-call:{call_rec.id}:{call_rec.latest_deadline}",
+                ))
+                created += 1
+            except Exception as e:
+                call_rec.status = "failed"
+                call_rec.call_log = f"Failed at {now.isoformat()}: {str(e)}"
+        db.session.commit()
     return created

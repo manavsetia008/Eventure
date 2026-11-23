@@ -25,14 +25,30 @@ async function request(path, { method = "GET", body, form } = {}) {
   try {
     data = await res.json();
   } catch {
-    /* empty body */
+    // Reverse proxies (including Vite's local /api proxy) may return an HTML
+    // error page when the Flask server is stopped or unreachable.
+    data = null;
   }
   if (!res.ok) {
     if (res.status === 401 && token) {
       setToken(null);
       window.dispatchEvent(new Event("eventure:logout"));
     }
-    const err = new Error(data?.error || "Something went wrong. Try again.");
+
+    let message = data?.error;
+    if (!message) {
+      const localDevelopment =
+        typeof window !== "undefined" &&
+        ["localhost", "127.0.0.1"].includes(window.location.hostname);
+      if (localDevelopment && [500, 502, 503, 504].includes(res.status)) {
+        message =
+          `Local API request failed (HTTP ${res.status}). Start the Flask backend on port 5000 (run "python run.py" from the backend folder), then retry.`;
+      } else {
+        message = `Eventure API returned HTTP ${res.status} without a JSON error message.`;
+      }
+    }
+
+    const err = new Error(message);
     err.status = res.status;
     throw err;
   }

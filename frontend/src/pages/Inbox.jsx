@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ExternalLink, Inbox as InboxIcon, Mail } from "lucide-react";
 import { api } from "../api";
 import Chip from "../components/Chip.jsx";
+import DoodleHeading from "../components/ui/DoodleHeading.jsx";
 import { cap, fmtRange, timeAgo } from "../utils";
 
 export default function Inbox() {
@@ -60,7 +61,7 @@ export default function Inbox() {
     <>
       <div className="page-head">
         <div>
-          <h1>Inbox</h1>
+          <DoodleHeading text="Inbox" mascot="ghost" />
           <p className="muted small">Forwarded event emails and announcements land here for review.</p>
         </div>
       </div>

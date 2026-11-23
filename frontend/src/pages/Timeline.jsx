@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronDown, ChevronUp, CalendarPlus, ExternalLink, Plus, Trash2 } from "lucide-react";
+import { Calendar, CalendarPlus, ChevronDown, ChevronUp, ExternalLink, Plus, Star, Trash2 } from "lucide-react";
 import { api } from "../api";
 import IssueCard from "../components/IssueCard.jsx";
 import HackathonVault from "../components/HackathonVault.jsx";
@@ -9,7 +9,8 @@ import Chip from "../components/Chip.jsx";
 import Badge from "../components/Badge.jsx";
 import Checkbox from "../components/Checkbox.jsx";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
-import { cap, fmtDate, fmtDuration, fmtRange, timeLeft } from "../utils";
+import DoodleHeading from "../components/ui/DoodleHeading.jsx";
+import { cap, fmtDate, fmtDuration, fmtRange, getGoogleCalendarUrl, getMicrosoftCalendarUrl, timeLeft } from "../utils";
 
 const STATUSES = ["interested", "registered", "attended", "skipped"];
 
@@ -99,6 +100,11 @@ function Node({ it, act }) {
           {ev.platform && <Chip label={ev.platform} />}
           {ev.category && <Chip label={cap(ev.category)} />}
           <Badge variant={statusVariant} label={cap(it.status)} />
+          {it.score >= 99 && (
+            <span className="pill ok" style={{ fontSize: "0.7rem", display: "inline-flex", alignItems: "center", gap: "3px" }}>
+              <Star size={11} fill="gold" color="gold" /> Top Priority
+            </span>
+          )}
           {it.score != null && (
             <span role="presentation" onClick={(e) => e.stopPropagation()}>
               <PriorityEditor
@@ -121,8 +127,26 @@ function Node({ it, act }) {
 
       {expanded && (
         <div className="timeline-details">
-          {/* Official event link and actions */}
+          {/* Official event link and calendar actions */}
           <div className="timeline-link-row">
+            <a
+              href={getGoogleCalendarUrl(ev)}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-tertiary"
+              title="Add to Google Calendar"
+            >
+              <Calendar size={12} /> Google Cal
+            </a>
+            <a
+              href={getMicrosoftCalendarUrl(ev)}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-tertiary"
+              title="Add to Microsoft Outlook"
+            >
+              <CalendarPlus size={12} /> Outlook
+            </a>
             {fullUrl && !editingUrl ? (
               <>
                 <a href={fullUrl} target="_blank" rel="noreferrer" className="btn-tertiary">
@@ -307,7 +331,10 @@ export default function Timeline() {
     <>
       <div className="page-head">
         <div>
-          <h1>{lang === "hi" ? "मेरी टाइमलाइन (Timeline)" : "My timeline"}</h1>
+          <DoodleHeading
+            text={lang === "hi" ? "मेरी टाइमलाइन (Timeline)" : "My timeline"}
+            mascot="bird"
+          />
           <p className="muted small">
             {lang === "hi"
               ? "सभी चरण, समय-सीमा और शेड्यूल टकराव एक जगह ट्रैक करें।"
