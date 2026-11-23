@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 const EVENT_CHARS = ["E", "v", "e", "n", "t"];
 const URE_CHARS = ["u", "r", "e"];
 
-export default function Logo({ size = 26, animated = true }) {
+export default function Logo({ size = 26, animated: _animated = true }) {
   const [hopping, setHopping] = useState(false);
 
   const handleHop = () => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ExternalLink, Rss, Search, Sparkles, X } from "lucide-react";
 import { api } from "../api";
 import MapView from "../components/MapView.jsx";
@@ -21,7 +21,6 @@ function Rating({ r }) {
 }
 
 export default function Discover() {
-  const navigate = useNavigate();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -62,7 +61,6 @@ export default function Discover() {
     return () => clearTimeout(id);
   }, [filters]);
 
-  const open = useCallback((id) => navigate(`/events/${id}`), [navigate]);
   const set = (k) => (e) => setFilters({ ...filters, [k]: e.target.value });
 
   async function add(ev) {

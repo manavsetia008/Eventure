@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 /**
  * Deterministic hash [0, 1) based on index for consistent tilts and timings.
@@ -139,7 +139,6 @@ export default function DoodleHeading({
   style,
   children,
 }) {
-  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const Tag = tag;
   const content = text || (typeof children === "string" ? children : "");
 
