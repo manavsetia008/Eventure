@@ -9,6 +9,7 @@ import Chip from "../components/Chip.jsx";
 import Badge from "../components/Badge.jsx";
 import Checkbox from "../components/Checkbox.jsx";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
+import DoodleHeading from "../components/ui/DoodleHeading.jsx";
 import { cap, fmtDate, fmtDuration, fmtRange, getGoogleCalendarUrl, getMicrosoftCalendarUrl, timeLeft } from "../utils";
 
 const STATUSES = ["interested", "registered", "attended", "skipped"];
@@ -330,7 +331,10 @@ export default function Timeline() {
     <>
       <div className="page-head">
         <div>
-          <h1>{lang === "hi" ? "मेरी टाइमलाइन (Timeline)" : "My timeline"}</h1>
+          <DoodleHeading
+            text={lang === "hi" ? "मेरी टाइमलाइन (Timeline)" : "My timeline"}
+            mascot="bird"
+          />
           <p className="muted small">
             {lang === "hi"
               ? "सभी चरण, समय-सीमा और शेड्यूल टकराव एक जगह ट्रैक करें।"

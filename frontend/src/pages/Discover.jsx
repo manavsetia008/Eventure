@@ -6,6 +6,7 @@ import MapView from "../components/MapView.jsx";
 import Status from "../components/Status.jsx";
 import Chip from "../components/Chip.jsx";
 import Checkbox from "../components/Checkbox.jsx";
+import DoodleHeading from "../components/ui/DoodleHeading.jsx";
 import { CATEGORIES, cap, fmtDate, fmtDuration, fmtRange } from "../utils";
 
 const EMPTY_FILTERS = { q: "", category: "", radius_km: "", portals_only: "", sort: "rank" };
@@ -97,7 +98,7 @@ export default function Discover() {
     <>
       <div className="page-head">
         <div>
-          <h1>Discover events</h1>
+          <DoodleHeading text="Discover events" mascot="kid" />
           <p className="muted small">Browse live public hackathons from Unstop and Devfolio. Dates that organisers do not publish stay marked as unconfirmed.</p>
         </div>
       </div>

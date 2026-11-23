@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   CalendarDays,
@@ -12,6 +12,7 @@ import {
 import Logo from "../components/Logo.jsx";
 import Status from "../components/Status.jsx";
 import Badge from "../components/Badge.jsx";
+import DoodleCrewFooter from "@/components/ui/doodle-crew-footer";
 
 const HOW_STEPS = [
   {
@@ -51,6 +52,7 @@ const FAQS = [
 ];
 
 export default function Landing({ theme, toggleTheme }) {
+  const navigate = useNavigate();
   const [openFaq, setOpenFaq] = useState(null);
 
   const howRef = useRef(null);
@@ -101,9 +103,36 @@ export default function Landing({ theme, toggleTheme }) {
         </div>
       </header>
 
-      {/* ── 2. Hero Section ── */}
-      <section className="landing-hero-section">
-        <div className="landing-container landing-hero-grid">
+      {/* ── 2. Top Hero Section with Doodle Crew EVENTURE ── */}
+      <section className="landing-hero-section landing-hero-doodle-wrap" style={{ paddingTop: "1.5rem" }}>
+        <DoodleCrewFooter
+          as="div"
+          showTop={false}
+          showBar={false}
+          height="auto"
+          wordmark="EVENTURE"
+          tagline="Never miss a campus event, hackathon, or registration deadline again."
+          palette={{
+            background: theme === "dark" ? "#0c1322" : "#f8fafc",
+            ink: theme === "dark" ? "#f8fafc" : "#0f172a",
+            accent: "#6366f1",
+          }}
+          crew={[
+            { kind: "yeti", letter: 0, seat: "front", offset: -0.32, name: "Bruno", says: "Any free pizza at the hackathon?" },
+            { kind: "bird", letter: 1, seat: "top", offset: 0.02, name: "Pip", says: "Don't miss the registration deadline!" },
+            { kind: "mushroom", letter: 2, seat: "front", offset: 0.12, scale: 0.95, name: "Morel", says: "Workshop starts in 10 mins." },
+            { kind: "kid", letter: 4, seat: "top", offset: -0.05, name: "Juno", says: "Best campus events right here!" },
+            { kind: "ghost", letter: 6, seat: "behind", offset: 0, name: "Boo", says: "Boo! No clash detected." },
+            { kind: "cat", letter: 7, seat: "front", offset: 0.42, flip: true, name: "Patch", says: "Ready for Tech Fest finale?" },
+          ]}
+          actions={[
+            { label: "Get started", icon: "bolt", variant: "solid", onClick: () => navigate("/signup") },
+            { label: "Sign in", icon: "sandwich", variant: "outline", onClick: () => navigate("/login") },
+          ]}
+          style={{ width: "100%", maxWidth: "1280px", margin: "0 auto" }}
+        />
+
+        <div className="landing-container landing-hero-grid" style={{ marginTop: "2rem" }}>
           <div className="landing-hero-text">
             <h1 className="hero-title">
               Every campus event. <span className="brand-accent">One clear thread.</span>
@@ -314,7 +343,7 @@ export default function Landing({ theme, toggleTheme }) {
         </div>
       </section>
 
-      {/* ── 7. Separate Footer Block (subtle background, distinct from page) ── */}
+      {/* ── 7. Separate Footer Block ── */}
       <footer className="landing-main-footer">
         <div className="landing-container footer-simple-wrap">
           <div className="footer-col-brand">

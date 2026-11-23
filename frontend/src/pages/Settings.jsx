@@ -4,6 +4,7 @@ import { api, calendarFeedUrl } from "../api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
 import Status from "../components/Status.jsx";
+import DoodleHeading from "../components/ui/DoodleHeading.jsx";
 import { urlBase64ToUint8Array } from "../utils";
 import { useLanguage } from "../LanguageProvider.jsx";
 
@@ -830,7 +831,7 @@ export default function Settings() {
     <>
       <div className="page-head">
         <div>
-          <h1>Settings</h1>
+          <DoodleHeading text="Settings" mascot="yeti" />
           <p className="muted small">Account profile, campus location, and external calendar sync.</p>
         </div>
       </div>

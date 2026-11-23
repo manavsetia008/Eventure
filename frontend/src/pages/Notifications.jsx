@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import Badge from "../components/Badge.jsx";
+import DoodleHeading from "../components/ui/DoodleHeading.jsx";
 import { fmtDate, timeAgo } from "../utils";
 
 export default function Notifications() {
@@ -40,7 +41,7 @@ export default function Notifications() {
     <>
       <div className="page-head">
         <div>
-          <h1>Alerts & Reminders</h1>
+          <DoodleHeading text="Alerts & Reminders" mascot="ghost" />
           <p className="muted small">Notifications for critical deadlines, stages, and clashes.</p>
         </div>
         <div className="row">

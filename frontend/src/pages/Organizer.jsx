@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ClipboardList, MoreHorizontal } from "lucide-react";
 import { api } from "../api";
 import Badge from "../components/Badge.jsx";
+import DoodleHeading from "../components/ui/DoodleHeading.jsx";
 import { fmtRange } from "../utils";
 
 function ShareBox({ id }) {
@@ -56,7 +57,7 @@ export default function Organizer() {
     <>
       <div className="page-head">
         <div>
-          <h1>Organizer</h1>
+          <DoodleHeading text="Organizer" mascot="bird" />
           <p className="muted small">
             Events you listed, with turnout metrics, ratings, and timeline tracking.
           </p>

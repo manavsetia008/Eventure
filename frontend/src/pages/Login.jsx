@@ -5,6 +5,7 @@ import { api } from "../api";
 import { useAuth } from "../auth.jsx";
 import Logo from "../components/Logo.jsx";
 import Notice from "../components/Notice.jsx";
+import DoodleCrewFooter from "../components/ui/doodle-crew-footer";
 
 // Official multicolour Google mark.
 function GoogleMark({ size = 18 }) {
@@ -156,7 +157,30 @@ export default function Login({ initialMode }) {
 
   return (
     <div className="login-page">
-      <div className="login-card">
+      <div className="login-page-inner" style={{ width: "100%", maxWidth: "620px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <DoodleCrewFooter
+          as="div"
+          showTop={false}
+          showBar={false}
+          height="auto"
+          wordmark="EVENTURE"
+          tagline={mode === "login" ? "Sign in to access your campus timeline and event threads" : "Create an account to begin tracking campus events"}
+          actions={[]}
+          palette={{
+            background: "var(--bg, #f1f5f9)",
+            ink: "var(--ink, #0f172a)",
+            accent: "#6366f1",
+          }}
+          crew={[
+            { kind: "yeti", letter: 0, seat: "front", offset: -0.32, name: "Bruno", says: "Ready to sign in?" },
+            { kind: "bird", letter: 1, seat: "top", offset: 0.02, name: "Pip", says: "Track all deadlines!" },
+            { kind: "kid", letter: 4, seat: "top", offset: -0.05, name: "Juno", says: "Welcome to Eventure!" },
+            { kind: "cat", letter: 7, seat: "front", offset: 0.42, flip: true, name: "Patch", says: "Let's get started." },
+          ]}
+          doodleCount={6}
+          style={{ width: "100%", marginBottom: "1rem" }}
+        />
+        <div className="login-card">
         {/* Top header with home link and logo */}
         <div className="login-card-head">
           <Link to="/" className="login-back-link" aria-label="Back to home">
@@ -341,6 +365,7 @@ export default function Login({ initialMode }) {
             </p>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
