@@ -3,19 +3,20 @@
 > **Every event, one thread.**
 > Turn scattered campus notices into one clear, trackable timeline.
 
-Eventure is a tracker for college students juggling events and hackathons. Paste a notice or a
-WhatsApp forward and it pulls out the title, venue, dates and deadlines. From there you track every
-stage, spot schedule and exam-week clashes, and decide what to keep.
+Eventure is a tracker for college students juggling events and hackathons. Paste a notice or a WhatsApp forward and it pulls out the title, venue, dates and deadlines. From there you track every stage, spot schedule and exam-week clashes, and decide what to keep.
 
 ---
 
 ## What it does
 
-- **Capture** — paste notice text or upload a poster; details are extracted for review and you can edit any field before saving.
+- **Capture** — paste notice text or upload a poster; details are extracted via Sarvam AI Indic Intelligence (with offline fallback) and you can edit any field before saving.
+- **Multilingual UI & Voice Assistant** — supports 23 Indian languages with full UI translation, voice input, and conversational event discovery powered by Sarvam AI & Gemini.
 - **Timeline** — each event with its stages (registration, submission, shortlist, final), days-left and deadlines.
 - **Clash detection** — overlapping events, tight travel gaps between venues, and clashes with your saved exam dates.
 - **Keep / Skip** — a 0–100 fit score from your interests, deadlines and campus distance, with a threshold you control.
-- **Discover** — browse public events, filter and sort, and compare two to four side by side.
+- **Discover & Live Feeds** — browse public events from Unstop and Devfolio, filter, sort, and compare two to four side by side.
+- **24-Hour Voice Call Alerts** — designates your top-priority event and triggers automated Indic voice call reminders 24 hours before deadlines.
+- **Submission Vault** — keep team links, code repos, pitch decks, and submission requirements attached directly to event cards.
 - **Inbox** — forwarded event emails land here as ready-to-review drafts.
 - **Community & Organizer** — follow campus clubs, and create or manage the events you organise.
 - **Portals, exam dates, calendar** — track the platforms you register on, save your exam window, and subscribe to a private calendar feed.
@@ -27,11 +28,12 @@ stage, spot schedule and exam-week clashes, and decide what to keep.
 | Layer | Choice |
 |---|---|
 | Backend | Flask 3, SQLAlchemy, PyJWT, APScheduler |
+| AI / LLM | Sarvam AI (Sarvam-105B, Bulbul TTS, Indic Translate) & Google Gemini Flash |
 | Database | Supabase Postgres in production; SQLite for local development |
-| Frontend | React 18 + Vite 5, react-router-dom |
-| Styling | Plain CSS with a single set of CSS variables (`frontend/src/styles.css`) |
-| Icons / Map | lucide-react, Leaflet |
-| Tests | pytest (92 backend), Vitest (18 frontend) |
+| Frontend | React 18 + Vite 5, react-router-dom, GSAP |
+| Styling | Spatial frosted glass design with plain CSS & CSS variables (`frontend/src/styles.css`) |
+| Icons / Map | lucide-react, OpenStreetMap |
+| Tests | pytest (145 backend), Vitest (22 frontend) |
 
 ---
 
@@ -39,23 +41,24 @@ stage, spot schedule and exam-week clashes, and decide what to keep.
 
 ```
 eventure/
-├─ backend/
-│  ├─ app/
-│  │  ├─ routes/        # auth, timeline, discover, social, inbox, organizer, google, push, integrations
-│  │  ├─ services/      # extraction, ocr, conflicts, priority, travel, inbox, reminders, push, calendar, ics
-│  │  ├─ models.py      # SQLAlchemy models
-│  │  ├─ config.py      # reads backend/.env
-│  │  └─ __init__.py    # app factory + /api/health
-│  ├─ tests/            # pytest suites
-│  ├─ seed.py           # demo data (dates are relative to today)
-│  └─ run.py            # entry point
-└─ frontend/
-   ├─ src/
-   │  ├─ pages/         # Landing, Timeline, Discover, AddEvent, Inbox, Community, Organizer, Settings...
-   │  ├─ components/    # Badge, Chip, Checkbox, Radio, EventForm, IssueCard...
-   │  ├─ styles.css     # theme tokens + all styles
-   │  └─ api.js         # fetch wrapper (attaches the JWT)
-   └─ index.html        # inline theme bootstrap (no flash on load)
+├── backend/
+│   ├── app/
+│   │   ├── routes/        # auth, timeline, discover, social, inbox, organizer, google, push, integrations, assistant
+│   │   ├── services/      # extraction, ocr, sarvam_ai, gemini, assistant, discover_feed, conflicts, priority, reminders
+│   │   ├── models.py      # SQLAlchemy models
+│   │   ├── config.py      # reads backend/.env
+│   │   └── __init__.py    # app factory + security headers + /api/health
+│   ├── tests/            # 145 pytest unit and integration tests
+│   ├── seed.py           # demo data (dates relative to today)
+│   └── run.py            # entry point
+└── frontend/
+    ├── src/
+    │   ├── pages/         # Landing, Timeline, Discover, AddEvent, Inbox, Community, Organizer, Settings...
+    │   ├── components/    # DoodleHeading, HackathonVault, MapView, SarvamAssistant, PortalSearchModal...
+    │   ├── styles.css     # theme tokens + glass design system
+    │   ├── api.js         # fetch wrapper (attaches the JWT)
+    │   └── LanguageProvider.jsx # 23-language multilingual translation provider
+    └── index.html        # inline theme bootstrap (no flash on load)
 ```
 
 Frontend routes: `/` (Timeline when signed in, otherwise the landing page), `/login`, `/signup`,
@@ -126,8 +129,9 @@ when deploying on Render.
 | `TIMEZONE` | Calendar and push times (default `Asia/Kolkata`) | — | Free |
 | `FRONTEND_URL` | Redirect target after Google OAuth | — | Free |
 | `APP_BASE_URL` | Public origin used to build the Google sign-in callback | `http://localhost:5173` in dev, live domain in prod | Free |
-| `SARVAM_API_KEY` | Notice extraction from text, poster OCR, Indic translation | dashboard.sarvam.ai | Free credits, then paid |
+| `SARVAM_API_KEY` | Notice extraction, poster OCR, Indic translation & Bulbul TTS | dashboard.sarvam.ai | Free credits, then paid |
 | `SARVAM_MODEL` | Sarvam model id (default `sarvam-105b-conversations`) | Sarvam docs | — |
+| `GEMINI_API_KEY` | Gemini 3.8 Flash fallback assistant & translation | Google AI Studio | Free tier |
 | `GOOGLE_MAPS_API_KEY` | Real traffic travel times | Google Cloud Console | Paid (free credit) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google Calendar sync | Google Cloud Console → OAuth client | Free |
 | `GOOGLE_REDIRECT_URI` | OAuth callback (must match the console) | — | Free |
@@ -179,11 +183,14 @@ expect a `Bearer <token>` from `POST /api/auth/login`.
 
 | Group | Prefix | Examples |
 |---|---|---|
-| Auth | `/api/auth` | `POST /register`, `POST /login`, `GET|PUT|DELETE /me` |
+| Auth | `/api/auth` | `POST /register`, `POST /login`, `GET\|PUT\|DELETE /me` |
 | Events & timeline | `/api` | `POST /extract`, `POST /events`, `PUT /events/:id`, `GET /timeline`, `PATCH /user-events/:id`, `POST /user-events/:id/stages` |
-| Exams, portals, notifications | `/api` | `GET|POST /exams`, `GET|POST|PATCH|DELETE /portals`, `POST /portals/:id/sync`, `GET /notifications`, `GET /calendar.ics` |
-| Discover & compare | `/api` | `GET /discover`, `GET /events/:id`, `POST /events/:id/join`, `POST /events/:id/reviews`, `GET /compare` |
-| Community | `/api` | `GET|POST /clubs`, `POST /clubs/:id/follow`, `GET|POST /teams`, `POST /teams/join` |
+| Top Priority Voice | `/api` | `GET /top-priority`, `POST /top-priority/set`, `DELETE /top-priority`, `POST /top-priority/test-call` |
+| Assistant & Voice | `/api` | `POST /assistant/chat`, `POST /assistant/speech-to-text`, `POST /search-match` |
+| Exams, portals, notifications | `/api` | `GET\|POST /exams`, `GET\|POST\|PATCH\|DELETE /portals`, `POST /portals/:id/sync`, `GET /notifications`, `GET /calendar.ics` |
+| Discover & compare | `/api` | `GET /discover`, `GET /events/:id`, `POST /events/:id/join`, `POST /events/:id/reviews`, `GET /compare`, `GET /discover/suggestions` |
+| Multilingual Translation | `/api` | `POST /translate`, `POST /translate/ui`, `POST /tts` |
+| Community | `/api` | `GET\|POST /clubs`, `POST /clubs/:id/follow`, `GET\|POST /teams`, `POST /teams/join` |
 | Inbox | `/api` | `GET /inbox`, `POST /inbox/:id/dismiss`, `POST /inbound/email` |
 | Organizer | `/api/organizer` | `GET /events`, `POST /events/:id/visibility` |
 | Google Calendar | `/api/google` | `GET /connect`, `GET /callback`, `POST /sync`, `POST /disconnect` |
@@ -198,43 +205,34 @@ Health check: `GET /api/health` verifies the database connection and returns `da
 
 ```powershell
 cd backend
-python -m unittest discover -s tests -v
+python -m pytest tests/            # 145 tests
 
 cd ..\frontend
-npm test                           # 18 tests
-npm run lint
-npm run build
+npm test                           # 22 tests
+npm run lint                       # 0 errors, 0 warnings
+npm run build                      # production build
 ```
 
-The suites cover clash detection (overlap, travel gap, exam week), the priority/threshold scoring,
-date and duration formatting, rate limiting, JWT lifecycle and the REST contract.
+The suites cover clash detection (overlap, travel gap, exam week), priority/threshold scoring,
+date formatting, rate limiting, JWT lifecycle, multilingual UI translation, assistant processing, and REST contracts.
 
-**Vercel (frontend) + Render/Railway (backend)**
-- Deploy `frontend` to Vercel with build command `npm run build` and output directory `dist`, and set `VITE_API_URL` to your backend URL plus `/api`.
-- Deploy `backend` as above, then set `CORS_ORIGINS` and `FRONTEND_URL` to the Vercel URL.
+---
 
 ## Deploy
 
-The backend serves the built frontend automatically when `frontend/dist` exists, so the whole app
-can run on a single service.
+The backend serves the built frontend automatically when `frontend/dist` exists, so the whole app can run on a single service.
 
 **Build step:** `cd frontend && npm install && npm run build`
 
 **Render / Railway / any VM**
-- Use the repository-root Dockerfile. It builds the React frontend and runs Flask under Gunicorn; do not use Flask's debug server in production.
+- Use the repository-root Dockerfile. It builds the React frontend and runs Flask under Gunicorn.
 - Set the env vars from the table above. `SECRET_KEY` is required in production; set `TRUST_PROXY=1` behind a proxy.
-- Set `APP_ENV=production`, a unique `SECRET_KEY`, and point `DATABASE_URL` at Supabase Postgres (Shared Session pooler, port `5432`, `sslmode=require`). Production startup refuses to use SQLite or a weak/missing secret.
+- Set `APP_ENV=production`, a unique `SECRET_KEY`, and point `DATABASE_URL` at Supabase Postgres.
 - The application creates its schema on first production boot. Do not run the demo seed script with `--reset` against a production database.
 
 **Vercel (frontend) + Render/Railway (backend)**
-- Connect the GitHub repository to Vercel with project root `frontend`, framework Vite, build command `npm run build`, and output directory `dist`. The existing `frontend/vercel.json` rewrites API and Google callback requests to the Render backend, so leave `VITE_API_URL` unset unless you intentionally switch to direct cross-origin API requests.
-- Deploy the backend from the repository-root Dockerfile on Render. Set `CORS_ORIGINS`, `FRONTEND_URL`, and `APP_BASE_URL` to the production Vercel origin.
-
-**Docker**
-
-```bash
-docker compose up -d --build
-```
+- Connect the GitHub repository to Vercel with project root `frontend`, framework Vite, build command `npm run build`, and output directory `dist`.
+- Deploy the backend on Render and configure `CORS_ORIGINS`, `FRONTEND_URL`, and `APP_BASE_URL` to the production Vercel origin.
 
 ---
 
